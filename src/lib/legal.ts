@@ -16,7 +16,7 @@ export const LEGAL_NAV: { slug: LegalSlug; label: string }[] = [
 ];
 
 export function contactEmail(site: SiteId) {
-  return site === "founders" ? "contact@foundersbid.lol" : "contact@bidception.lol";
+  return `contact@${SITES[site].domain}`;
 }
 
 type Block = { heading?: string; body: string[] };
@@ -43,7 +43,9 @@ export function legalDoc(site: SiteId, slug: LegalSlug): {
             `${cfg.name} is a public pay-to-rank board. Rank is determined solely by the highest total bid, in whole US dollars, with a minimum of $5. There is no editorial ranking, no free slot, and no algorithm beyond bid amount and time of bid.`,
             site === "founders"
               ? "Listings are for founding-team pages, about pages, studio sites, and personal founder URLs. The founding names you submit are published on the board."
-              : "Listings are for bid platforms, Outbid clones, .lol boards, and other pay-to-rank sites. The short note you submit is published on the board.",
+              : site === "culture"
+                ? "Listings are for company culture, careers, and why-join-us pages. Culture statements, values, and optional quotes you submit are published on the board."
+                : "Listings are for marketing platforms, directories, pay-to-rank tools, newsletter sponsorship boards, and community visibility products. The short note you submit is published on the board.",
           ],
         },
         {
@@ -94,7 +96,7 @@ export function legalDoc(site: SiteId, slug: LegalSlug): {
         {
           heading: "What we store",
           body: [
-            "Public listing data: URL, title, tagline, team or note, bid amount, rank, click count, swap count, and timestamps. This is shown on the board.",
+            "Public listing data: URL, title, tagline, team or quote, culture values, bid amount, rank, click count, swap count, and timestamps. This is shown on the board.",
             "A secret manage token, issued at payment, used only to prove control of that listing. It is not an email, name, or login.",
             "Order records needed to settle Cashfree payments: amount, kind (bid or swap), status, and a payment session id.",
             "We do not collect names, emails, phone numbers, or passwords for an account. Click counts are incremented without storing IP addresses as a profile.",
@@ -186,7 +188,9 @@ export function legalDoc(site: SiteId, slug: LegalSlug): {
         body: [
           site === "founders"
             ? "contact@foundersbid.lol — the only address for foundersbid.lol."
-            : "contact@bidception.lol — the address for bidception.lol. Foundersbid remains contact@foundersbid.lol.",
+            : site === "culture"
+              ? "contact@culturebid.lol — the address for culturebid.lol. Foundersbid remains contact@foundersbid.lol."
+              : "contact@bidception.lol — the address for bidception.lol. Foundersbid remains contact@foundersbid.lol. Culturebid remains contact@culturebid.lol.",
           "Say what you need in the subject: listing, payment, or legal.",
         ],
       },

@@ -9,6 +9,7 @@ import { YourListings } from "@/components/your-listings";
 import { FoundersMasthead } from "@/components/founders-masthead";
 import { TrackSiteView } from "@/components/track-site-view";
 import { ClaimBox } from "@/components/claim-box";
+import { LeftoverBudgetCard, DiscoveryNote } from "@/components/leftover-budget";
 
 export const Route = createFileRoute("/$site/")({
   loader: ({ params }) => {
@@ -45,6 +46,8 @@ function BoardHome() {
               <span className="text-subtle">.lol</span>
             </h1>
             <p className="rise-in rise-in-3 mt-4 max-w-xl text-muted">{cfg.tagline}</p>
+            {/* Bidception: this is the leftover-budget destination, not a clone war. */}
+            {site === "bidception" ? <DiscoveryNote /> : null}
           </>
         )}
         <div className="mt-8">
@@ -58,6 +61,8 @@ function BoardHome() {
             />
           ) : null}
         </div>
+        {/* Point 4: leftover-budget card sits on foundersbid + culturebid only. */}
+        <LeftoverBudgetCard from={site} />
         <div className="mt-6">
           {board ? (
             <Leaderboard site={site} listings={board.listings} />

@@ -46,7 +46,9 @@ function RulesPage() {
         <p>
           {site === "founders"
             ? "Personal portfolios, about pages, team pages, studio sites — anything that shows who founded the thing. The founding names sit on the row."
-            : "Outbid clones, .lol domains, bid platforms, leaderboards that take money to move. If it is a board that sells rank, it belongs here."}
+            : site === "culture"
+              ? "Careers pages, culture pages, and why-join-us pages. Company name first, then the culture statement, up to five values, and an optional quote."
+              : "Marketing platforms, directories, pay-to-rank tools, newsletter sponsorship boards, community boards, and other visibility products. If leftover budget needs a next channel, it belongs here."}
         </p>
       </Section>
 

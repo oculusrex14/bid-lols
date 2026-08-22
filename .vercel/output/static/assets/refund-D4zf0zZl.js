@@ -1,0 +1,1 @@
+import{a as e,m as t}from"./sites-DVUW_CCL.js";import{o as n}from"./index-DiWmpxz_.js";import{t as r}from"./legal-page-ByqNeWO_.js";var i=t(),a=()=>{let{site:t}=n.useParams();return e(t)?(0,i.jsx)(r,{site:t,slug:`refund`}):null};export{a as component};

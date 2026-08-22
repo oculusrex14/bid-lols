@@ -1,5 +1,5 @@
 {
-  "url": "http://127.0.0.1:8080/",
+  "url": "http://127.0.0.1:8081/",
   "viewports": {
     "desktop": {
       "width": 1280,
@@ -7,9 +7,9 @@
       "status": 200,
       "title": "bidthrone.lol",
       "hasCanvas": false,
-      "bodyTextLen": 1053,
-      "bodyTextHash": "1814fbc2c7ffc654c0111369e14c43968539793de704b5f556e866f9d138394f",
-      "bodyTextPrefix": "BIDTHRONE.LOL Full spec APPEARANCE Light Dark TWO BOARDS. ONE ME",
+      "bodyTextLen": 1325,
+      "bodyTextHash": "75cd55ced4c0214ce5c71fc8d28e92e45a9fc77b3ff0d9423620c409805f5fa9",
+      "bodyTextPrefix": "BIDTHRONE.LOL Full spec APPEARANCE Light Dark THREE BOARDS. ONE ",
       "horizontalOverflow": false,
       "consoleErrors": [],
       "pageErrors": [],
@@ -21,9 +21,9 @@
       "status": 200,
       "title": "bidthrone.lol",
       "hasCanvas": false,
-      "bodyTextLen": 1154,
-      "bodyTextHash": "379c0afba1396ec64dbfeb65276b875bda1e069fcd6065a48986d4ae5425008f",
-      "bodyTextPrefix": "BIDTHRONE.LOL Full spec APPEARANCE Light Dark TWO BOARDS. ONE ME",
+      "bodyTextLen": 1325,
+      "bodyTextHash": "7d27d97e56266c2c9555ff9318afbabcf0fbeaadfe9766094924188292bbe0b7",
+      "bodyTextPrefix": "BIDTHRONE.LOL Full spec APPEARANCE Light Dark THREE BOARDS. ONE ",
       "horizontalOverflow": false,
       "consoleErrors": [],
       "pageErrors": [],
@@ -32,5 +32,7 @@
   },
   "brandWarnings": [],
   "authWarnings": [],
-  "verdictFile": "/workspace/screenshots/app-builder-preview.json"
+  "verdictFile": "/workspace/screenshots/app-builder-preview.json",
+  "divergesFromBaseline": false,
+  "baselineReasons": []
 }

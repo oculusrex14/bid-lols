@@ -7,8 +7,9 @@ import { Field, Input } from "@/components/ui/input";
 import { createBidOrder, createSwapOrder, getManaged } from "@/lib/board-fns";
 import { formatUsd, hostOf, rankLabel } from "@/lib/format";
 import { rememberOwned } from "@/lib/owned";
-import { COPY, isSiteId } from "@/lib/sites";
+import { COPY, isSiteId, type SiteId } from "@/lib/sites";
 import { FounderSocials } from "@/components/founder-socials";
+import { CultureValues } from "@/components/culture-values";
 import { SiteFavicon } from "@/components/site-favicon";
 
 export const Route = createFileRoute("/$site/manage/$token")({
@@ -76,6 +77,12 @@ function ManagePage() {
                 <span className="text-subtle"> · {hostOf(listing.url)}</span>
               </p>
             </>
+          ) : listing.site === "culture" ? (
+            <>
+              <p className="text-xs uppercase tracking-kicker text-subtle">Company culture</p>
+              <h1 className="mt-1 font-display-site text-4xl tracking-tight">{listing.title}</h1>
+              <p className="mt-2 text-sm text-muted">{hostOf(listing.url)}</p>
+            </>
           ) : (
             <>
               <h1 className="font-display-site text-4xl tracking-tight">{listing.title}</h1>
@@ -87,6 +94,13 @@ function ManagePage() {
       </div>
       {listing.site === "founders" ? (
         <FounderSocials socials={listing.socials} className="mt-4" />
+      ) : listing.site === "culture" ? (
+        <>
+          <CultureValues values={listing.values} className="mt-4" />
+          {listing.team ? (
+            <p className="mt-3 font-display italic text-muted">“{listing.team}”</p>
+          ) : null}
+        </>
       ) : null}
 
       <dl className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -170,7 +184,7 @@ function RebidForm({
   currentDollars,
   onOrder,
 }: {
-  site: "founders" | "bidception";
+  site: SiteId;
   url: string;
   title: string;
   tagline: string;

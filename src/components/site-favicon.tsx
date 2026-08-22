@@ -36,6 +36,9 @@ export function SiteFavicon({
           width={40}
           height={40}
           className="absolute inset-0 size-full bg-raised object-contain"
+          loading="lazy"
+          decoding="async"
+          fetchPriority="low"
           onError={() => setFailed(true)}
         />
       ) : null}

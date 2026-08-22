@@ -1,0 +1,1 @@
+function e(e){return Math.round(e).toLocaleString(`en-US`)}export{e as t};

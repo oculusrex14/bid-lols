@@ -2,11 +2,10 @@ import { Link, createFileRoute } from "@tanstack/react-router";
 import { ArrowRight } from "lucide-react";
 import { getPortal } from "@/lib/board-fns";
 import { formatUsd, rankLabel } from "@/lib/format";
-import { PORTAL, SITES } from "@/lib/sites";
+import { PORTAL, SITE_IDS, SITES, type SiteId } from "@/lib/sites";
 import { cn } from "@/lib/cn";
 import { ModeToggle } from "@/components/mode-toggle";
 import { SiteFooter } from "@/components/site-footer";
-import { FoundersMasthead } from "@/components/founders-masthead";
 import { HypeCounts } from "@/components/hype-counts";
 import { TrackSiteView } from "@/components/track-site-view";
 import { SiteFavicon } from "@/components/site-favicon";
@@ -20,7 +19,7 @@ export const Route = createFileRoute("/")({
       {
         name: "description",
         content:
-          "bidthrone.lol — two pay-to-rank boards. Foundersbid proves founding teams. Bidception ranks the bid sites.",
+          "bidthrone.lol — three pay-to-rank boards. Foundersbid proves founding teams. Culturebid ranks culture. Bidception finds other marketing platforms.",
       },
     ],
   }),
@@ -33,7 +32,7 @@ function Home() {
   return (
     <div className="min-h-screen bg-bg text-fg">
       <TrackSiteView site="portal" />
-      <header className="mx-auto max-w-5xl px-5 py-4">
+      <header className="mx-auto max-w-6xl px-5 py-4">
         <div className="flex items-center justify-between gap-3">
           <span className="text-xs font-medium uppercase tracking-kicker text-fg">
             {PORTAL.domain}
@@ -47,52 +46,37 @@ function Home() {
         </div>
       </header>
 
-      <section className="relative mx-auto max-w-5xl px-5 pb-6 pt-4 sm:pb-8 sm:pt-12">
+      <section className="relative mx-auto max-w-6xl px-5 pb-6 pt-4 sm:pb-8 sm:pt-12">
         <div className="grid-veil pointer-events-none absolute inset-0 opacity-70" />
         <p className="rise-in text-xs uppercase tracking-kicker text-subtle">
-          Two boards. One mechanic.
+          Three boards. One mechanic.
         </p>
         <h1 className="rise-in rise-in-2 mt-3 max-w-3xl font-display text-4xl leading-tight tracking-tight sm:mt-4 sm:text-7xl">
           Pay to rank.
           <span className="italic text-muted"> Highest bid stands first.</span>
         </h1>
-        <p className="rise-in rise-in-3 mt-3 max-w-xl text-sm text-muted sm:mt-5 sm:text-lg">
-          Founders buy trust on one board. Bid sites fight for the meta crown on
-          the other. Whole dollars. Five dollar floor. Re-bids pay the difference.
+        <p className="rise-in rise-in-3 mt-3 max-w-2xl text-sm text-muted sm:mt-5 sm:text-lg">
+          Trust the founding team. Rank your culture. Then find where else to spend
+          the rest of the budget. Whole dollars. Five dollar floor. Re-bids pay the difference.
         </p>
-        <div className="rise-in rise-in-4 mt-5 space-y-2 sm:hidden">
-          <p className="text-xs uppercase tracking-kicker text-subtle">foundersbid</p>
-          <HypeCounts
-            visitsToday={portal.founders.stats.visitsToday}
-            totalViews={portal.founders.stats.totalViews}
-          />
-          <p className="pt-2 text-xs uppercase tracking-kicker text-subtle">bidception</p>
-          <HypeCounts
-            visitsToday={portal.bidception.stats.visitsToday}
-            totalViews={portal.bidception.stats.totalViews}
-          />
-        </div>
       </section>
 
-      <section className="grid min-h-[70vh] grid-cols-1 lg:grid-cols-2">
-        <SitePanel
-          site="founders"
-          listings={portal.founders.listings.slice(0, 3)}
-          pool={portal.founders.stats.poolCents}
-          visitsToday={portal.founders.stats.visitsToday}
-          totalViews={portal.founders.stats.totalViews}
-        />
-        <SitePanel
-          site="bidception"
-          listings={portal.bidception.listings.slice(0, 3)}
-          pool={portal.bidception.stats.poolCents}
-          visitsToday={portal.bidception.stats.visitsToday}
-          totalViews={portal.bidception.stats.totalViews}
-          cool
-        />
+      {/* Three equal-weight branches. Each card uses the same layout; only type + tokens change. */}
+      <section className="grid grid-cols-1 lg:grid-cols-3">
+        {SITE_IDS.map((site, i) => (
+          <SitePanel
+            key={site}
+            site={site}
+            listings={portal[site].listings.slice(0, 3)}
+            pool={portal[site].stats.poolCents}
+            visitsToday={portal[site].stats.visitsToday}
+            totalViews={portal[site].stats.totalViews}
+            edge={i > 0}
+          />
+        ))}
       </section>
 
-      <SiteFooter site="founders" />
+      <SiteFooter site="portal" />
     </div>
   );
 }
@@ -103,37 +87,43 @@ function SitePanel({
   pool,
   visitsToday,
   totalViews,
-  cool,
+  edge,
 }: {
-  site: "founders" | "bidception";
+  site: SiteId;
   listings: BoardPayload["listings"];
   pool: number;
   visitsToday: number;
   totalViews: number;
-  cool?: boolean;
+  edge?: boolean;
 }) {
   const cfg = SITES[site];
   return (
     <article
       data-theme={site}
       className={cn(
-        "flex flex-col justify-between border-t border-border bg-bg px-5 py-10 sm:px-10 sm:py-14",
-        cool && "lg:border-l",
+        "flex flex-col justify-between border-t border-border bg-bg px-5 py-10 sm:px-8 sm:py-12",
+        edge && "lg:border-l",
       )}
     >
       <div>
-        {site === "founders" ? (
-          <FoundersMasthead size="panel" />
-        ) : (
-          <>
-            <p className="text-xs uppercase tracking-kicker text-subtle">{cfg.kicker}</p>
-            <h2 className="font-display-site mt-3 text-4xl tracking-tight sm:text-5xl">
-              {cfg.wordmark}
-              <span className="text-subtle">.lol</span>
-            </h2>
-            <p className="mt-4 max-w-md text-muted">{cfg.tagline}</p>
-          </>
-        )}
+        <p className="text-xs uppercase tracking-kicker text-subtle">{cfg.kicker}</p>
+        <h2
+          className={cn(
+            "font-display-site mt-3 text-3xl tracking-tight sm:text-4xl",
+            site === "founders" && "italic",
+          )}
+        >
+          {cfg.wordmark}
+          <span className="text-subtle">.lol</span>
+        </h2>
+        <p
+          className={cn(
+            "mt-4 max-w-md text-muted",
+            site === "founders" && "font-display italic text-fg",
+          )}
+        >
+          {cfg.portalLine}
+        </p>
         <HypeCounts visitsToday={visitsToday} totalViews={totalViews} className="mt-6" />
         <p className="mt-2 text-xs uppercase tracking-wider text-subtle">
           Bid pool · <span className="tabular text-fg">{formatUsd(pool)}</span>
@@ -163,6 +153,7 @@ function SitePanel({
       <Link
         to="/$site"
         params={{ site }}
+        preload="intent"
         className="mt-10 inline-flex h-12 items-center justify-center gap-2 rounded-md bg-accent px-5 text-sm font-medium text-accent-fg transition-transform duration-150 active:scale-[0.96]"
       >
         Enter {cfg.wordmark}

@@ -8,6 +8,8 @@ export type Listing = {
   tagline: string;
   team: string;
   socials: string[];
+  /** Culturebid key values / “why join us” points. Empty on other boards. */
+  values: string[];
   bidCents: number;
   rank: number | null;
   clicks: number;

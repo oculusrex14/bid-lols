@@ -1,30 +1,26 @@
 import { useEffect } from "react";
 import { trackView } from "@/lib/board-fns";
-import type { SiteId } from "@/lib/sites";
+import { SITE_IDS, type SiteId } from "@/lib/sites";
 
 const KEY = "bidthrone.viewed";
 
+/** One request per session. Portal batches all three boards instead of three round-trips. */
 export function TrackSiteView({ site }: { site: SiteId | "portal" }) {
   useEffect(() => {
     try {
       const raw = sessionStorage.getItem(KEY);
       const seen = raw ? (JSON.parse(raw) as string[]) : [];
-      const targets: SiteId[] =
-        site === "portal" ? ["founders", "bidception"] : [site];
+      const targets: SiteId[] = site === "portal" ? [...SITE_IDS] : [site];
       const next = [...seen];
-      for (const id of targets) {
-        if (next.includes(id)) continue;
-        next.push(id);
-        void trackView({ data: { site: id } });
+      const fresh = targets.filter((id) => !next.includes(id));
+      if (fresh.length) {
+        next.push(...fresh);
+        sessionStorage.setItem(KEY, JSON.stringify(next));
+        void trackView({ data: { sites: fresh } });
       }
-      sessionStorage.setItem(KEY, JSON.stringify(next));
     } catch {
-      if (site === "portal") {
-        void trackView({ data: { site: "founders" } });
-        void trackView({ data: { site: "bidception" } });
-      } else {
-        void trackView({ data: { site } });
-      }
+      const targets: SiteId[] = site === "portal" ? [...SITE_IDS] : [site];
+      void trackView({ data: { sites: targets } });
     }
   }, [site]);
   return null;

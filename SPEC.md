@@ -4,17 +4,19 @@
 **Updated:** 22 August 2026  
 **In-app copy:** `/spec`
 
-The umbrella site is **https://bidthrone.lol/**. Two sibling pay-to-rank boards share one app, one database, one payment path:
+The umbrella site is **https://bidthrone.lol/**. Three sibling pay-to-rank boards share one app, one database, one payment path:
 
 | Board | Domain (brand) | Route | Who lists |
 |---|---|---|---|
 | Foundersbid | foundersbid.lol | `/founders` | Founding-team pages, about pages, studio / personal founder URLs |
-| Bidception | bidception.lol | `/bidception` | Outbid clones, `.lol` bid sites, other pay-to-rank boards |
+| Culturebid | culturebid.lol | `/culture` | Careers / culture / why-join-us pages |
+| Bidception | bidception.lol | `/bidception` | Marketing platforms, directories, newsletter boards, visibility tools |
 
 Taglines:
 
 - Foundersbid: *Pay to prove the founding team. Build trust. Rank higher.*
-- Bidception: *The leaderboard of leaderboards. Outbid the bids.*
+- Culturebid: *Rank your culture. Attract the people who matter.*
+- Bidception: *Find where else to spend your marketing budget.*
 
 ---
 
@@ -45,7 +47,7 @@ Day 22: 1×.
 
 ### What is a view vs a visit
 
-- **View:** one page impression of the portal (counts both boards once per session), a board, a listing, or the activity tape. Stored in `site_stats.views`. Not counted on poll refetches. Deduped per browser session.
+- **View:** one page impression of the portal (counts all three boards once per session), a board, a listing, or the activity tape. Stored in `site_stats.views`. Not counted on poll refetches. Deduped per browser session.
 - **Visit:** outbound click (“Visit page” / “Open board”). Increments `listings.clicks` (real, shown on the row) **and** `site_stats.visits` + `visits_today` (real; **displayed** total is multiplied).
 
 ### What it is not
@@ -64,7 +66,7 @@ Pure pay-to-rank. Highest **total bid** stands first. Rank `01` is first.
 - Minimum bid **$5**. **Whole US dollars only** (stored as integer cents, always `n * 100`).
 - Re-bid on the **same URL** (same `url_key` on the same board) charges **only the difference**. New total must **strictly beat** the current total.
 - Ties: `bid_cents DESC`, then `last_bid_at ASC` (whoever reached the amount first), then `id ASC`.
-- No accounts, passwords, or logins. Ownership is a **secret manage URL** issued at first paid bid (`/founders/manage/$token` or `/bidception/manage/$token`).
+- No accounts, passwords, or logins. Ownership is a **secret manage URL** issued at first paid bid (`/founders/manage/$token`, `/culture/manage/$token`, or `/bidception/manage/$token`).
 - No editorial slots. No burying a higher bid. No free rank.
 - **No refunds** after Cashfree marks an order paid.
 - Real-time enough: board, listing, and activity refetch every **3–5 seconds**.
@@ -84,23 +86,24 @@ Re-bidding the same key updates the existing row. A different key is a new listi
 
 ---
 
-## 3. Dual identity
+## 3. Triple identity
 
-One TanStack Start app. `$site` is `founders` | `bidception`. Unknown `$site` redirects to `/`.
+One TanStack Start app. `$site` is `founders` | `culture` | `bidception`. Unknown `$site` redirects to `/`. There is no separate `board_type` column — `site='culture'` is culturebid.
 
-| | Foundersbid | Bidception |
-|---|---|---|
-| Wordmark | `foundersbid` (Newsreader italic) | `bidception` (Syne) |
-| Kicker | Portfolios · about pages · founding teams | Outbid clones · .lol domains · bid platforms |
-| Extra field | Founding team (names, public) | What it is (short public note) |
-| Primary CTA | Bid the team | Outbid the bids |
-| Visit CTA | Visit page | Open board |
-| Empty board | “No founding teams on the board yet. Five dollars puts you first.” | “No bid sites listed. Five dollars crowns the first meta leader.” |
-| Empty tape | “Quiet. The next bid for a founding team lands here.” | “No movement. A clone will blink first.” |
-| Masthead | “Vol. 01 · The founding record” + italic tagline | Geometric wordmark, no letterhead |
-| Contact | contact@foundersbid.lol | contact@bidception.lol |
+| | Foundersbid | Culturebid | Bidception |
+|---|---|---|---|
+| Wordmark | `foundersbid` (Newsreader italic) | `culturebid` (Outfit) | `bidception` (Syne) |
+| Portal line | Trust the founding team | Rank your culture. Attract the people who matter. | Discover other marketing platforms |
+| Tagline | Pay to prove the founding team. Build trust. Rank higher. | Rank your culture. Attract the people who matter. | Find where else to spend your marketing budget. |
+| Kicker | Portfolios · about pages · founding teams | Careers pages · culture · why join us | Marketing platforms · directories · visibility tools |
+| Extra field | Founding team (names, public) | Employee / founder quote (optional; stored in `team`) | What it is (short public note) |
+| Extra list | Up to 5 founder socials | Up to 5 values / why-join-us (`values` jsonb) | — |
+| Primary CTA | Bid the team | Bid the culture | List a platform |
+| Visit CTA | Visit page | Visit culture page | Open platform |
+| Claim box | Claim #1 | Claim #1 | Take the top slot |
+| Contact | contact@foundersbid.lol | contact@culturebid.lol | contact@bidception.lol |
 
-Copy, fonts, and tokens switch via `data-theme={site}`. Logic does not.
+Copy, fonts, and tokens switch via `data-theme={site}`. Ranking, payments, swap math, and Cashfree do not.
 
 ---
 
@@ -123,7 +126,7 @@ $1,000 Top 50: $200 / $350 / $500. $80 Top 50: $10 / $28 / $40.
 
 | Route | Purpose |
 |---|---|
-| `/` | **bidthrone.lol** portal split. Left foundersbid, right bidception. Top 3, pool, visits today, total views. |
+| `/` | **bidthrone.lol** portal. Three equal columns: foundersbid, culturebid, bidception. Top 3 + pool + visits/views only (no full board, no activity). |
 | `/spec` | In-app product contract. |
 | `/$site` | Leaderboard + stats (including visits today / total views). |
 | `/$site/rules` | Public rulebook + swap fee preview. |
@@ -132,7 +135,7 @@ $1,000 Top 50: $200 / $350 / $500. $80 Top 50: $10 / $28 / $40.
 | `/$site/checkout/$orderId` | Cashfree sandbox. |
 | `/$site/manage/$token` | Secret control. |
 | `/$site/listing/$id` | Public detail. |
-| `/$site/terms` `privacy` `refund` `contact` | Cashfree legal. No refunds. contact@foundersbid.lol |
+| `/$site/terms` `privacy` `refund` `contact` | Cashfree legal per board. No refunds. contact@foundersbid.lol / contact@culturebid.lol / contact@bidception.lol |
 | `POST /api/webhooks/cashfree` | Settle paid orders. |
 
 ---
@@ -141,7 +144,7 @@ $1,000 Top 50: $200 / $350 / $500. $80 Top 50: $10 / $28 / $40.
 
 ```sql
 site_stats (
-  site text pk,                 -- founders | bidception
+  site text pk,                 -- founders | culture | bidception
   views bigint,                 -- real total page views
   visits bigint,                -- real total outbound visits
   visits_today bigint,          -- real visits since visits_day
@@ -151,7 +154,7 @@ site_stats (
 )
 ```
 
-Listings, orders, and activity are unchanged from the original boards schema (`migrations/0002_boards.sql`). Hype is `migrations/0003_hype.sql`. Founder socials are `migrations/0004_socials.sql` (`listings.socials jsonb`, max 5 URLs).
+Listings, orders, and activity are unchanged from the original boards schema (`migrations/0002_boards.sql`). Hype is `migrations/0003_hype.sql`. Founder socials are `migrations/0004_socials.sql` (`listings.socials jsonb`, max 5 URLs). Culturebid + repositioned bidception: `migrations/0005_culture.sql` (`listings.values jsonb`, `site='culture'`, marketing-platform seed on bidception).
 
 ---
 
@@ -165,13 +168,13 @@ Math: `src/lib/hype.ts`. Tracking: `trackView`, `trackClick` in `src/lib/board-f
 
 ---
 
-## 8. Conversion box, favicons, founding-team socials
+## 8. Conversion box, favicons, people-first, leftover budget
 
 ### Conversion box
 
-On both boards, above the ranking:
+On every board, above the ranking:
 
-- Headline: **Claim #1** (foundersbid) / **Outbid the leader** (bidception)
+- Headline: **Claim #1** (foundersbid, culturebid) / **Take the top slot** (bidception)
 - Live price to take #1: current leader dollars + 1, or $5 if the board is empty
 - **+/− stepper** on that price (whole dollars, floor $5). The number is also typeable.
 - If the bid is at or below the leader: warning that rank follows the bid and they will sit below #1. Equal bids lose to whoever reached the amount first.
@@ -181,11 +184,30 @@ On both boards, above the ranking:
 
 ### Favicons
 
-Every listing row, detail page, manage page, and portal top-3 shows the submitted URL’s favicon. If it fails, a letter monogram from the title.
+Every listing row, detail page, manage page, and portal top-3 shows the submitted URL’s favicon via same-origin `/api/favicon` (lazy, `fetchPriority=low`, 24h cache). If the remote ico fails, a letter monogram from the title. Always HTTP 200.
 
 ### Foundersbid people-first
 
 - Public headline is the **founding team names**, italic Newsreader. Company name and host sit secondary.
 - Up to **5 founder socials** (X, LinkedIn, personal site) as icon links on the board, detail, and manage pages.
 - Bid form field order: company name → page URL → one-line proof → founding team names (required) → up to 5 socials → bid amount.
-- Bidception is unchanged: board name remains the headline; no social row.
+
+### Culturebid
+
+- Public headline is the **company name**. Culture statement, up to 5 values (chips), optional quote.
+- Bid form: company name → careers/culture URL → short culture statement (required) → optional quote → up to 5 values → bid amount.
+- Tone: professional / HR letterhead. Cool stone, Outfit wordmark.
+
+### Bidception (repositioned)
+
+- Discovery board for marketing platforms, directories, pay-to-rank tools, newsletter sponsorships, community boards.
+- Tagline: *Find where else to spend your marketing budget.*
+- Not a “leaderboard of leaderboards” / clone war.
+
+### Leftover budget
+
+On foundersbid and culturebid, a quiet card: “Have leftover budget? Discover other platforms on bidception.lol”. Bidception copy makes it the complementary destination. Footers list all three domains.
+
+### Performance
+
+Portal loads top-3 + grouped stats only (no activity, no 100-row boards). View tracking is one request (portal batches all three sites). Favicons are lazy + cached. Sister links use `preload="intent"`.

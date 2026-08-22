@@ -69,6 +69,20 @@
   --font-display-active: var(--font-display);
 }
 
+/* Culturebid: cooler stone paper, Outfit wordmark — HR letterhead, still editorial. */
+[data-theme="culture"] {
+  --bg: #f1efe8;
+  --surface: #e8e6de;
+  --raised: #dedcd3;
+  --fg: #1a1c19;
+  --muted: #5f635c;
+  --subtle: #8a8e86;
+  --accent: #1a1c19;
+  --accent-fg: #f1efe8;
+  --border: color-mix(in oklab, var(--fg) 14%, transparent);
+  --font-display-active: var(--font-sans);
+}
+
 [data-theme="bidception"] {
   --bg: #f3f3f5;
   --surface: #eaeaee;
@@ -109,6 +123,19 @@ html[data-mode="dark"] [data-theme="founders"] {
   --accent-fg: #1a1612;
   --border: color-mix(in oklab, var(--fg) 14%, transparent);
   --font-display-active: var(--font-display);
+}
+
+html[data-mode="dark"] [data-theme="culture"] {
+  --bg: #141613;
+  --surface: #1c1e1a;
+  --raised: #252822;
+  --fg: #ecebe4;
+  --muted: #b0b3aa;
+  --subtle: #7e827a;
+  --accent: #ecebe4;
+  --accent-fg: #141613;
+  --border: color-mix(in oklab, var(--fg) 14%, transparent);
+  --font-display-active: var(--font-sans);
 }
 
 html[data-mode="dark"] [data-theme="bidception"] {
