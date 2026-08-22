@@ -324,7 +324,7 @@ function BidPage() {
           {site === "bidception" ? (
             <li>This board is for marketing platforms — leftover budget after foundersbid or culturebid.</li>
           ) : null}
-          <li>Cashfree sandbox in this preview. No real charge.</li>
+          <li>Payments via Cashfree. $5 minimum.</li>
           <li>You get a manage link after payment. Save it.</li>
           <li>The URL goes live the moment the order is marked paid.</li>
           <li>

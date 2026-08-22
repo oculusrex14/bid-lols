@@ -152,7 +152,7 @@ export function legalDoc(site: SiteId, slug: LegalSlug): {
             "A manage link you lost or leaked.",
             "A URL you later want to change — use a paid swap instead.",
             "A bid placed in error, at the wrong amount, or on the wrong URL.",
-            "Sandbox or test payments in this preview (there is no real charge here).",
+            "Sandbox or test payments (no real charge) are not refundable.",
             "Fees Cashfree charged as part of checkout.",
           ],
         },
@@ -205,7 +205,7 @@ export function legalDoc(site: SiteId, slug: LegalSlug): {
       {
         heading: "Payments",
         body: [
-          "Checkout is Cashfree Payments (sandbox in this preview). Card and UPI issues that happen on Cashfree’s page are also Cashfree’s to diagnose. We can confirm whether our order is paid or pending.",
+          "Checkout is Cashfree Payments. Card and UPI issues that happen on Cashfree's page are also Cashfree's to diagnose. We can confirm whether our order is paid or pending.",
         ],
       },
       {

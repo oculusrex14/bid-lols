@@ -157,6 +157,8 @@ export default defineConfig(({ command, isPreview }) => ({
       "www.bidthrone.lol",
       "foundersbid.lol",
       "www.foundersbid.lol",
+      "culturebid.lol",
+      "www.culturebid.lol",
       "bidception.lol",
       "www.bidception.lol",
     ],

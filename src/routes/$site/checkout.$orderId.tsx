@@ -102,9 +102,8 @@ function CheckoutPage() {
         Pay the rank
       </h1>
       <p className="mt-3 text-sm text-muted">
-        Checkout is Cashfree. This preview runs their sandbox session. Confirm
-        on the gateway panel to settle — same path as a{" "}
-        <code>PAYMENT_SUCCESS</code> webhook.
+        Checkout is Cashfree. Confirm payment to settle the order — same path
+        as a <code>PAYMENT_SUCCESS</code> webhook.
       </p>
 
       {order.isError ? (

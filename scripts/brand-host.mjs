@@ -9,11 +9,20 @@ export const PORTAL_ORIGIN = "https://bidthrone.lol";
 
 const SITE_BY_HOST = {
   "foundersbid.lol": "founders",
+  "culturebid.lol": "culture",
   "bidception.lol": "bidception",
 };
 
-const OTHER_SITE = { founders: "bidception", bidception: "founders" };
-const DOMAIN_BY_SITE = { founders: "foundersbid.lol", bidception: "bidception.lol" };
+const OTHER_SITES = {
+  founders: ["culture", "bidception"],
+  culture: ["founders", "bidception"],
+  bidception: ["founders", "culture"],
+};
+const DOMAIN_BY_SITE = {
+  founders: "foundersbid.lol",
+  culture: "culturebid.lol",
+  bidception: "bidception.lol",
+};
 
 const PASSTHROUGH_PREFIXES = [
   "/api",
@@ -63,18 +72,20 @@ export function redirectForBrandHost({ host, path, search = "" }) {
     return { location: `${PORTAL_ORIGIN}${pathname}${query}`, status: 302 };
   }
 
-  const other = OTHER_SITE[site];
-  if (pathname === `/${other}` || pathname.startsWith(`/${other}/`)) {
-    const rest = pathname.slice(`/${other}`.length) || "/";
-    const destPath = rest.startsWith("/") ? rest : `/${rest}`;
-    return {
-      location: `https://${DOMAIN_BY_SITE[other]}${destPath}${query}`,
-      status: 302,
-    };
-  }
-
   if (isPassthroughPath(pathname)) return null;
   if (pathname === `/${site}` || pathname.startsWith(`/${site}/`)) return null;
+
+  // Cross-board: redirect to the other brand's domain.
+  for (const other of OTHER_SITES[site]) {
+    if (pathname === `/${other}` || pathname.startsWith(`/${other}/`)) {
+      const rest = pathname.slice(`/${other}`.length) || "/";
+      const destPath = rest.startsWith("/") ? rest : `/${rest}`;
+      return {
+        location: `https://${DOMAIN_BY_SITE[other]}${destPath}${query}`,
+        status: 302,
+      };
+    }
+  }
 
   const prefixed = pathname === "/" ? `/${site}` : `/${site}${pathname}`;
   return { location: `${prefixed}${query}`, status: 302 };

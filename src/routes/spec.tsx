@@ -197,7 +197,7 @@ function SpecPage() {
           </li>
           <li>
             <strong className="text-fg">Checkout /checkout/$orderId</strong> —
-            Cashfree sandbox. Confirm payment settles the order. Already-paid
+            Cashfree checkout. Confirm payment settles the order. Already-paid
             orders do not charge twice.
           </li>
           <li>
@@ -302,8 +302,8 @@ activity (
         <H>7. Payment + webhook</H>
         <ol className="list-decimal space-y-2 pl-5 text-muted">
           <li>Bid or swap form creates a pending order. Charge is computed server-side (full bid, difference, or swap fee). Client amount is not trusted.</li>
-          <li>Checkout shows Cashfree. Preview: sandbox confirm. Production: Cashfree order + `payment_session_id` + JS checkout.</li>
-          <li>Webhook `POST /api/webhooks/cashfree` on `order.paid`. Body: `data.order.order_id`. Verify signature in production. Call the same settle path as the sandbox button (`confirmPayment`).</li>
+          <li>Checkout shows Cashfree. Confirm payment settles the order. Production: Cashfree order + `payment_session_id` + JS checkout.</li>
+          <li>Webhook `POST /api/webhooks/cashfree` on `order.paid`. Body: `data.order.order_id`. Verify signature. Call the same settle path as the confirm button (`confirmPayment`).</li>
           <li>Settle: insert or update listing, recast ranks, write activity, mark order paid, return manage token. Re-bid updates title/tagline/team/url and `last_bid_at`.</li>
           <li>Idempotent: a second paid event for the same order returns the existing listing. A bid that is no longer high enough fails closed.</li>
           <li>After pay: remember the manage token in this browser, toast the new rank, go to `/manage/$token`.</li>
@@ -316,7 +316,7 @@ activity (
           <li>Empty board (culture): “No culture pages on the board yet. Five dollars puts you first.”</li>
           <li>Empty board (bidception): “No marketing platforms listed. Five dollars puts the first tool first.”</li>
           <li>Empty tape: “Quiet. The next bid for a founding team lands here.” / “Quiet. The next culture bid lands here.” / “Quiet. The next platform bid lands here.”</li>
-          <li>Checkout: “Sandbox checkout. No real charge in this preview.”</li>
+          <li>Checkout: “Cashfree Payments · USD”</li>
           <li>Min bid: “Minimum $5. Whole dollars only.” Re-bid: “Re-bidding the same URL only charges the difference.”</li>
           <li>Manage invalid: “Manage link not valid.” Swap spent: “Top 50 listings get three URL swaps for the life of the listing. This one is spent.”</li>
           <li>Rules live on each board at /founders/rules, /culture/rules, and /bidception/rules.</li>

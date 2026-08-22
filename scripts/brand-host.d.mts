@@ -1,6 +1,6 @@
 export declare const PORTAL_ORIGIN: string;
 export declare function normalizeHost(hostHeader: string | null | undefined): string;
-export declare function siteForHost(hostHeader: string | null | undefined): "founders" | "bidception" | null;
+export declare function siteForHost(hostHeader: string | null | undefined): "founders" | "culture" | "bidception" | null;
 export declare function isPassthroughPath(pathname: string | null | undefined): boolean;
 export declare function redirectForBrandHost(opts: {
   host: string | null | undefined;

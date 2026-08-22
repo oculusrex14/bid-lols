@@ -9,8 +9,4 @@ create table if not exists site_stats (
   hype_locked boolean not null default false
 );
 
-insert into site_stats (site, views, visits, visits_today, visits_day, launched_at, hype_locked)
-values
-  ('founders', 28400, 16642, 412, current_date, now(), false),
-  ('bidception', 35100, 26484, 528, current_date, now(), false)
-on conflict (site) do nothing;
+-- Seed stats removed for public launch. ensureSiteStats inserts zero rows at runtime.

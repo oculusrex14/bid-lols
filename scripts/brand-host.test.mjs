@@ -5,6 +5,7 @@ import { normalizeHost, redirectForBrandHost, siteForHost } from "./brand-host.m
 test("normalizeHost strips www and port", () => {
   assert.equal(normalizeHost("www.foundersbid.lol:443"), "foundersbid.lol");
   assert.equal(normalizeHost("Bidception.lol"), "bidception.lol");
+  assert.equal(normalizeHost("www.culturebid.lol"), "culturebid.lol");
 });
 
 test("localhost and portal hosts do not redirect", () => {
@@ -67,4 +68,17 @@ test("cross-board and spec bounce to the right origin", () => {
     location: "https://bidthrone.lol/spec",
     status: 302,
   });
+  assert.deepEqual(redirectForBrandHost({ host: "culturebid.lol", path: "/" }), {
+    location: "/culture",
+    status: 302,
+  });
+  assert.deepEqual(
+    redirectForBrandHost({ host: "culturebid.lol", path: "/founders" }),
+    { location: "https://foundersbid.lol/", status: 302 },
+  );
+  assert.deepEqual(
+    redirectForBrandHost({ host: "culturebid.lol", path: "/bidception/rules" }),
+    { location: "https://bidception.lol/rules", status: 302 },
+  );
+  assert.equal(redirectForBrandHost({ host: "culturebid.lol", path: "/culture/bid" }), null);
 });

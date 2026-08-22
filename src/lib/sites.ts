@@ -213,7 +213,7 @@ export const COPY = {
   viewRules: "Read the rules",
   viewActivity: "Live feed",
   backToBoard: "Back to the board",
-  checkoutDemo: "Sandbox checkout. No real charge in this preview.",
+  checkoutDemo: "Cashfree Payments · USD",
   minBid: "Minimum $5. Whole dollars only.",
   rebidHint: "Re-bidding the same URL only charges the difference.",
 };
