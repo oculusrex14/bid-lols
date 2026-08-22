@@ -1,0 +1,38 @@
+{
+  "url": "http://127.0.0.1:8081/",
+  "viewports": {
+    "desktop": {
+      "width": 1280,
+      "height": 800,
+      "status": 200,
+      "title": "BID.LOL",
+      "hasCanvas": false,
+      "bodyTextLen": 666,
+      "bodyTextHash": "3ddc6e5282234dd62ce4c53844830a8d1ca75dd1e9ab9b7d16503196909391b1",
+      "bodyTextPrefix": "BID.LOL Full spec TWO BOARDS. ONE MECHANIC. Pay to rank. Highest",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/workspace/screenshots/app-builder-built.png"
+    },
+    "mobile": {
+      "width": 390,
+      "height": 844,
+      "status": 200,
+      "title": "BID.LOL",
+      "hasCanvas": false,
+      "bodyTextLen": 666,
+      "bodyTextHash": "3ddc6e5282234dd62ce4c53844830a8d1ca75dd1e9ab9b7d16503196909391b1",
+      "bodyTextPrefix": "BID.LOL Full spec TWO BOARDS. ONE MECHANIC. Pay to rank. Highest",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/workspace/screenshots/app-builder-built-mobile.png"
+    }
+  },
+  "brandWarnings": [],
+  "authWarnings": [],
+  "verdictFile": "/workspace/screenshots/app-builder-built.json",
+  "divergesFromBaseline": false,
+  "baselineReasons": []
+}
