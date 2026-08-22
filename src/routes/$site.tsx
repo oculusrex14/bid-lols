@@ -2,6 +2,7 @@ import { Outlet, createFileRoute, redirect } from "@tanstack/react-router";
 import { SITES, isSiteId } from "@/lib/sites";
 import { SiteShell } from "@/components/site-shell";
 
+/** One file-route tree serves founders | culture | bidception. Board key is `site`, not a board_type column. */
 export const Route = createFileRoute("/$site")({
   beforeLoad: ({ params }) => {
     if (!isSiteId(params.site)) throw redirect({ to: "/" });

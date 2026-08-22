@@ -89,7 +89,7 @@ var HEADERS = { TSS_SHELL: "X-TSS_SHELL" };
 * the dev styles URL for route-scoped CSS collection.
 */
 async function getStartManifest(matchedRoutes) {
-	const { tsrStartManifest } = await import("../_tanstack-start-manifest_v-C80PffGn.mjs");
+	const { tsrStartManifest } = await import("../_tanstack-start-manifest_v-DgpfPudb.mjs");
 	const startManifest = tsrStartManifest();
 	let routes = startManifest.routes;
 	routes[rootRouteId];
@@ -111,47 +111,47 @@ async function getStartManifest(matchedRoutes) {
 var manifest = {
 	"02ce8b4f5428c757d1b2cc3d317cec158d6fe5fc562ae4ba365a5ce828860e9b": {
 		functionName: "getManaged_createServerFn_handler",
-		importer: () => import("./board-fns-eAopH5o4.mjs")
+		importer: () => import("./board-fns-NLrHnbmA.mjs")
 	},
 	"05da579c6e516855476589258619df623ee7e496651ed18189b61aec62d8f377": {
 		functionName: "getListing_createServerFn_handler",
-		importer: () => import("./board-fns-eAopH5o4.mjs")
+		importer: () => import("./board-fns-NLrHnbmA.mjs")
 	},
 	"51d37da3a6a2e78172cb3001e7058285bd097df76f95d491549e0a60dd724ab0": {
 		functionName: "quoteBid_createServerFn_handler",
-		importer: () => import("./board-fns-eAopH5o4.mjs")
+		importer: () => import("./board-fns-NLrHnbmA.mjs")
 	},
 	"69cfd1c9eb676871b2ed4db048de66e189206315587bc346d376d6cfe83a2db1": {
 		functionName: "trackView_createServerFn_handler",
-		importer: () => import("./board-fns-eAopH5o4.mjs")
+		importer: () => import("./board-fns-NLrHnbmA.mjs")
 	},
 	"75257d72de85c38c000aa3cf197609266057a6483d5408a520738f52425a5a4f": {
 		functionName: "confirmPayment_createServerFn_handler",
-		importer: () => import("./board-fns-eAopH5o4.mjs")
+		importer: () => import("./board-fns-NLrHnbmA.mjs")
 	},
 	"84518a2bc72d0e2a7fb249b94ca8fb8bf4d934d2b8c284841c592b4346689f0f": {
 		functionName: "getBoard_createServerFn_handler",
-		importer: () => import("./board-fns-eAopH5o4.mjs")
+		importer: () => import("./board-fns-NLrHnbmA.mjs")
 	},
 	"900f1ccade2f1f50c07d87c4cebdc51cec854abf9e3d4a6cc2753caf43bdfcd6": {
 		functionName: "trackClick_createServerFn_handler",
-		importer: () => import("./board-fns-eAopH5o4.mjs")
+		importer: () => import("./board-fns-NLrHnbmA.mjs")
 	},
 	"a0a5a5e21f8c3bd454681d3ff96d69abe659cd6378bc36c6e0023acffe53de5c": {
 		functionName: "createBidOrder_createServerFn_handler",
-		importer: () => import("./board-fns-eAopH5o4.mjs")
+		importer: () => import("./board-fns-NLrHnbmA.mjs")
 	},
 	"c684eae2b96453e54df19cdd67254722ceb4de2211854072e82574ce27b081af": {
 		functionName: "createSwapOrder_createServerFn_handler",
-		importer: () => import("./board-fns-eAopH5o4.mjs")
+		importer: () => import("./board-fns-NLrHnbmA.mjs")
 	},
 	"cd84e7f71e960890cbda70e6a2d7be7585cec800f415e0220056268fd8d47a6e": {
 		functionName: "getPortal_createServerFn_handler",
-		importer: () => import("./board-fns-eAopH5o4.mjs")
+		importer: () => import("./board-fns-NLrHnbmA.mjs")
 	},
 	"db5ad1d49b89b6b6279ee9211d68cc12f07b60afc370b24cd18f74573d5f226a": {
 		functionName: "getOrder_createServerFn_handler",
-		importer: () => import("./board-fns-eAopH5o4.mjs")
+		importer: () => import("./board-fns-NLrHnbmA.mjs")
 	}
 };
 async function getServerFnById(id, access) {
@@ -1421,7 +1421,7 @@ var getBaseManifest = getProdBaseManifest;
 var createEarlyHintsForRequest = createEarlyHintsCollector;
 async function loadEntries() {
 	const [routerEntry, startEntry, pluginAdapters] = await Promise.all([
-		import("./router-DcNSb0gZ.mjs").then((n) => n.t),
+		import("./router-CW0kdSlg.mjs").then((n) => n.t),
 		import("./start-5Z2QO8AU.mjs"),
 		import("./empty-plugin-adapters-D9UWiqvJ.mjs")
 	]);

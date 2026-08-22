@@ -24,7 +24,7 @@ export const Route = createRootRoute({
       {
         name: "description",
         content:
-          "bidthrone.lol — two pay-to-rank boards. Foundersbid proves founding teams. Bidception ranks the bid sites. Highest bid ranks first.",
+          "bidthrone.lol — three pay-to-rank boards. Foundersbid, culturebid, bidception. Highest bid ranks first.",
       },
       { name: "theme-color", content: "#f4efe4" },
     ],

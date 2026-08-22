@@ -33,21 +33,11 @@ export function ClaimBox({
   const leaderDollars = Math.round((leaderBidCents ?? 0) / 100);
   const takesFirst = parsed != null && parsed > leaderDollars;
   const headline =
-    site === "founders"
-      ? takesFirst || leaderDollars < 1
-        ? "Claim #1"
-        : "Bid your rank"
-      : takesFirst || leaderDollars < 1
-        ? "Outbid the leader"
-        : "Bid your rank";
+    takesFirst || leaderDollars < 1 ? cfg.claimHeadline : "Bid your rank";
   const deck =
-    site === "founders"
-      ? takesFirst || leaderDollars < 1
-        ? "Put the founding team on the first line of the board."
-        : "Rank follows the bid. Highest total stands first."
-      : takesFirst || leaderDollars < 1
-        ? "Take the meta crown. Highest bid stands first."
-        : "Rank follows the bid. Highest total stands first.";
+    takesFirst || leaderDollars < 1
+      ? cfg.claimDeck
+      : "Rank follows the bid. Highest total stands first.";
 
   const display =
     focused || draft != null

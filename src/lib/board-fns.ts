@@ -4,6 +4,7 @@ import { getSql } from "@/lib/db";
 import { makeId, makeToken } from "@/lib/ids";
 import {
   MIN_BID_DOLLARS,
+  SITE_IDS,
   isSiteId,
   quoteSwapFee,
   type SiteId,
@@ -14,11 +15,13 @@ import {
   hypeMultiplier,
 } from "@/lib/hype";
 import { clampSocials } from "@/lib/socials";
+import { clampValues } from "@/lib/values";
 import { normalizeUrl, urlKey } from "@/lib/url";
 import type { Activity, BoardPayload, Listing, PublicOrder } from "@/lib/types";
 
+const siteEnum = z.enum(SITE_IDS);
 const siteSchema = z.object({
-  site: z.enum(["founders", "bidception"]),
+  site: siteEnum,
 });
 
 type ListingRow = {
@@ -29,6 +32,7 @@ type ListingRow = {
   tagline: string;
   team: string;
   socials: unknown;
+  values: unknown;
   bid_cents: number;
   rank: number | null;
   clicks: number;
@@ -72,6 +76,7 @@ function mapListing(row: ListingRow): Listing {
     tagline: row.tagline,
     team: row.team,
     socials: clampSocials(row.socials),
+    values: clampValues(row.values),
     bidCents: Number(row.bid_cents),
     rank: row.rank == null ? null : Number(row.rank),
     clicks: Number(row.clicks),
@@ -111,7 +116,7 @@ async function recastRanks(site: SiteId) {
 async function fetchListing(id: string) {
   const sql = await getSql();
   const rows = await sql.query<ListingRow>(
-    `select id, site, url, title, tagline, team, socials, bid_cents, rank, clicks, swap_count,
+    `select id, site, url, title, tagline, team, socials, values, bid_cents, rank, clicks, swap_count,
             last_bid_at::text as last_bid_at, created_at::text as created_at
      from listings where id = $1`,
     [id],
@@ -138,7 +143,7 @@ function assertWholeDollars(amount: number) {
   }
 }
 
-const listingSelect = `id, site, url, title, tagline, team, socials, bid_cents, rank, clicks, swap_count,
+const listingSelect = `id, site, url, title, tagline, team, socials, values, bid_cents, rank, clicks, swap_count,
   last_bid_at::text as last_bid_at, created_at::text as created_at`;
 
 async function ensureSiteStats(site: SiteId) {
@@ -154,6 +159,24 @@ async function ensureSiteStats(site: SiteId) {
      set visits_today = 0, visits_day = current_date
      where site = $1 and visits_day < current_date`,
     [site],
+  );
+}
+
+/** Portal / batched views: one insert + one day-roll instead of 3× ensureSiteStats. */
+async function ensureAllSiteStats() {
+  const sql = await getSql();
+  await sql.query(
+    `insert into site_stats (site, views, visits, visits_today, visits_day, launched_at, hype_locked)
+     values
+       ('founders', 0, 0, 0, current_date, now(), false),
+       ('culture', 0, 0, 0, current_date, now(), false),
+       ('bidception', 0, 0, 0, current_date, now(), false)
+     on conflict (site) do nothing`,
+  );
+  await sql.query(
+    `update site_stats
+     set visits_today = 0, visits_day = current_date
+     where visits_day < current_date`,
   );
 }
 
@@ -253,12 +276,65 @@ export const getBoard = createServerFn({ method: "GET" })
   .validator(siteSchema.parse)
   .handler(async ({ data }): Promise<BoardPayload> => loadBoard(data.site));
 
+/** Portal only needs top 3 + stats per board — skip activity and the full 100-row list. */
 export const getPortal = createServerFn({ method: "GET" }).handler(async () => {
-  const [founders, bidception] = await Promise.all([
-    loadBoard("founders"),
-    loadBoard("bidception"),
-  ]);
-  return { founders, bidception };
+  const sql = await getSql();
+  await ensureAllSiteStats();
+
+  const listingRows = await sql.query<ListingRow & { rn?: number }>(
+    `select * from (
+       select ${listingSelect},
+         row_number() over (partition by site order by bid_cents desc, last_bid_at asc, id asc) as rn
+       from listings
+       where bid_cents > 0
+     ) ranked
+     where rn <= 3`,
+  );
+  const statRows = await sql.query<{
+    site: string;
+    count: number;
+    pool: number | string | null;
+    clicks: number | string | null;
+  }>(
+    `select site,
+            count(*)::int as count,
+            coalesce(sum(bid_cents), 0)::bigint as pool,
+            coalesce(sum(clicks), 0)::bigint as clicks
+     from listings
+     where bid_cents > 0
+     group by site`,
+  );
+  const hypeRows = await sql.query<SiteStatsRow>(
+    `select site, views, visits, visits_today, visits_day::text as visits_day,
+            launched_at::text as launched_at, hype_locked
+     from site_stats`,
+  );
+
+  const statsBySite = new Map(statRows.map((row) => [row.site, row]));
+  const hypeBySite = new Map(hypeRows.map((row) => [row.site, row]));
+
+  function pack(site: SiteId): BoardPayload {
+    const stats = statsBySite.get(site);
+    const hypeRow = hypeBySite.get(site);
+    const hype = hypeRow ? publicHype(hypeRow) : { visitsToday: 0, totalViews: 0 };
+    return {
+      listings: listingRows.filter((row) => row.site === site).map(mapListing),
+      stats: {
+        count: Number(stats?.count ?? 0),
+        poolCents: Number(stats?.pool ?? 0),
+        clicks: Number(stats?.clicks ?? 0),
+        visitsToday: hype.visitsToday,
+        totalViews: hype.totalViews,
+      },
+      activity: [],
+    };
+  }
+
+  return {
+    founders: pack("founders"),
+    culture: pack("culture"),
+    bidception: pack("bidception"),
+  };
 });
 
 export const getListing = createServerFn({ method: "GET" })
@@ -278,7 +354,7 @@ export const getListing = createServerFn({ method: "GET" })
 export const quoteBid = createServerFn({ method: "GET" })
   .validator(
     z.object({
-      site: z.enum(["founders", "bidception"]),
+      site: siteEnum,
       url: z.string().min(1),
       amountDollars: z.number().optional(),
     }).parse,
@@ -331,12 +407,14 @@ export const quoteBid = createServerFn({ method: "GET" })
 export const createBidOrder = createServerFn({ method: "POST" })
   .validator(
     z.object({
-      site: z.enum(["founders", "bidception"]),
+      site: siteEnum,
       url: z.string().min(3),
       title: z.string().min(2).max(80),
       tagline: z.string().max(140),
       team: z.string().max(140),
       socials: z.array(z.string()).max(5).optional(),
+      /** Culturebid “why join us” points. Ignored on other boards. */
+      values: z.array(z.string()).max(5).optional(),
       amountDollars: z.number(),
     }).parse,
   )
@@ -344,6 +422,9 @@ export const createBidOrder = createServerFn({ method: "POST" })
     assertWholeDollars(data.amountDollars);
     if (data.site === "founders" && data.team.trim().length < 2) {
       throw new Error("Founding team names are required.");
+    }
+    if (data.site === "culture" && data.tagline.trim().length < 2) {
+      throw new Error("A short culture statement is required.");
     }
     const url = normalizeUrl(data.url);
     const key = urlKey(url);
@@ -374,6 +455,7 @@ export const createBidOrder = createServerFn({ method: "POST" })
       tagline: data.tagline.trim(),
       team: data.team.trim(),
       socials: clampSocials(data.socials),
+      values: clampValues(data.values),
       targetBidCents: target,
       listingId: current?.id ?? null,
       paymentSessionId: session.paymentSessionId,
@@ -546,6 +628,7 @@ export const confirmPayment = createServerFn({ method: "POST" })
       const tagline = String(payload.tagline ?? "");
       const team = String(payload.team ?? "");
       const socialsIn = clampSocials(payload.socials);
+      const valuesIn = clampValues(payload.values);
       const url = String(payload.url);
       const key = String(payload.urlKey);
       if (listingId) {
@@ -555,12 +638,13 @@ export const confirmPayment = createServerFn({ method: "POST" })
           throw new Error("This bid is no longer high enough.");
         }
         const socials = socialsIn.length ? socialsIn : current.socials;
+        const values = valuesIn.length ? valuesIn : current.values;
         await sql.query(
           `update listings
            set bid_cents = $1, title = $2, tagline = $3, team = $4, url = $5, url_key = $6,
-               socials = $7::jsonb, last_bid_at = now()
-           where id = $8`,
-          [targetBidCents, title, tagline, team, url, key, JSON.stringify(socials), listingId],
+               socials = $7::jsonb, values = $8::jsonb, last_bid_at = now()
+           where id = $9`,
+          [targetBidCents, title, tagline, team, url, key, JSON.stringify(socials), JSON.stringify(values), listingId],
         );
         kind = "rebid";
         const tok = await sql.query<{ manage_token: string }>(
@@ -573,8 +657,8 @@ export const confirmPayment = createServerFn({ method: "POST" })
         token = token ?? makeToken();
         await sql.query(
           `insert into listings
-            (id, site, url, url_key, title, tagline, team, socials, bid_cents, clicks, swap_count, manage_token, last_bid_at)
-           values ($1,$2,$3,$4,$5,$6,$7,$8::jsonb,$9,0,0,$10, now())`,
+            (id, site, url, url_key, title, tagline, team, socials, values, bid_cents, clicks, swap_count, manage_token, last_bid_at)
+           values ($1,$2,$3,$4,$5,$6,$7,$8::jsonb,$9::jsonb,$10,0,0,$11, now())`,
           [
             listingId,
             order.site,
@@ -584,6 +668,7 @@ export const confirmPayment = createServerFn({ method: "POST" })
             tagline,
             team,
             JSON.stringify(socialsIn),
+            JSON.stringify(valuesIn),
             targetBidCents,
             token,
           ],
@@ -686,10 +771,15 @@ export const trackClick = createServerFn({ method: "POST" })
   });
 
 export const trackView = createServerFn({ method: "POST" })
-  .validator(siteSchema.parse)
+  .validator(z.object({ sites: z.array(siteEnum).min(1).max(3) }).parse)
   .handler(async ({ data }) => {
     const sql = await getSql();
-    await ensureSiteStats(data.site);
-    await sql.query(`update site_stats set views = views + 1 where site = $1`, [data.site]);
-    return loadHype(data.site);
+    const sites = [...new Set(data.sites)];
+    if (sites.length > 1) await ensureAllSiteStats();
+    else await ensureSiteStats(sites[0]);
+    const placeholders = sites.map((_, i) => `$${i + 1}`).join(", ");
+    await sql.query(
+      `update site_stats set views = views + 1 where site in (${placeholders})`,
+      sites,
+    );
   });

@@ -9,6 +9,7 @@ import { COPY, SITES, isSiteId } from "@/lib/sites";
 import { TrackSiteView } from "@/components/track-site-view";
 import { SiteFavicon } from "@/components/site-favicon";
 import { FounderSocials } from "@/components/founder-socials";
+import { CultureValues } from "@/components/culture-values";
 
 export const Route = createFileRoute("/$site/listing/$id")({
   loader: ({ params }) => getListing({ data: { id: params.id } }),
@@ -79,6 +80,26 @@ function ListingPage() {
               <p className="mt-3 font-display text-lg italic text-fg">{listing.tagline}</p>
             ) : null}
             <FounderSocials socials={listing.socials} className="mt-4" />
+          </>
+        ) : site === "culture" ? (
+          <>
+            <div className="mt-3 flex items-start gap-3">
+              <SiteFavicon url={listing.url} title={listing.title} size="lg" />
+              <div className="min-w-0">
+                <p className="text-xs uppercase tracking-kicker text-subtle">Company culture</p>
+                <h1 className="mt-2 font-display-site text-4xl tracking-tight sm:text-5xl">
+                  {listing.title}
+                </h1>
+              </div>
+            </div>
+            <p className="mt-4 text-muted">{hostOf(listing.url)}</p>
+            {listing.tagline ? (
+              <p className="mt-3 text-lg text-fg">{listing.tagline}</p>
+            ) : null}
+            <CultureValues values={listing.values} className="mt-4" />
+            {listing.team ? (
+              <p className="mt-4 font-display text-lg italic text-muted">“{listing.team}”</p>
+            ) : null}
           </>
         ) : (
           <>

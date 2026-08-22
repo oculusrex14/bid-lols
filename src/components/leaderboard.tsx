@@ -8,6 +8,7 @@ import { trackClick } from "@/lib/board-fns";
 import type { Listing } from "@/lib/types";
 import { SiteFavicon } from "@/components/site-favicon";
 import { FounderSocials } from "@/components/founder-socials";
+import { CultureValues } from "@/components/culture-values";
 
 export function Leaderboard({
   site,
@@ -50,6 +51,7 @@ function LeaderRow({
 }) {
   const cfg = SITES[site];
   const founders = site === "founders";
+  const culture = site === "culture";
 
   async function visit() {
     try {
@@ -126,6 +128,16 @@ function LeaderRow({
           ) : null}
           {founders ? (
             <FounderSocials socials={listing.socials} className="mt-2" />
+          ) : culture ? (
+            <>
+              {/* Culturebid: company stays the headline; values + optional quote sit under the statement. */}
+              <CultureValues values={listing.values} className="mt-2" />
+              {listing.team ? (
+                <p className="mt-2 line-clamp-2 font-display text-sm italic text-muted">
+                  “{listing.team}”
+                </p>
+              ) : null}
+            </>
           ) : listing.team ? (
             <p className="mt-1 line-clamp-1 text-xs text-subtle">{listing.team}</p>
           ) : null}

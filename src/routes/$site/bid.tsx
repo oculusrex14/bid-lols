@@ -10,6 +10,7 @@ import { createBidOrder, getBoard, quoteBid } from "@/lib/board-fns";
 import { formatUsd } from "@/lib/format";
 import { COPY, MIN_BID_DOLLARS, SITES, isSiteId } from "@/lib/sites";
 import { MAX_SOCIALS, clampSocials } from "@/lib/socials";
+import { MAX_VALUES, clampValues } from "@/lib/values";
 import { cn } from "@/lib/cn";
 
 type BidSearch = { url?: string; amount?: string };
@@ -26,6 +27,10 @@ function emptySocials(): string[] {
   return Array.from({ length: MAX_SOCIALS }, () => "");
 }
 
+function emptyValues(): string[] {
+  return Array.from({ length: MAX_VALUES }, () => "");
+}
+
 function BidPage() {
   const { site: siteParam } = Route.useParams();
   const site = isSiteId(siteParam) ? siteParam : "founders";
@@ -33,12 +38,14 @@ function BidPage() {
   const navigate = useNavigate();
   const cfg = SITES[site];
   const founders = site === "founders";
+  const culture = site === "culture";
 
   const [url, setUrl] = useState(prefillUrl ?? "");
   const [title, setTitle] = useState("");
   const [tagline, setTagline] = useState("");
   const [team, setTeam] = useState("");
   const [socials, setSocials] = useState<string[]>(emptySocials);
+  const [values, setValues] = useState<string[]>(emptyValues);
   const [amount, setAmount] = useState(prefillAmount ?? String(MIN_BID_DOLLARS));
   const [quote, setQuote] = useState<string>("");
   const [charge, setCharge] = useState<number | null>(null);
@@ -92,6 +99,16 @@ function BidPage() {
                 return next;
               });
             }
+            if (current.values.length) {
+              setValues((prev) => {
+                if (prev.some((s) => s.trim())) return prev;
+                const next = emptyValues();
+                current.values.forEach((s, i) => {
+                  if (i < MAX_VALUES) next[i] = s;
+                });
+                return next;
+              });
+            }
           }
         })
         .catch((err: Error) => {
@@ -115,6 +132,7 @@ function BidPage() {
           tagline,
           team,
           socials: founders ? clampSocials(socials) : [],
+          values: culture ? clampValues(values) : [],
           amountDollars: dollars,
         },
       });
@@ -137,11 +155,14 @@ function BidPage() {
           {cfg.cta}
         </h1>
         <p className={founders ? "mt-3 font-display text-lg italic text-fg" : "mt-3 text-muted"}>
-          {founders ? cfg.tagline : COPY.rebidHint}
+          {founders || culture ? cfg.tagline : COPY.rebidHint}
         </p>
 
         <form onSubmit={(e) => void submit(e)} className="mt-8 flex flex-col gap-5">
-          <Field label={founders ? "Listing title / Company name" : cfg.titleLabel} hint={cfg.titleHint}>
+          <Field
+            label={founders ? "Listing title / Company name" : cfg.titleLabel}
+            hint={cfg.titleHint}
+          >
             <Input
               required
               maxLength={80}
@@ -150,7 +171,10 @@ function BidPage() {
               placeholder={cfg.name}
             />
           </Field>
-          <Field label={founders ? "Page URL (about / team page)" : cfg.urlLabel} hint={cfg.urlHint}>
+          <Field
+            label={founders ? "Page URL (about / team page)" : cfg.urlLabel}
+            hint={cfg.urlHint}
+          >
             <Input
               required
               value={url}
@@ -166,11 +190,16 @@ function BidPage() {
               value={tagline}
               onChange={(e) => setTagline(e.target.value)}
               placeholder={cfg.tagline}
+              required={culture}
             />
           </Field>
           <Field
             label={founders ? "Founding team names" : cfg.extraLabel}
-            hint={founders ? "The names sit first on the public board. People over product." : cfg.extraHint}
+            hint={
+              founders
+                ? "The names sit first on the public board. People over product."
+                : cfg.extraHint
+            }
           >
             <Input
               maxLength={140}
@@ -197,6 +226,29 @@ function BidPage() {
                     }}
                     placeholder="https://x.com/… or linkedin.com/in/…"
                     inputMode="url"
+                  />
+                </Field>
+              ))}
+            </fieldset>
+          ) : null}
+          {culture ? (
+            <fieldset className="flex flex-col gap-3">
+              {/* Culturebid listing fields: up to 5 values. Quote lives in `team`. */}
+              <legend className="text-sm font-medium text-fg">Key values / why join us (up to 5)</legend>
+              <p className="text-xs text-subtle">
+                Short points. Shown as chips on the board so talent can scan the culture.
+              </p>
+              {values.map((value, i) => (
+                <Field key={i} label={`Value ${i + 1}`}>
+                  <Input
+                    value={value}
+                    maxLength={48}
+                    onChange={(e) => {
+                      const next = [...values];
+                      next[i] = e.target.value;
+                      setValues(next);
+                    }}
+                    placeholder="Taste, Pace, Candor…"
                   />
                 </Field>
               ))}
@@ -265,6 +317,12 @@ function BidPage() {
         <ul className="mt-3 space-y-2">
           {founders ? (
             <li>The founding team is the headline. The company URL stays secondary.</li>
+          ) : null}
+          {culture ? (
+            <li>Company name first. Culture statement, values, and quote sit on the public row.</li>
+          ) : null}
+          {site === "bidception" ? (
+            <li>This board is for marketing platforms — leftover budget after foundersbid or culturebid.</li>
           ) : null}
           <li>Cashfree sandbox in this preview. No real charge.</li>
           <li>You get a manage link after payment. Save it.</li>

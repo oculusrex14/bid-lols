@@ -121,6 +121,16 @@ function SiteMark({ site }: { site: SiteId }) {
       </span>
     );
   }
+  if (site === "culture") {
+    return (
+      <span
+        aria-hidden="true"
+        className="flex size-9 items-center justify-center rounded-sm font-sans text-sm font-medium shadow-[var(--shadow-border)]"
+      >
+        c
+      </span>
+    );
+  }
   return (
     <span
       aria-hidden="true"
