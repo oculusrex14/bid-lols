@@ -122,12 +122,10 @@ function RulesPage() {
 
       <Section title="Payments">
         <p>
-          Every bid and swap settles on Cashfree Payments. The checkout panel
-          shows the order id, payment_session_id, and UPI / card / net banking /
-          wallet options. Confirming payment marks the order paid — the same
-          settle path as webhook POST /api/webhooks/cashfree on PAYMENT_SUCCESS
-          (signature verified when a Cashfree webhook secret is set). Keep the
-          manage link. It is how you re-bid and swap.
+          Every bid and swap settles on Cashfree Payments. Checkout shows the
+          order id and UPI / card / net banking / wallet options. Rank updates
+          only after Cashfree marks the order paid. Keep the manage link — it is
+          how you re-bid and swap.
         </p>
       </Section>
 

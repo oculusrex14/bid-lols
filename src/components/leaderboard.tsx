@@ -53,13 +53,8 @@ function LeaderRow({
   const founders = site === "founders";
   const culture = site === "culture";
 
-  async function visit() {
-    try {
-      const res = await trackClick({ data: { id: listing.id } });
-      window.open(res.url, "_blank", "noopener,noreferrer");
-    } catch {
-      window.open(listing.url, "_blank", "noopener,noreferrer");
-    }
+  function onVisit() {
+    void trackClick({ data: { id: listing.id } }).catch(() => {});
   }
 
   return (
@@ -142,14 +137,16 @@ function LeaderRow({
             <p className="mt-1 line-clamp-1 text-xs text-subtle">{listing.team}</p>
           ) : null}
           <div className="mt-3 flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onClick={() => void visit()}
+            <a
+              href={listing.url}
+              target="_blank"
+              rel="sponsored noopener noreferrer"
+              onClick={onVisit}
               className="inline-flex h-11 items-center gap-1.5 rounded-md px-3 text-sm text-muted shadow-[var(--shadow-border)] hover:text-fg"
             >
               {cfg.visit}
               <ArrowUpRight className="size-3.5" />
-            </button>
+            </a>
             <Button asChild variant="outline" className="h-11">
               <Link
                 to="/$site/bid"

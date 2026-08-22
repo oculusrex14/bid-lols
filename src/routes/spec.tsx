@@ -102,15 +102,16 @@ function SpecPage() {
             platform.
           </li>
           <li>
-            <strong className="text-fg">Display counts.</strong> Site-level “visits
-            today” and “total views” may use temporary display multipliers for early
-            launch. They do not affect rank. Per-listing click counts on a row are
-            real outbound clicks.
+            <strong className="text-fg">Real counts only.</strong> Site-level “visits
+            today” and “total views” are recorded counts — zero means zero. They do
+            not affect rank. Per-listing click counts on a row are real outbound
+            clicks.
           </li>
           <li>
             <strong className="text-fg">Manage links.</strong> If you lose the manage
-            URL, we cannot restore control from an email or name — we do not store
-            those for accounts.
+            URL, we cannot restore control from an email or name. Optional checkout
+            email is forwarded to Cashfree for the receipt only and is not stored by
+            us.
           </li>
           <li>
             <strong className="text-fg">As-is service.</strong> Boards may have downtime.

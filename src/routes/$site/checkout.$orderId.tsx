@@ -201,12 +201,8 @@ function CashfreePanel({
 
         <dl className="mt-4 space-y-2 text-xs cf-muted">
           <div className="flex justify-between gap-3">
-            <dt>Cashfree order</dt>
+            <dt>Order</dt>
             <dd className="truncate tabular">{data.id}</dd>
-          </div>
-          <div className="flex justify-between gap-3">
-            <dt>payment_session_id</dt>
-            <dd className="truncate tabular">{data.paymentSessionId}</dd>
           </div>
         </dl>
 

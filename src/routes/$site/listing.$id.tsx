@@ -47,13 +47,8 @@ function ListingPage() {
   const listingId = listing.id;
   const listingUrl = listing.url;
 
-  async function visit() {
-    try {
-      const res = await trackClick({ data: { id: listingId } });
-      window.open(res.url, "_blank", "noopener,noreferrer");
-    } catch {
-      window.open(listingUrl, "_blank", "noopener,noreferrer");
-    }
+  function onVisit() {
+    void trackClick({ data: { id: listingId } }).catch(() => {});
   }
 
   return (
@@ -116,9 +111,16 @@ function ListingPage() {
         )}
 
         <div className="mt-8 flex flex-wrap gap-2">
-          <Button onClick={() => void visit()}>
-            {cfg.visit}
-            <ArrowUpRight className="size-4" />
+          <Button asChild>
+            <a
+              href={listingUrl}
+              target="_blank"
+              rel="sponsored noopener noreferrer"
+              onClick={onVisit}
+            >
+              {cfg.visit}
+              <ArrowUpRight className="size-4" />
+            </a>
           </Button>
           <Button asChild variant="outline">
             <Link to="/$site/bid" params={{ site }} search={{ url: listing.url }}>

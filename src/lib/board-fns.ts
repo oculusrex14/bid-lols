@@ -9,12 +9,6 @@ import {
   quoteSwapFee,
   type SiteId,
 } from "@/lib/sites";
-import {
-  HYPE_LOCK_DAILY_VISITS,
-  displayCount,
-  hypeMultiplier,
-  randomHypeFactor,
-} from "@/lib/hype";
 import { clampSocials } from "@/lib/socials";
 import { clampValues } from "@/lib/values";
 import { normalizeUrl, urlKey } from "@/lib/url";
@@ -59,9 +53,6 @@ type SiteStatsRow = {
   visits: number | string;
   visits_today: number | string;
   visits_day: string | Date;
-  launched_at: string | Date;
-  hype_locked: boolean;
-  hype_factor?: number | string;
 };
 
 function appOrigin() {
@@ -156,9 +147,9 @@ async function ensureSiteStats(site: SiteId) {
   const sql = await getSql();
   await sql.query(
     `insert into site_stats (site, views, visits, visits_today, visits_day, launched_at, hype_locked, hype_factor)
-     values ($1, 0, 0, 0, current_date, now(), false, $2)
+     values ($1, 0, 0, 0, current_date, now(), false, 1)
      on conflict (site) do nothing`,
-    [site, randomHypeFactor()],
+    [site],
   );
   await sql.query(
     `update site_stats
@@ -174,11 +165,10 @@ async function ensureAllSiteStats() {
   await sql.query(
     `insert into site_stats (site, views, visits, visits_today, visits_day, launched_at, hype_locked, hype_factor)
      values
-       ('founders', 0, 0, 0, current_date, now(), false, $1),
-       ('culture', 0, 0, 0, current_date, now(), false, $2),
-       ('bidception', 0, 0, 0, current_date, now(), false, $3)
+       ('founders', 0, 0, 0, current_date, now(), false, 1),
+       ('culture', 0, 0, 0, current_date, now(), false, 1),
+       ('bidception', 0, 0, 0, current_date, now(), false, 1)
      on conflict (site) do nothing`,
-    [randomHypeFactor(), randomHypeFactor(), randomHypeFactor()],
   );
   await sql.query(
     `update site_stats
@@ -187,27 +177,18 @@ async function ensureAllSiteStats() {
   );
 }
 
-function publicHype(row: SiteStatsRow) {
-  const visitsTodayReal = Number(row.visits_today);
-  const viewsReal = Number(row.views);
-  const locked = Boolean(row.hype_locked) || visitsTodayReal >= HYPE_LOCK_DAILY_VISITS;
-  const multiplier = hypeMultiplier({
-    launchedAt: row.launched_at,
-    locked,
-    start: Number(row.hype_factor),
-  });
+function publicStats(row: SiteStatsRow) {
   return {
-    visitsToday: displayCount(visitsTodayReal, multiplier),
-    totalViews: displayCount(viewsReal, multiplier),
+    visitsToday: Number(row.visits_today) || 0,
+    totalViews: Number(row.views) || 0,
   };
 }
 
-async function loadHype(site: SiteId) {
+async function loadSiteStats(site: SiteId) {
   const sql = await getSql();
   await ensureSiteStats(site);
   const rows = await sql.query<SiteStatsRow>(
-    `select site, views, visits, visits_today, visits_day::text as visits_day,
-            launched_at::text as launched_at, hype_locked, hype_factor
+    `select site, views, visits, visits_today, visits_day::text as visits_day
      from site_stats where site = $1`,
     [site],
   );
@@ -215,12 +196,7 @@ async function loadHype(site: SiteId) {
   if (!row) {
     return { visitsToday: 0, totalViews: 0 };
   }
-  const visitsTodayReal = Number(row.visits_today);
-  if (!row.hype_locked && visitsTodayReal >= HYPE_LOCK_DAILY_VISITS) {
-    await sql.query(`update site_stats set hype_locked = true where site = $1`, [site]);
-    row.hype_locked = true;
-  }
-  return publicHype(row);
+  return publicStats(row);
 }
 
 async function bumpVisits(site: SiteId) {
@@ -229,10 +205,9 @@ async function bumpVisits(site: SiteId) {
   await sql.query(
     `update site_stats
      set visits = visits + 1,
-         visits_today = visits_today + 1,
-         hype_locked = hype_locked or (visits_today + 1 >= $2)
+         visits_today = visits_today + 1
      where site = $1`,
-    [site, HYPE_LOCK_DAILY_VISITS],
+    [site],
   );
 }
 
@@ -266,15 +241,15 @@ async function loadBoard(site: SiteId): Promise<BoardPayload> {
     [site],
   );
   const stats = statsRows[0];
-  const hype = await loadHype(site);
+  const siteStats = await loadSiteStats(site);
   return {
     listings: listings.map(mapListing),
     stats: {
       count: Number(stats?.count ?? 0),
       poolCents: Number(stats?.pool ?? 0),
       clicks: Number(stats?.clicks ?? 0),
-      visitsToday: hype.visitsToday,
-      totalViews: hype.totalViews,
+      visitsToday: siteStats.visitsToday,
+      totalViews: siteStats.totalViews,
     },
     activity: activity.map(mapActivity),
   };
@@ -312,27 +287,28 @@ export const getPortal = createServerFn({ method: "GET" }).handler(async () => {
      where bid_cents > 0
      group by site`,
   );
-  const hypeRows = await sql.query<SiteStatsRow>(
-    `select site, views, visits, visits_today, visits_day::text as visits_day,
-            launched_at::text as launched_at, hype_locked, hype_factor
+  const siteStatRows = await sql.query<SiteStatsRow>(
+    `select site, views, visits, visits_today, visits_day::text as visits_day
      from site_stats`,
   );
 
   const statsBySite = new Map(statRows.map((row) => [row.site, row]));
-  const hypeBySite = new Map(hypeRows.map((row) => [row.site, row]));
+  const siteStatsBySite = new Map(siteStatRows.map((row) => [row.site, row]));
 
   function pack(site: SiteId): BoardPayload {
     const stats = statsBySite.get(site);
-    const hypeRow = hypeBySite.get(site);
-    const hype = hypeRow ? publicHype(hypeRow) : { visitsToday: 0, totalViews: 0 };
+    const siteRow = siteStatsBySite.get(site);
+    const siteStats = siteRow
+      ? publicStats(siteRow)
+      : { visitsToday: 0, totalViews: 0 };
     return {
       listings: listingRows.filter((row) => row.site === site).map(mapListing),
       stats: {
         count: Number(stats?.count ?? 0),
         poolCents: Number(stats?.pool ?? 0),
         clicks: Number(stats?.clicks ?? 0),
-        visitsToday: hype.visitsToday,
-        totalViews: hype.totalViews,
+        visitsToday: siteStats.visitsToday,
+        totalViews: siteStats.totalViews,
       },
       activity: [],
     };
@@ -496,7 +472,6 @@ export const createBidOrder = createServerFn({ method: "POST" })
       inrRupees: session.inrRupees,
       inrPerUsd: session.inrPerUsd,
       fxSource: session.fxSource,
-      email: email ?? null,
     };
     await sql.query(
       `insert into orders (id, site, kind, amount_cents, status, listing_id, manage_token, payload)

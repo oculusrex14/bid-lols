@@ -20,42 +20,21 @@ Taglines:
 
 ---
 
-## 1. Temporary Hype System (views and visits only)
+## 1. Traffic counts (real only)
 
-**Shipped.** Display-only multiplier for **site-level total views** and **visits today**. Never used for live/concurrent viewers. **Never changes rank.**
-
-### Rules
-
-| Rule | Implementation |
-|---|---|
-| Start at 6× on day 1 | `hypeMultiplier`: elapsed full days = 0 → 6 |
-| Linear drop every 24 hours | `6 - 5 * (floor(hours/24) / 21)` |
-| Exactly 1× after 21 days | elapsed days ≥ 21 → 1 |
-| Real daily visits ≥ 8,000 | `hype_locked = true` forever, multiplier 1× |
-| Display | “X visits today” and “Y total views” |
-| Storage | Real integers in `site_stats`. Only the painted number is multiplied |
-| Labels | Neutral. No “live viewers”, no “people online” |
-
-Worked values (day 1, unlocked):
-
-- multiplier = 6
-- real 412 visits today → **2,472 visits today**
-- real 28,400 views → **170,400 total views**
-
-Day 11 (elapsed 10 days): `6 - 5*(10/21) ≈ 3.619×`.  
-Day 22: 1×.
+**Site-level “visits today” and “total views” are raw recorded integers.** Zero means zero. No display multipliers, no fake inflation. Rank is never based on these figures — only on bid amount.
 
 ### What is a view vs a visit
 
 - **View:** one page impression of the portal (counts all three boards once per session), a board, a listing, or the activity tape. Stored in `site_stats.views`. Not counted on poll refetches. Deduped per browser session.
-- **Visit:** outbound click (“Visit page” / “Open board”). Increments `listings.clicks` (real, shown on the row) **and** `site_stats.visits` + `visits_today` (real; **displayed** total is multiplied).
+- **Visit:** outbound click (“Visit page” / “Open board”). Increments `listings.clicks` (shown on the row) **and** `site_stats.visits` + `visits_today`.
 
 ### What it is not
 
 - Not concurrent viewers.
 - Not a rank signal.
-- Per-listing click numbers on a row are **real**, not hyped.
 - No IPs or unique-visitor de-dupe.
+- Paid listing outbound links use `rel="sponsored"`.
 
 ---
 

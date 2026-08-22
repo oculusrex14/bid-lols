@@ -58,7 +58,7 @@ export function legalDoc(site: SiteId, slug: LegalSlug): {
           heading: "Payments",
           body: [
             "All charges are processed by Cashfree Payments. Board ranks are priced in USD; checkout currently collects the INR equivalent through Indian payment methods only (UPI, cards, netbanking, wallets). International / global gateways will be added later. A new listing is charged the full bid. A re-bid on the same URL is charged only the difference to the new total. A URL swap is charged the full swap fee for that swap number (see the Rules page), then clamped between $10 and $2,500.",
-            "An order is complete when Cashfree marks it paid (including via the PAYMENT_SUCCESS webhook). Rank updates only after that.",
+            "An order is complete when Cashfree marks it paid. Rank updates only after that.",
           ],
         },
         {
@@ -77,7 +77,7 @@ export function legalDoc(site: SiteId, slug: LegalSlug): {
           heading: "No results guarantee",
           body: [
             "Buying or holding a rank does not guarantee visits, clicks, leads, applications, hires, sales, conversions, or any other outcome. Traffic and attention depend on visitors, your page, and factors outside our control. Someone else can outbid you at any time.",
-            "Site-level visit and view figures shown on the boards may use temporary display multipliers during early launch. They are not a promise of traffic. Rank is never based on those figures.",
+            "Site-level visit and view figures on the boards are real recorded counts. Zero means zero. They are not a promise of future traffic. Rank is never based on those figures — only on bid amount.",
           ],
         },
         {
@@ -106,8 +106,14 @@ export function legalDoc(site: SiteId, slug: LegalSlug): {
           body: [
             "Public listing data: URL, title, tagline, team or quote, culture values, bid amount, rank, click count, swap count, and timestamps. This is shown on the board.",
             "A secret manage token, issued at payment, used only to prove control of that listing. It is not an email, name, or login.",
-            "Order records needed to settle Cashfree payments: amount, kind (bid or swap), status, and a payment session id.",
-            "We do not collect names, emails, phone numbers, or passwords for an account. Click counts are incremented without storing IP addresses as a profile.",
+            "Order records needed to settle Cashfree payments: amount, kind (bid or swap), status, and payment identifiers from Cashfree.",
+            "We do not create accounts. We do not store names, emails, phone numbers, or passwords. Click counts are incremented without storing IP addresses as a profile.",
+          ],
+        },
+        {
+          heading: "Optional email on the bid form",
+          body: [
+            "The bid form lets you optionally enter an email so Cashfree can put the manage link on the payment receipt. That address is forwarded to Cashfree for that checkout only. We do not save it in our database, and we cannot look up or restore a manage link from an email later.",
           ],
         },
         {
@@ -119,7 +125,7 @@ export function legalDoc(site: SiteId, slug: LegalSlug): {
         {
           heading: "Cashfree Payments",
           body: [
-            "Card, UPI, net banking, and wallet details are entered on Cashfree’s checkout. We do not see or store full card numbers. Cashfree’s own privacy policy applies to that checkout. We receive payment status, order id, and payment_session_id so we can rank the listing.",
+            "Card, UPI, net banking, and wallet details are entered on Cashfree’s checkout. We do not see or store full card numbers. Cashfree’s own privacy policy applies to that checkout. We receive payment status and order identifiers so we can rank the listing.",
           ],
         },
         {
@@ -160,7 +166,6 @@ export function legalDoc(site: SiteId, slug: LegalSlug): {
             "A manage link you lost or leaked.",
             "A URL you later want to change — use a paid swap instead.",
             "A bid placed in error, at the wrong amount, or on the wrong URL.",
-            "Sandbox or test payments (no real charge) are not refundable.",
             "Fees Cashfree charged as part of checkout.",
           ],
         },
@@ -179,7 +184,7 @@ export function legalDoc(site: SiteId, slug: LegalSlug): {
         {
           heading: "Contact",
           body: [
-            `Payment questions: ${email}. Include the Cashfree order id and payment_session_id from checkout. We still do not issue refunds.`,
+            `Payment questions: ${email}. Include the Cashfree order id from checkout. We still do not issue refunds.`,
           ],
         },
       ],
@@ -205,9 +210,9 @@ export function legalDoc(site: SiteId, slug: LegalSlug): {
       {
         heading: "What to include",
         body: [
-          "For a payment: Cashfree order id, payment_session_id, amount, and the listing URL.",
+          "For a payment: Cashfree order id, amount, and the listing URL.",
           "For a listing you control: the manage URL (or enough of the token that we can match it). Do not post that URL in public.",
-          "We cannot reset a manage link from an email address we do not have on file.",
+          "We cannot reset a manage link from an email — optional checkout emails are forwarded to Cashfree only and are not stored by us.",
         ],
       },
       {

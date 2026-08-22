@@ -35,7 +35,7 @@ export function FounderSocials({
           <a
             href={link.url}
             target="_blank"
-            rel="noopener noreferrer"
+            rel="sponsored noopener noreferrer"
             title={link.label}
             aria-label={link.label}
             className="inline-flex h-11 min-w-11 items-center justify-center rounded-sm px-2.5 text-muted shadow-[var(--shadow-border)] hover:text-fg"

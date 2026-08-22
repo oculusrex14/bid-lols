@@ -297,7 +297,7 @@ function BidPage() {
           </Field>
           <Field
             label="Email for the manage link (optional)"
-            hint="Cashfree puts the manage URL on the payment receipt. Leave blank to skip."
+            hint="Forwarded to Cashfree so the manage URL can appear on the payment receipt. We do not store this email. Leave blank to skip."
           >
             <Input
               type="email"
