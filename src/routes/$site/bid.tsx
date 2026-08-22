@@ -12,6 +12,7 @@ import { COPY, MIN_BID_DOLLARS, SITES, isSiteId } from "@/lib/sites";
 import { MAX_SOCIALS, clampSocials } from "@/lib/socials";
 import { MAX_VALUES, clampValues } from "@/lib/values";
 import { cn } from "@/lib/cn";
+import { IndiaPaymentsNote } from "@/components/india-payments-note";
 
 type BidSearch = { url?: string; amount?: string };
 
@@ -329,6 +330,7 @@ function BidPage() {
       </div>
       <aside className="text-sm text-muted">
         <h2 className="text-fg">Before you pay</h2>
+        <IndiaPaymentsNote className="mt-3" />
         <ul className="mt-3 space-y-2">
           {founders ? (
             <li>The founding team is the headline. The company URL stays secondary.</li>
@@ -339,7 +341,7 @@ function BidPage() {
           {site === "bidception" ? (
             <li>This board is for marketing platforms — leftover budget after foundersbid or culturebid.</li>
           ) : null}
-          <li>Payments via Cashfree. Live checkout only — no sandbox fallback. $5 minimum.</li>
+          <li>Payments via Cashfree (INR). Live checkout only. $5 minimum on the board.</li>
           <li>
             After payment you get a manage link. Save it. It is the only way to
             manage or swap this listing.

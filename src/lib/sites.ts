@@ -213,9 +213,11 @@ export const COPY = {
   viewRules: "Read the rules",
   viewActivity: "Live feed",
   backToBoard: "Back to the board",
-  checkoutDemo: "Cashfree Payments · USD",
+  checkoutDemo: "Cashfree Payments · INR",
   minBid: "Minimum $5. Whole dollars only.",
   rebidHint: "Re-bidding the same URL only charges the difference.",
   saveManage:
     "Save this link. It is the only way to manage or swap this listing.",
+  indiaPaymentsOnly:
+    "Indian payment methods only for now (UPI, cards, netbanking, wallets via Cashfree). International cards and other countries are not supported yet — a global gateway (for example Razorpay) comes later. Board ranks stay in USD; you pay the INR equivalent at checkout.",
 };

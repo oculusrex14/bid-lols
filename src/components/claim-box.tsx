@@ -146,7 +146,8 @@ export function ClaimBox({
             {COPY.bidNow}
           </Button>
           <p className="text-xs text-subtle">
-            $5 minimum · Whole dollars · Re-bids only pay the difference
+            $5 minimum · Whole dollars · Re-bids only pay the difference · Pay in
+            INR (India)
           </p>
         </form>
       </div>

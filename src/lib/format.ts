@@ -11,6 +11,14 @@ export function formatUsdPlain(cents: number) {
   return formatUsd(cents).replace("$", "");
 }
 
+export function formatInr(rupees: number) {
+  return new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: "INR",
+    maximumFractionDigits: 0,
+  }).format(Math.round(rupees));
+}
+
 export function relativeTime(iso: string | Date) {
   const then = typeof iso === "string" ? new Date(iso).getTime() : iso.getTime();
   const delta = Math.max(0, Date.now() - then);

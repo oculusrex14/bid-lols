@@ -59,4 +59,7 @@ export type PublicOrder = {
   gateway: "cashfree";
   gatewayLive: boolean;
   gatewayMode: "sandbox" | "production";
+  /** Cashfree India charge in whole rupees (board bid stays USD). */
+  inrRupees: number;
+  inrPerUsd: number;
 };

@@ -4,11 +4,12 @@ import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Building2, CreditCard, Smartphone, Wallet } from "lucide-react";
 import { confirmPayment, getOrder } from "@/lib/board-fns";
-import { formatUsd, hostOf } from "@/lib/format";
+import { formatInr, formatUsd, hostOf } from "@/lib/format";
 import { rememberOwned } from "@/lib/owned";
 import { COPY, isSiteId } from "@/lib/sites";
 import { cn } from "@/lib/cn";
 import { ManageLinkSave, manageHref } from "@/components/manage-link-save";
+import { IndiaPaymentsNote } from "@/components/india-payments-note";
 import type { PublicOrder } from "@/lib/types";
 
 export const Route = createFileRoute("/$site/checkout/$orderId")({
@@ -105,9 +106,10 @@ function CheckoutPage() {
         Pay the rank
       </h1>
       <p className="mt-3 text-sm text-muted">
-        Checkout is live Cashfree. Rank updates only after Cashfree marks the
-        order paid.
+        Checkout is live Cashfree (INR). Rank updates only after Cashfree marks
+        the order paid.
       </p>
+      <IndiaPaymentsNote className="mt-4" />
 
       {order.isError ? (
         <p className="mt-8 text-danger">
@@ -188,8 +190,11 @@ function CashfreePanel({
         </span>
       </div>
       <div className="px-5 pb-5">
-        <p className="text-xs uppercase tracking-wider cf-muted">Amount payable</p>
-        <p className="mt-1 tabular text-3xl font-medium">{formatUsd(data.amountCents)}</p>
+        <p className="text-xs uppercase tracking-wider cf-muted">Amount payable (INR)</p>
+        <p className="mt-1 tabular text-3xl font-medium">{formatInr(data.inrRupees)}</p>
+        <p className="mt-1 text-sm cf-muted">
+          Board bid {formatUsd(data.amountCents)} · ≈ ₹{data.inrPerUsd}/USD
+        </p>
         <p className="mt-1 text-sm cf-muted">
           {data.chargeLabel} · {data.title}
         </p>
@@ -233,10 +238,10 @@ function CashfreePanel({
         >
           {busy
             ? "Contacting Cashfree…"
-            : `Pay ${formatUsd(data.amountCents)} · ${METHODS.find((m) => m.id === method)?.label}`}
+            : `Pay ${formatInr(data.inrRupees)} · ${METHODS.find((m) => m.id === method)?.label}`}
         </button>
         <p className="mt-3 text-center text-xs cf-muted">
-          PCI DSS · Powered by Cashfree Payments · live
+          PCI DSS · Powered by Cashfree Payments · India · live
         </p>
       </div>
     </div>

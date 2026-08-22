@@ -57,7 +57,7 @@ export function legalDoc(site: SiteId, slug: LegalSlug): {
         {
           heading: "Payments",
           body: [
-            "All charges are processed by Cashfree Payments. You pay in USD. A new listing is charged the full bid. A re-bid on the same URL is charged only the difference to the new total. A URL swap is charged the full swap fee for that swap number (see the Rules page), then clamped between $10 and $2,500.",
+            "All charges are processed by Cashfree Payments. Board ranks are priced in USD; checkout currently collects the INR equivalent through Indian payment methods only (UPI, cards, netbanking, wallets). International / global gateways will be added later. A new listing is charged the full bid. A re-bid on the same URL is charged only the difference to the new total. A URL swap is charged the full swap fee for that swap number (see the Rules page), then clamped between $10 and $2,500.",
             "An order is complete when Cashfree marks it paid (including via the PAYMENT_SUCCESS webhook). Rank updates only after that.",
           ],
         },

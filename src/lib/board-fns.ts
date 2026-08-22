@@ -493,6 +493,8 @@ export const createBidOrder = createServerFn({ method: "POST" })
       paymentSessionId: session.paymentSessionId,
       gatewayLive: session.live,
       gatewayMode: session.mode,
+      inrRupees: session.inrRupees,
+      inrPerUsd: session.inrPerUsd,
       email: email ?? null,
     };
     await sql.query(
@@ -563,6 +565,8 @@ export const createSwapOrder = createServerFn({ method: "POST" })
       paymentSessionId: session.paymentSessionId,
       gatewayLive: session.live,
       gatewayMode: session.mode,
+      inrRupees: session.inrRupees,
+      inrPerUsd: session.inrPerUsd,
     };
     await sql.query(
       `insert into orders (id, site, kind, amount_cents, status, listing_id, manage_token, payload)
@@ -604,6 +608,10 @@ export const getOrder = createServerFn({ method: "GET" })
     const gatewayLive = payload.gatewayLive === true;
     const gatewayMode =
       payload.gatewayMode === "production" ? "production" : "sandbox";
+    const inrPerUsd = Number(payload.inrPerUsd) || 85;
+    const inrRupees =
+      Number(payload.inrRupees) ||
+      Math.max(1, Math.round((Number(row.amount_cents) / 100) * inrPerUsd));
     return {
       id: row.id,
       site: row.site,
@@ -618,6 +626,8 @@ export const getOrder = createServerFn({ method: "GET" })
       gateway: "cashfree",
       gatewayLive,
       gatewayMode,
+      inrRupees,
+      inrPerUsd,
     };
   });
 

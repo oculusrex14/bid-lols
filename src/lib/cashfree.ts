@@ -5,7 +5,21 @@ export type CashfreeSession = {
   mode: "sandbox" | "production";
   paymentSessionId: string;
   cfOrderId: string;
+  /** Amount sent to Cashfree in INR major units (rupees). */
+  inrRupees: number;
+  inrPerUsd: number;
 };
+
+/** Board bids stay USD; Cashfree India collects INR until a global PG is wired. */
+export function inrPerUsdRate() {
+  const n = Number(process.env.INR_PER_USD || "85");
+  return Number.isFinite(n) && n > 0 ? n : 85;
+}
+
+export function usdCentsToInrRupees(amountCents: number) {
+  const dollars = Math.max(0, Number(amountCents) / 100);
+  return Math.max(1, Math.round(dollars * inrPerUsdRate()));
+}
 
 function envMode(): "sandbox" | "production" {
   return process.env.CASHFREE_MODE === "production" ? "production" : "sandbox";
@@ -49,13 +63,15 @@ export async function createCashfreeSession(opts: {
   const customerId =
     `anon_${opts.orderId.replace(/[^a-zA-Z0-9_-]/g, "").slice(-40)}` || "guest";
   const email = opts.email?.trim();
+  const inrPerUsd = inrPerUsdRate();
+  const inrRupees = usdCentsToInrRupees(opts.amountCents);
   const res = await fetch(`${apiHost()}/pg/orders`, {
     method: "POST",
     headers: authHeaders(),
     body: JSON.stringify({
       order_id: opts.orderId,
-      order_amount: Number((opts.amountCents / 100).toFixed(2)),
-      order_currency: "USD",
+      order_amount: inrRupees,
+      order_currency: "INR",
       order_note: opts.note || undefined,
       customer_details: {
         customer_id: customerId,
@@ -84,6 +100,8 @@ export async function createCashfreeSession(opts: {
     mode,
     paymentSessionId: json.payment_session_id,
     cfOrderId: json.order_id ?? opts.orderId,
+    inrRupees,
+    inrPerUsd,
   };
 }
 
