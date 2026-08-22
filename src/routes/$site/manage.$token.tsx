@@ -8,8 +8,11 @@ import { createBidOrder, createSwapOrder, getManaged } from "@/lib/board-fns";
 import { formatUsd, hostOf, rankLabel } from "@/lib/format";
 import { rememberOwned } from "@/lib/owned";
 import { COPY, isSiteId } from "@/lib/sites";
+import { FounderSocials } from "@/components/founder-socials";
+import { SiteFavicon } from "@/components/site-favicon";
 
 export const Route = createFileRoute("/$site/manage/$token")({
+  loader: ({ params }) => getManaged({ data: { token: params.token } }),
   component: ManagePage,
 });
 
@@ -17,9 +20,11 @@ function ManagePage() {
   const { site: siteParam, token } = Route.useParams();
   const site = isSiteId(siteParam) ? siteParam : "founders";
   const navigate = useNavigate();
+  const initial = Route.useLoaderData();
   const managed = useQuery({
     queryKey: ["managed", token],
     queryFn: () => getManaged({ data: { token } }),
+    placeholderData: initial,
   });
 
   const listing = managed.data?.listing;
@@ -58,9 +63,31 @@ function ManagePage() {
 
   return (
     <div className="mx-auto max-w-2xl">
-      <p className="text-xs uppercase tracking-[0.2em] text-subtle">Manage listing</p>
-      <h1 className="mt-3 font-display-site text-4xl tracking-tight">{listing.title}</h1>
-      <p className="mt-2 text-sm text-muted">{hostOf(listing.url)}</p>
+      <p className="text-xs uppercase tracking-kicker text-subtle">Manage listing</p>
+      <div className="mt-3 flex items-start gap-3">
+        <SiteFavicon url={listing.url} title={listing.title} size="lg" />
+        <div className="min-w-0">
+          {listing.site === "founders" && listing.team ? (
+            <>
+              <p className="text-xs uppercase tracking-kicker text-subtle">Founding team</p>
+              <h1 className="mt-1 font-display text-4xl italic tracking-tight">{listing.team}</h1>
+              <p className="mt-2 text-muted">
+                {listing.title}
+                <span className="text-subtle"> · {hostOf(listing.url)}</span>
+              </p>
+            </>
+          ) : (
+            <>
+              <h1 className="font-display-site text-4xl tracking-tight">{listing.title}</h1>
+              {listing.team ? <p className="mt-2 text-sm text-muted">{listing.team}</p> : null}
+              <p className="mt-2 text-sm text-muted">{hostOf(listing.url)}</p>
+            </>
+          )}
+        </div>
+      </div>
+      {listing.site === "founders" ? (
+        <FounderSocials socials={listing.socials} className="mt-4" />
+      ) : null}
 
       <dl className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Stat label="Rank" value={rankLabel(listing.rank)} />

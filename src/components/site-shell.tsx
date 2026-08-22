@@ -1,8 +1,10 @@
 import type { ReactNode } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
-import { ArrowUpRight } from "lucide-react";
 import { SITES, COPY, type SiteId } from "@/lib/sites";
 import { Button } from "@/components/ui/button";
+import { ModeToggle } from "@/components/mode-toggle";
+import { LegalLinks } from "@/components/legal-links";
+import { SiteFooter } from "@/components/site-footer";
 import { cn } from "@/lib/cn";
 
 export function SiteShell({
@@ -14,7 +16,6 @@ export function SiteShell({
 }) {
   const cfg = SITES[site];
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const other: SiteId = site === "founders" ? "bidception" : "founders";
 
   const nav = [
     { to: "/$site", label: "Board" },
@@ -24,19 +25,49 @@ export function SiteShell({
 
   return (
     <div data-theme={site} className="min-h-screen bg-bg text-fg">
-      <header className="sticky top-0 z-30 border-b border-border bg-bg/90 backdrop-blur-sm">
-        <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-3 px-4">
-          <Link
-            to="/$site"
-            params={{ site }}
-            className="flex min-h-11 items-center gap-2"
-          >
-            <span className="font-display-site text-lg tracking-tight">
-              {cfg.wordmark}
-            </span>
-            <span className="hidden text-xs text-subtle sm:inline">.lol</span>
-          </Link>
-          <nav className="flex items-center gap-1">
+      <header className="sticky top-0 z-30 border-b border-border bg-bg/95 backdrop-blur-sm">
+        <div className="mx-auto max-w-6xl px-4">
+          <div className="flex h-14 items-center justify-between gap-3">
+            <Link
+              to="/$site"
+              params={{ site }}
+              className="flex min-h-11 min-w-0 items-center gap-2"
+            >
+              <SiteMark site={site} />
+              <span className="font-display-site text-lg tracking-tight">
+                {cfg.wordmark}
+              </span>
+              <span className="hidden text-xs text-subtle sm:inline">.lol</span>
+            </Link>
+            <nav className="hidden items-center gap-1 md:flex">
+              {nav.map((item) => {
+                const last = item.to.split("/").pop();
+                const active =
+                  item.to === "/$site"
+                    ? pathname === `/${site}` || pathname === `/${site}/`
+                    : Boolean(last && pathname.startsWith(`/${site}/${last}`));
+                return (
+                  <Link
+                    key={item.to}
+                    to={item.to}
+                    params={{ site }}
+                    className={cn(
+                      "inline-flex h-11 items-center px-3 text-sm",
+                      active ? "text-fg" : "text-muted hover:text-fg",
+                    )}
+                  >
+                    {item.label}
+                  </Link>
+                );
+              })}
+            </nav>
+            <Button asChild className="h-10 shrink-0 px-3.5">
+              <Link to="/$site/bid" params={{ site }}>
+                {COPY.bidNow}
+              </Link>
+            </Button>
+          </div>
+          <div className="flex items-center gap-2 pb-3 md:hidden">
             {nav.map((item) => {
               const last = item.to.split("/").pop();
               const active =
@@ -49,7 +80,7 @@ export function SiteShell({
                   to={item.to}
                   params={{ site }}
                   className={cn(
-                    "hidden h-11 items-center px-3 text-sm sm:inline-flex",
+                    "inline-flex h-11 items-center px-2 text-sm",
                     active ? "text-fg" : "text-muted hover:text-fg",
                   )}
                 >
@@ -57,52 +88,45 @@ export function SiteShell({
                 </Link>
               );
             })}
-            <Link
-              to="/$site"
-              params={{ site: other }}
-              className="hidden h-11 items-center px-3 text-sm text-subtle hover:text-fg md:inline-flex"
-            >
-              {SITES[other].wordmark}
-            </Link>
-            <Button asChild className="h-10 px-3.5">
-              <Link to="/$site/bid" params={{ site }}>
-                {COPY.bidNow}
-              </Link>
-            </Button>
-          </nav>
-        </div>
-      </header>
-      <main className="mx-auto w-full max-w-6xl px-4 pb-24 pt-8 sm:pb-16">{children}</main>
-      <footer className="border-t border-border">
-        <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-8 text-sm text-muted sm:flex-row sm:items-center sm:justify-between">
-          <p>
-            {cfg.domain} · highest bid ranks first · {COPY.minBid}
-          </p>
-          <div className="flex flex-wrap items-center gap-4">
-            <Link to="/" className="hover:text-fg">
-              Bid.lol
-            </Link>
-            <Link to="/spec" className="hover:text-fg">
-              Spec
-            </Link>
-            <Link
-              to="/$site"
-              params={{ site: other }}
-              className="inline-flex items-center gap-1 hover:text-fg"
-            >
-              {SITES[other].domain}
-              <ArrowUpRight className="size-3.5" />
-            </Link>
+          </div>
+          <div className="pb-3">
+            <ModeToggle />
           </div>
         </div>
-      </footer>
-      <div className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-bg/95 p-3 backdrop-blur-sm sm:hidden">
+      </header>
+      <main className="mx-auto w-full max-w-6xl px-4 pb-32 pt-8 sm:pb-16">{children}</main>
+      <div className="pb-24 sm:pb-0">
+        <SiteFooter site={site} />
+      </div>
+      <div className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-bg/95 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-sm sm:hidden">
         <Button asChild className="w-full">
           <Link to="/$site/bid" params={{ site }}>
             {cfg.cta}
           </Link>
         </Button>
+        <LegalLinks site={site} className="mt-2 justify-center text-xs" />
       </div>
     </div>
+  );
+}
+
+function SiteMark({ site }: { site: SiteId }) {
+  if (site === "founders") {
+    return (
+      <span
+        aria-hidden="true"
+        className="flex size-9 items-center justify-center rounded-sm font-display text-lg italic shadow-[var(--shadow-border)]"
+      >
+        f
+      </span>
+    );
+  }
+  return (
+    <span
+      aria-hidden="true"
+      className="flex size-9 items-center justify-center rounded-sm font-meta text-sm shadow-[var(--shadow-border)]"
+    >
+      b
+    </span>
   );
 }

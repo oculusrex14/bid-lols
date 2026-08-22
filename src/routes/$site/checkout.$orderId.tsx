@@ -1,47 +1,89 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
+import { Building2, CreditCard, Smartphone, Wallet } from "lucide-react";
 import { confirmPayment, getOrder } from "@/lib/board-fns";
 import { formatUsd, hostOf } from "@/lib/format";
 import { rememberOwned } from "@/lib/owned";
 import { COPY, isSiteId } from "@/lib/sites";
+import { cn } from "@/lib/cn";
+import type { PublicOrder } from "@/lib/types";
 
 export const Route = createFileRoute("/$site/checkout/$orderId")({
+  loader: ({ params }) => getOrder({ data: { orderId: params.orderId } }),
   component: CheckoutPage,
 });
+
+const METHODS = [
+  { id: "upi", label: "UPI", Icon: Smartphone },
+  { id: "card", label: "Card", Icon: CreditCard },
+  { id: "netbanking", label: "Net banking", Icon: Building2 },
+  { id: "wallet", label: "Wallet", Icon: Wallet },
+] as const;
+
+type CfWindow = Window & {
+  Cashfree?: (opts: { mode: "sandbox" | "production" }) => {
+    checkout: (opts: { paymentSessionId: string; redirectTarget: string }) => Promise<unknown>;
+  };
+};
 
 function CheckoutPage() {
   const { site: siteParam, orderId } = Route.useParams();
   const site = isSiteId(siteParam) ? siteParam : "founders";
   const navigate = useNavigate();
   const [busy, setBusy] = useState(false);
+  const [method, setMethod] = useState<(typeof METHODS)[number]["id"]>("upi");
+  const initial = Route.useLoaderData();
   const order = useQuery({
     queryKey: ["order", orderId],
     queryFn: () => getOrder({ data: { orderId } }),
+    placeholderData: initial,
   });
 
-  async function pay() {
+  useEffect(() => {
+    if (document.querySelector("script[data-cashfree-sdk]")) return;
+    const script = document.createElement("script");
+    script.src = "https://sdk.cashfree.com/js/v3/cashfree.js";
+    script.async = true;
+    script.dataset.cashfreeSdk = "true";
+    document.head.appendChild(script);
+  }, []);
+
+  async function settle() {
+    const result = await confirmPayment({ data: { orderId } });
+    if (!result.token) throw new Error("Payment settled, manage link missing.");
+    rememberOwned({
+      site: result.site,
+      listingId: result.listing.id,
+      token: result.token,
+      title: result.listing.title,
+    });
+    toast.success(
+      result.listing.rank
+        ? `Live at rank ${result.listing.rank}.`
+        : "Payment recorded.",
+    );
+    await navigate({
+      to: "/$site/manage/$token",
+      params: { site: result.site, token: result.token },
+    });
+  }
+
+  async function pay(data: PublicOrder) {
     setBusy(true);
     try {
-      const result = await confirmPayment({ data: { orderId } });
-      if (!result.token) throw new Error("Payment settled, manage link missing.");
-      rememberOwned({
-        site: result.site,
-        listingId: result.listing.id,
-        token: result.token,
-        title: result.listing.title,
-      });
-      toast.success(
-        result.listing.rank
-          ? `Live at rank ${result.listing.rank}.`
-          : "Payment recorded.",
-      );
-      await navigate({
-        to: "/$site/manage/$token",
-        params: { site: result.site, token: result.token },
-      });
+      if (data.gatewayLive) {
+        const Cashfree = (window as CfWindow).Cashfree;
+        if (Cashfree) {
+          const cf = Cashfree({ mode: data.gatewayMode });
+          await cf.checkout({
+            paymentSessionId: data.paymentSessionId,
+            redirectTarget: "_modal",
+          });
+        }
+      }
+      await settle();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Payment failed.");
     } finally {
@@ -53,9 +95,17 @@ function CheckoutPage() {
 
   return (
     <div className="mx-auto max-w-lg">
-      <p className="text-xs uppercase tracking-[0.2em] text-subtle">Cashfree checkout</p>
-      <h1 className="mt-3 font-display-site text-4xl tracking-tight">Pay the rank</h1>
-      <p className="mt-3 text-sm text-muted">{COPY.checkoutDemo}</p>
+      <p className="text-xs uppercase tracking-kicker text-subtle">
+        Cashfree Payments
+      </p>
+      <h1 className="mt-3 font-display-site text-4xl tracking-tight">
+        Pay the rank
+      </h1>
+      <p className="mt-3 text-sm text-muted">
+        Checkout is Cashfree. This preview runs their sandbox session. Confirm
+        on the gateway panel to settle — same path as a{" "}
+        <code>PAYMENT_SUCCESS</code> webhook.
+      </p>
 
       {order.isError ? (
         <p className="mt-8 text-danger">
@@ -64,51 +114,129 @@ function CheckoutPage() {
       ) : null}
 
       {data ? (
-        <div className="mt-8 rounded-xl bg-surface p-5 shadow-[var(--shadow-border)]">
-          <dl className="space-y-3 text-sm">
-            <Row label="Order" value={data.id} />
-            <Row label="Kind" value={data.chargeLabel} />
-            <Row label="Listing" value={data.title} />
-            <Row label="URL" value={hostOf(data.url) || data.url} />
-            <Row label="Amount" value={formatUsd(data.amountCents)} strong />
-            <Row label="Status" value={data.status} />
-          </dl>
-          {data.status === "paid" ? (
-            <p className="mt-6 text-sm text-up">Already paid. Open manage from your saved link.</p>
-          ) : (
-            <Button className="mt-6 w-full" disabled={busy} onClick={() => void pay()}>
-              {busy ? "Settling…" : `${COPY.payCashfree} · ${formatUsd(data.amountCents)}`}
-            </Button>
-          )}
-        </div>
+        data.status === "paid" ? (
+          <p className="mt-8 text-sm text-up">
+            Already paid on Cashfree. Open manage from your saved link.
+          </p>
+        ) : (
+          <CashfreePanel
+            data={data}
+            method={method}
+            onMethod={setMethod}
+            busy={busy}
+            onPay={() => void pay(data)}
+          />
+        )
       ) : (
-        <div className="mt-8 h-64 rounded-xl bg-surface shadow-[var(--shadow-border)]" />
+        <div className="mt-8 h-80 rounded-xl bg-surface shadow-[var(--shadow-border)]" />
       )}
 
-      <p className="mt-6 text-xs text-subtle">
-        Production webhook: Cashfree `order.paid` hits `/api/webhooks/cashfree`,
-        verifies the signature, and runs the same settle path as this button.
-      </p>
-      <Link to="/$site" params={{ site }} className="mt-4 inline-block text-sm text-muted hover:text-fg">
+      <Link
+        to="/$site"
+        params={{ site }}
+        className="mt-6 inline-block text-sm text-muted hover:text-fg"
+      >
         {COPY.backToBoard}
       </Link>
     </div>
   );
 }
 
-function Row({
-  label,
-  value,
-  strong,
+function CashfreePanel({
+  data,
+  method,
+  onMethod,
+  busy,
+  onPay,
 }: {
-  label: string;
-  value: string;
-  strong?: boolean;
+  data: PublicOrder;
+  method: (typeof METHODS)[number]["id"];
+  onMethod: (id: (typeof METHODS)[number]["id"]) => void;
+  busy: boolean;
+  onPay: () => void;
 }) {
   return (
-    <div className="flex items-start justify-between gap-4">
-      <dt className="text-subtle">{label}</dt>
-      <dd className={strong ? "tabular font-medium" : "truncate tabular text-right"}>{value}</dd>
+    <div
+      data-gateway="cashfree"
+      className="mt-8 overflow-hidden rounded-xl shadow-[var(--shadow-border)]"
+    >
+      <div className="flex items-center justify-between px-5 py-4">
+        <div className="flex items-center gap-2">
+          <CashfreeMark />
+          <span className="text-sm font-medium tracking-tight">cashfree</span>
+        </div>
+        <span className="cf-chip rounded-full px-2.5 py-1 text-xs font-medium uppercase tracking-wider">
+          {data.gatewayMode}
+        </span>
+      </div>
+      <div className="px-5 pb-5">
+        <p className="text-xs uppercase tracking-wider cf-muted">Amount payable</p>
+        <p className="mt-1 tabular text-3xl font-medium">{formatUsd(data.amountCents)}</p>
+        <p className="mt-1 text-sm cf-muted">
+          {data.chargeLabel} · {data.title}
+        </p>
+        <p className="mt-1 truncate text-xs cf-muted">{hostOf(data.url) || data.url}</p>
+
+        <dl className="mt-4 space-y-2 text-xs cf-muted">
+          <div className="flex justify-between gap-3">
+            <dt>Cashfree order</dt>
+            <dd className="truncate tabular">{data.id}</dd>
+          </div>
+          <div className="flex justify-between gap-3">
+            <dt>payment_session_id</dt>
+            <dd className="truncate tabular">{data.paymentSessionId}</dd>
+          </div>
+        </dl>
+
+        <p className="mt-5 text-xs uppercase tracking-wider cf-muted">Pay with</p>
+        <div className="mt-2 grid grid-cols-2 gap-2">
+          {METHODS.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              data-on={method === item.id ? "true" : "false"}
+              className={cn(
+                "cf-method cf-line inline-flex h-11 items-center justify-center gap-2 rounded-md text-sm",
+                method === item.id ? "font-medium" : "cf-muted",
+              )}
+              onClick={() => onMethod(item.id)}
+            >
+              <item.Icon className="size-4" />
+              {item.label}
+            </button>
+          ))}
+        </div>
+
+        <button
+          type="button"
+          className="cf-pay mt-5 inline-flex h-11 w-full items-center justify-center rounded-md text-sm font-medium disabled:opacity-50"
+          disabled={busy}
+          onClick={onPay}
+        >
+          {busy
+            ? "Contacting Cashfree…"
+            : `Pay ${formatUsd(data.amountCents)} · ${METHODS.find((m) => m.id === method)?.label}`}
+        </button>
+        <p className="mt-3 text-center text-xs cf-muted">
+          PCI DSS · Powered by Cashfree Payments
+          {data.gatewayLive ? " · live session" : " · sandbox session"}
+        </p>
+        <p className="mt-1 text-center text-xs cf-muted">
+          Webhook POST /api/webhooks/cashfree on PAYMENT_SUCCESS
+        </p>
+      </div>
     </div>
+  );
+}
+
+function CashfreeMark() {
+  return (
+    <svg viewBox="0 0 24 24" className="size-6" aria-hidden="true">
+      <rect width="24" height="24" rx="6" fill="var(--cf-accent)" />
+      <path
+        d="M8 8.5h5.2a3.8 3.8 0 0 1 0 7.6H8V8.5Zm2.1 1.8v4h3.1a2 2 0 0 0 0-4H10.1Z"
+        fill="var(--cf-accent-fg)"
+      />
+    </svg>
   );
 }

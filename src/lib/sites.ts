@@ -5,6 +5,13 @@ export function isSiteId(value: string | undefined): value is SiteId {
   return value === "founders" || value === "bidception";
 }
 
+export const PORTAL = {
+  name: "Bidthrone",
+  domain: "bidthrone.lol",
+  url: "https://bidthrone.lol/",
+  wordmark: "bidthrone",
+} as const;
+
 export const MIN_BID_DOLLARS = 5;
 export const SWAP_MIN_DOLLARS = 10;
 export const SWAP_MAX_DOLLARS = 2500;

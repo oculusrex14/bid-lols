@@ -7,6 +7,7 @@ export type Listing = {
   title: string;
   tagline: string;
   team: string;
+  socials: string[];
   bidCents: number;
   rank: number | null;
   clicks: number;
@@ -30,6 +31,8 @@ export type BoardStats = {
   count: number;
   poolCents: number;
   clicks: number;
+  visitsToday: number;
+  totalViews: number;
 };
 
 export type BoardPayload = {
@@ -50,4 +53,8 @@ export type PublicOrder = {
   url: string;
   chargeLabel: string;
   listingId: string | null;
+  paymentSessionId: string;
+  gateway: "cashfree";
+  gatewayLive: boolean;
+  gatewayMode: "sandbox" | "production";
 };

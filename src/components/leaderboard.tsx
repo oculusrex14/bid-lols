@@ -6,6 +6,8 @@ import { formatUsd, hostOf, rankLabel } from "@/lib/format";
 import { COPY, SITES, type SiteId } from "@/lib/sites";
 import { trackClick } from "@/lib/board-fns";
 import type { Listing } from "@/lib/types";
+import { SiteFavicon } from "@/components/site-favicon";
+import { FounderSocials } from "@/components/founder-socials";
 
 export function Leaderboard({
   site,
@@ -47,6 +49,7 @@ function LeaderRow({
   featured: boolean;
 }) {
   const cfg = SITES[site];
+  const founders = site === "founders";
 
   async function visit() {
     try {
@@ -73,24 +76,57 @@ function LeaderRow({
         >
           {rankLabel(listing.rank)}
         </div>
+        <SiteFavicon
+          url={listing.url}
+          title={listing.title}
+          size={featured ? "lg" : "md"}
+        />
         <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-            <Link
-              to="/$site/listing/$id"
-              params={{ site, id: listing.id }}
+          {founders && listing.team ? (
+            <>
+              <Link
+                to="/$site/listing/$id"
+                params={{ site, id: listing.id }}
+                className={cn(
+                  "block font-display text-fg hover:underline",
+                  featured ? "text-2xl italic sm:text-3xl" : "text-lg italic",
+                )}
+              >
+                {listing.team}
+              </Link>
+              <p className="mt-1 truncate text-sm text-muted">
+                {listing.title}
+                <span className="text-subtle"> · {hostOf(listing.url)}</span>
+              </p>
+            </>
+          ) : (
+            <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+              <Link
+                to="/$site/listing/$id"
+                params={{ site, id: listing.id }}
+                className={cn(
+                  "truncate font-medium hover:underline",
+                  featured ? "font-display-site text-2xl sm:text-3xl" : "text-base",
+                )}
+              >
+                {listing.title}
+              </Link>
+              <span className="truncate text-xs text-subtle">{hostOf(listing.url)}</span>
+            </div>
+          )}
+          {listing.tagline ? (
+            <p
               className={cn(
-                "truncate font-medium hover:underline",
-                featured ? "font-display-site text-2xl sm:text-3xl" : "text-base",
+                "mt-1 line-clamp-2 text-sm text-muted",
+                founders && "font-display italic",
               )}
             >
-              {listing.title}
-            </Link>
-            <span className="truncate text-xs text-subtle">{hostOf(listing.url)}</span>
-          </div>
-          {listing.tagline ? (
-            <p className="mt-1 line-clamp-2 text-sm text-muted">{listing.tagline}</p>
+              {listing.tagline}
+            </p>
           ) : null}
-          {listing.team ? (
+          {founders ? (
+            <FounderSocials socials={listing.socials} className="mt-2" />
+          ) : listing.team ? (
             <p className="mt-1 line-clamp-1 text-xs text-subtle">{listing.team}</p>
           ) : null}
           <div className="mt-3 flex flex-wrap items-center gap-2">

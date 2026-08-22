@@ -14,7 +14,7 @@ function RulesPage() {
 
   return (
     <article className="mx-auto max-w-2xl">
-      <p className="text-xs uppercase tracking-[0.2em] text-subtle">Rulebook</p>
+      <p className="text-xs uppercase tracking-kicker text-subtle">Rulebook</p>
       <h1 className="mt-3 font-display-site text-4xl tracking-tight sm:text-5xl">
         How {cfg.wordmark} ranks
       </h1>
@@ -53,33 +53,61 @@ function RulesPage() {
       <Section title="Tiered swap links">
         <p>
           A swap changes the destination URL of an existing listing. The listing
-          keeps its bid, rank, and click count. The fee is a percentage of the
-          current bid, then clamped.
+          keeps its bid, rank, and click count. Each swap is charged at the full
+          rate for that swap number — never the difference between rates. A
+          second swap is 35% of the current bid, not 35% minus the base.
         </p>
         <div className="mt-4 overflow-hidden rounded-xl bg-surface shadow-[var(--shadow-border)]">
           <table className="w-full text-sm">
             <thead className="text-left text-xs uppercase tracking-wider text-subtle">
               <tr>
                 <th className="px-4 py-3">Current bid</th>
-                <th className="px-4 py-3">Base rate</th>
+                <th className="px-4 py-3">Base rate (1st swap)</th>
               </tr>
             </thead>
             <tbody className="text-muted">
-              <tr className="border-t border-border"><td className="px-4 py-2.5">Under $100</td><td className="px-4 py-2.5 tabular">10%</td></tr>
-              <tr className="border-t border-border"><td className="px-4 py-2.5">$100 – $999</td><td className="px-4 py-2.5 tabular">15%</td></tr>
-              <tr className="border-t border-border"><td className="px-4 py-2.5">$1,000 – $4,999</td><td className="px-4 py-2.5 tabular">20%</td></tr>
-              <tr className="border-t border-border"><td className="px-4 py-2.5">$5,000+</td><td className="px-4 py-2.5 tabular">25%</td></tr>
+              <tr className="border-t border-border"><td className="px-4 py-2.5">Under $100</td><td className="px-4 py-2.5 tabular">10% of the bid</td></tr>
+              <tr className="border-t border-border"><td className="px-4 py-2.5">$100 – $999</td><td className="px-4 py-2.5 tabular">15% of the bid</td></tr>
+              <tr className="border-t border-border"><td className="px-4 py-2.5">$1,000 – $4,999</td><td className="px-4 py-2.5 tabular">20% of the bid</td></tr>
+              <tr className="border-t border-border"><td className="px-4 py-2.5">$5,000+</td><td className="px-4 py-2.5 tabular">25% of the bid</td></tr>
             </tbody>
           </table>
         </div>
         <ul className="mt-4 list-disc space-y-2 pl-5">
-          <li>Absolute minimum $10. Absolute maximum $2,500.</li>
+          <li>Then clamp the fee: absolute minimum $10, absolute maximum $2,500.</li>
           <li>
-            Ranks 1–50: three swaps for the life of the listing. First swap at
-            the base rate. Second swap at 35%. Third and final swap at 50%.
+            Ranks 1–50: three swaps for the life of the listing. 1st at the base
+            rate. 2nd at a full 35% of the current bid. 3rd at a full 50% of the
+            current bid.
           </li>
-          <li>Rank 51 and below: unlimited swaps at the base rate.</li>
+          <li>Rank 51 and below: unlimited swaps, always the base rate.</li>
         </ul>
+        <div className="mt-4 overflow-x-auto rounded-xl bg-surface shadow-[var(--shadow-border)]">
+          <table className="w-full text-sm">
+            <thead className="text-left text-xs uppercase tracking-wider text-subtle">
+              <tr>
+                <th className="px-4 py-3">Example</th>
+                <th className="px-4 py-3">1st (full base)</th>
+                <th className="px-4 py-3">2nd (full 35%)</th>
+                <th className="px-4 py-3">3rd (full 50%)</th>
+              </tr>
+            </thead>
+            <tbody className="text-muted">
+              <tr className="border-t border-border">
+                <td className="px-4 py-2.5">$1,000, Top 50</td>
+                <td className="px-4 py-2.5 tabular">20% = $200</td>
+                <td className="px-4 py-2.5 tabular">35% = $350</td>
+                <td className="px-4 py-2.5 tabular">50% = $500</td>
+              </tr>
+              <tr className="border-t border-border">
+                <td className="px-4 py-2.5">$80, Top 50</td>
+                <td className="px-4 py-2.5 tabular">10% = $8 → $10</td>
+                <td className="px-4 py-2.5 tabular">35% = $28</td>
+                <td className="px-4 py-2.5 tabular">50% = $40</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
         <SwapPreview />
       </Section>
 
@@ -92,10 +120,12 @@ function RulesPage() {
 
       <Section title="Payments">
         <p>
-          Checkout runs on Cashfree. In this preview the gateway is sandboxed —
-          confirm payment to settle the order, fire the same path a webhook
-          would, and unlock the manage link. Keep that link. It is how you
-          re-bid and swap.
+          Every bid and swap settles on Cashfree Payments. The checkout panel
+          is their sandbox: order id, payment_session_id, UPI / card / net
+          banking / wallet. Confirming payment marks the order paid — the same
+          settle path as webhook POST /api/webhooks/cashfree on PAYMENT_SUCCESS
+          (signature verified when a Cashfree webhook secret is set). Keep the
+          manage link. It is how you re-bid and swap.
         </p>
       </Section>
 

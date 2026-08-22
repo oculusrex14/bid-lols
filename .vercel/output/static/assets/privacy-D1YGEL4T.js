@@ -1,0 +1,1 @@
+import{f as e,i as t}from"./sites-B13FwAHI.js";import{s as n}from"./index-LP5eQqSE.js";import{t as r}from"./legal-page-CpKkTDZi.js";var i=e(),a=()=>{let{site:e}=n.useParams();return t(e)?(0,i.jsx)(r,{site:e,slug:`privacy`}):null};export{a as component};

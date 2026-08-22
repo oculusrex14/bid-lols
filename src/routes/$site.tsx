@@ -10,7 +10,7 @@ export const Route = createFileRoute("/$site")({
     const cfg = isSiteId(params.site) ? SITES[params.site] : null;
     return {
       meta: [
-        { title: cfg ? `${cfg.wordmark}.lol` : "BID.LOL" },
+        { title: cfg ? `${cfg.wordmark}.lol` : "bidthrone.lol" },
         { name: "description", content: cfg?.tagline ?? "" },
       ],
     };

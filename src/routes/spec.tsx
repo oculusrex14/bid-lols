@@ -1,26 +1,29 @@
 import { Link, createFileRoute } from "@tanstack/react-router";
+import { ModeToggle } from "@/components/mode-toggle";
+import { SiteFooter } from "@/components/site-footer";
+import { PORTAL } from "@/lib/sites";
 
 export const Route = createFileRoute("/spec")({
   component: SpecPage,
   head: () => ({
-    meta: [{ title: "BID.LOL — Product spec" }],
+    meta: [{ title: `${PORTAL.domain} — Product spec` }],
   }),
 });
 
 function SpecPage() {
   return (
     <div className="min-h-screen bg-bg text-fg">
-      <header className="mx-auto flex max-w-3xl items-center justify-between px-5 py-5">
-        <Link to="/" className="text-xs font-medium uppercase tracking-kicker text-muted">
-          Bid.lol
-        </Link>
-        <div className="flex gap-4 text-sm text-muted">
-          <Link to="/$site" params={{ site: "founders" }} className="hover:text-fg">
+      <header className="mx-auto max-w-3xl px-5 py-5">
+        <div className="flex items-center justify-between gap-3">
+          <Link to="/" className="text-xs font-medium uppercase tracking-kicker text-fg">
+            {PORTAL.domain}
+          </Link>
+          <Link to="/$site" params={{ site: "founders" }} className="text-sm text-muted hover:text-fg">
             foundersbid
           </Link>
-          <Link to="/$site" params={{ site: "bidception" }} className="hover:text-fg">
-            bidception
-          </Link>
+        </div>
+        <div className="mt-3">
+          <ModeToggle />
         </div>
       </header>
 
@@ -30,7 +33,7 @@ function SpecPage() {
           Two boards. One mechanic. Built to ship in a weekend.
         </h1>
         <p className="mt-5 text-lg text-muted">
-          foundersbid.lol and bidception.lol share ranking, payments, swap math,
+          bidthrone.lol is the front door. foundersbid.lol and bidception.lol share ranking, payments, swap math,
           and the manage-link model. They do not share identity, copy, or who
           belongs on the board. This page is the contract. The running product
           is the proof.
@@ -45,7 +48,7 @@ function SpecPage() {
         <Quote>Pay to prove the founding team. Build trust. Rank higher.</Quote>
         <ul className="mt-4 list-disc space-y-1 pl-5 text-muted">
           <li>Allowed: team pages, about pages, studio sites, personal founder URLs.</li>
-          <li>Row content: title, one-line proof, founding names, bid, visits.</li>
+          <li>Row content: founding team names first (italic headline), company title and URL second, up to five founder social icons, bid, visits. Favicon beside every row.</li>
           <li>Primary CTA: “Bid the team”.</li>
           <li>Tone: editorial, studio, letterhead. Warm ink and bone.</li>
         </ul>
@@ -58,12 +61,18 @@ function SpecPage() {
         <Quote>The leaderboard of leaderboards. Outbid the bids.</Quote>
         <ul className="mt-4 list-disc space-y-2 pl-5 text-muted">
           <li>Allowed: bid sites, clones, .lol boards, leaderboard products.</li>
-          <li>Row content: board name, claim, what it is, bid, visits.</li>
+          <li>Row content: board name, claim, what it is, bid, visits. Favicon beside every row.</li>
           <li>Primary CTA: “Outbid the bids”.</li>
           <li>Tone: nested frame, recursive, cool ink and silver.</li>
         </ul>
 
-        <H>2. Shared ranking rules</H>
+        <H>2c. Conversion, logos, founding team</H>
+        <ul className="list-disc space-y-2 pl-5 text-muted">
+          <li>Every board has a conversion box above the ranking: “Claim #1” on foundersbid, “Outbid the leader” on bidception. Live price to take #1 with +/− to adjust (floor $5). If the bid is at or below the leader, a warning: rank follows the bid — you will sit below #1. URL field, Bid now, helper “$5 minimum · Whole dollars · Re-bids only pay the difference”.</li>
+          <li>Every listing shows the submitted URL’s favicon. Missing favicon falls back to a letter monogram.</li>
+          <li>Foundersbid is people-first. The founding team is the headline on the board, the detail page, and the manage page. Bid form fields: company name, page URL, one-line proof, founding team names, up to five founder socials, bid amount.</li>
+        </ul>
+
         <ul className="list-disc space-y-2 pl-5 text-muted">
           <li>Pure pay-to-rank. Highest total bid = higher rank. Rank 01 is first.</li>
           <li>Minimum $5. Whole dollars only. No cents on bids.</li>
@@ -72,6 +81,19 @@ function SpecPage() {
           <li>Clicks from the board increment a public counter. No IPs, emails, or names stored as personal data.</li>
           <li>Real-time enough: the board and live tape refetch every 3–5 seconds.</li>
           <li>No refunds after an order is marked paid. No editorial slots. No burying a higher bid.</li>
+        </ul>
+
+        <H>2b. Temporary hype (views and visits)</H>
+        <p>
+          Displayed site totals use a decaying multiplier. Rank is never affected.
+          Real counts stay in the database. Labels are “visits today” and “total views”
+          — never live viewers or people online.
+        </p>
+        <ul className="mt-4 list-disc space-y-2 pl-5 text-muted">
+          <li>Day 1: 6×. Linear drop every 24 hours. Exactly 1× after 21 days.</li>
+          <li>If real visits in a calendar day reach 8,000, the multiplier locks at 1× forever.</li>
+          <li>A view is a page load of the portal, a board, a listing, or the tape. A visit is an outbound click from a listing.</li>
+          <li>Per-listing click counts on a row stay real. Only the site-level totals are multiplied.</li>
         </ul>
 
         <H>3. Tiered swap links</H>
@@ -127,9 +149,9 @@ function SpecPage() {
         <H>4. Page structure</H>
         <ol className="list-decimal space-y-3 pl-5 text-muted">
           <li>
-            <strong className="text-fg">Portal /</strong> — split landing. Warm left
-            (foundersbid), cool right (bidception). Live top 3 and pool. One
-            primary enter button per half. Header: Bid.lol + Full spec.
+            <strong className="text-fg">Portal /</strong> — bidthrone.lol split landing. Warm left
+            (foundersbid), cool right (bidception). Live top 3, pool, visits today, total views. One
+            primary enter button per half. Header: bidthrone.lol + Full spec.
           </li>
           <li>
             <strong className="text-fg">Board /founders and /bidception</strong> —
@@ -303,6 +325,7 @@ activity (
           </Link>
         </div>
       </article>
+      <SiteFooter site="founders" showSister={false} />
     </div>
   );
 }

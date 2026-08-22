@@ -6,6 +6,9 @@ import { Leaderboard } from "@/components/leaderboard";
 import { ActivityFeed } from "@/components/activity-feed";
 import { StatsBar } from "@/components/stats-bar";
 import { YourListings } from "@/components/your-listings";
+import { FoundersMasthead } from "@/components/founders-masthead";
+import { TrackSiteView } from "@/components/track-site-view";
+import { ClaimBox } from "@/components/claim-box";
 
 export const Route = createFileRoute("/$site/")({
   loader: ({ params }) => {
@@ -30,14 +33,30 @@ function BoardHome() {
 
   return (
     <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_300px]">
+      <TrackSiteView site={site} />
       <div>
-        <p className="rise-in text-xs uppercase tracking-[0.2em] text-subtle">{cfg.kicker}</p>
-        <h1 className="rise-in rise-in-2 mt-3 font-display-site text-4xl tracking-tight sm:text-6xl">
-          {cfg.wordmark}
-        </h1>
-        <p className="rise-in rise-in-3 mt-4 max-w-xl text-muted">{cfg.tagline}</p>
+        {site === "founders" ? (
+          <FoundersMasthead />
+        ) : (
+          <>
+            <p className="rise-in text-xs uppercase tracking-kicker text-subtle">{cfg.kicker}</p>
+            <h1 className="rise-in rise-in-2 mt-3 font-display-site text-4xl tracking-tight sm:text-6xl">
+              {cfg.wordmark}
+              <span className="text-subtle">.lol</span>
+            </h1>
+            <p className="rise-in rise-in-3 mt-4 max-w-xl text-muted">{cfg.tagline}</p>
+          </>
+        )}
         <div className="mt-8">
           {board ? <StatsBar stats={board.stats} /> : <StatsSkeleton />}
+        </div>
+        <div className="mt-6">
+          {board ? (
+            <ClaimBox
+              site={site}
+              leaderBidCents={board.listings[0]?.bidCents ?? 0}
+            />
+          ) : null}
         </div>
         <div className="mt-6">
           {board ? (
@@ -48,7 +67,7 @@ function BoardHome() {
         </div>
       </div>
       <aside className="lg:pt-28">
-        <div className="lg:sticky lg:top-20">
+        <div className="lg:sticky lg:top-36">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-medium">Live feed</h2>
             <Link to="/$site/activity" params={{ site }} className="text-xs text-muted hover:text-fg">

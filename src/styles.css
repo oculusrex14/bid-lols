@@ -31,12 +31,58 @@
   --radius-md: 12px;
   --radius-lg: 16px;
   --radius-xl: 24px;
-  --shadow-border: 0 0 0 1px color-mix(in oklab, var(--fg) 10%, transparent);
-  --shadow-border-hover: 0 0 0 1px color-mix(in oklab, var(--fg) 18%, transparent);
+  --shadow-border: 0 0 0 1px color-mix(in oklab, var(--fg) 12%, transparent);
+  --shadow-border-hover: 0 0 0 1px color-mix(in oklab, var(--fg) 22%, transparent);
   --tracking-kicker: 0.22em;
 }
 
 :root {
+  --bg: #f3efe6;
+  --surface: #ebe6db;
+  --raised: #e4ddd0;
+  --fg: #1c1814;
+  --muted: #6f675c;
+  --subtle: #8f877c;
+  --accent: #1c1814;
+  --accent-fg: #f3efe6;
+  --border: color-mix(in oklab, var(--fg) 14%, transparent);
+  --ring: color-mix(in oklab, var(--fg) 28%, transparent);
+  --up: #3f7a4e;
+  --danger: #a24b44;
+  --font-display-active: var(--font-display);
+  --motion-quick: 150ms;
+  --motion-fast: 250ms;
+  --motion-slow: 400ms;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+[data-theme="founders"] {
+  --bg: #f4efe4;
+  --surface: #ebe4d6;
+  --raised: #e3dac8;
+  --fg: #1c1712;
+  --muted: #6d655a;
+  --subtle: #8e867a;
+  --accent: #1c1712;
+  --accent-fg: #f4efe4;
+  --border: color-mix(in oklab, var(--fg) 14%, transparent);
+  --font-display-active: var(--font-display);
+}
+
+[data-theme="bidception"] {
+  --bg: #f3f3f5;
+  --surface: #eaeaee;
+  --raised: #e1e1e6;
+  --fg: #18181b;
+  --muted: #5c5c66;
+  --subtle: #8a8a93;
+  --accent: #18181b;
+  --accent-fg: #f3f3f5;
+  --border: color-mix(in oklab, var(--fg) 14%, transparent);
+  --font-display-active: var(--font-meta);
+}
+
+html[data-mode="dark"] {
   --bg: #0a0a0a;
   --surface: #121110;
   --raised: #1a1917;
@@ -50,26 +96,22 @@
   --up: #8fbf9a;
   --danger: #c97b73;
   --font-display-active: var(--font-display);
-  --motion-quick: 150ms;
-  --motion-fast: 250ms;
-  --motion-slow: 400ms;
-  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-[data-theme="founders"] {
-  --bg: #0c0b0a;
-  --surface: #161412;
-  --raised: #1d1a17;
-  --fg: #f3efe6;
-  --muted: #a39e94;
-  --subtle: #6e6a63;
-  --accent: #f3efe6;
-  --accent-fg: #0c0b0a;
-  --border: color-mix(in oklab, var(--fg) 12%, transparent);
+html[data-mode="dark"] [data-theme="founders"] {
+  --bg: #1a1612;
+  --surface: #221e19;
+  --raised: #2c2620;
+  --fg: #f4efe4;
+  --muted: #b7aea0;
+  --subtle: #8a8074;
+  --accent: #f4efe4;
+  --accent-fg: #1a1612;
+  --border: color-mix(in oklab, var(--fg) 14%, transparent);
   --font-display-active: var(--font-display);
 }
 
-[data-theme="bidception"] {
+html[data-mode="dark"] [data-theme="bidception"] {
   --bg: #09090b;
   --surface: #121214;
   --raised: #18181b;
@@ -80,6 +122,45 @@
   --accent-fg: #09090b;
   --border: color-mix(in oklab, var(--fg) 12%, transparent);
   --font-display-active: var(--font-meta);
+}
+
+[data-gateway="cashfree"] {
+  --cf-bg: #f3f5f3;
+  --cf-fg: #121513;
+  --cf-muted: #5c6560;
+  --cf-line: color-mix(in oklab, var(--cf-fg) 12%, transparent);
+  --cf-accent: #0f9d58;
+  --cf-accent-fg: #f3f5f3;
+  --cf-chip: #e8f6ee;
+  background: var(--cf-bg);
+  color: var(--cf-fg);
+}
+
+[data-gateway="cashfree"] .cf-muted { color: var(--cf-muted); }
+[data-gateway="cashfree"] .cf-line { box-shadow: 0 0 0 1px var(--cf-line); }
+[data-gateway="cashfree"] .cf-chip { background: var(--cf-chip); color: var(--cf-accent); }
+[data-gateway="cashfree"] .cf-pay {
+  background: var(--cf-accent);
+  color: var(--cf-accent-fg);
+}
+[data-gateway="cashfree"] .cf-method[data-on="true"] {
+  box-shadow: 0 0 0 1px var(--cf-accent);
+  color: var(--cf-fg);
+}
+
+.masthead {
+  border-top: 3px solid var(--fg);
+  border-bottom: 1px solid var(--fg);
+  padding: 1.25rem 0.25rem 1.5rem;
+}
+
+.masthead-panel {
+  padding: 1rem 0.25rem 1.25rem;
+}
+
+[data-theme="founders"] .team-line {
+  font-family: var(--font-display), serif;
+  font-style: italic;
 }
 
 @layer base {
@@ -126,6 +207,18 @@
 
 .font-display-site {
   font-family: var(--font-display-active), serif;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 .hairline {

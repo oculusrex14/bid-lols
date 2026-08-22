@@ -8,6 +8,12 @@ import {
   quoteSwapFee,
   type SiteId,
 } from "@/lib/sites";
+import {
+  HYPE_LOCK_DAILY_VISITS,
+  displayCount,
+  hypeMultiplier,
+} from "@/lib/hype";
+import { clampSocials } from "@/lib/socials";
 import { normalizeUrl, urlKey } from "@/lib/url";
 import type { Activity, BoardPayload, Listing, PublicOrder } from "@/lib/types";
 
@@ -22,6 +28,7 @@ type ListingRow = {
   title: string;
   tagline: string;
   team: string;
+  socials: unknown;
   bid_cents: number;
   rank: number | null;
   clicks: number;
@@ -41,6 +48,16 @@ type ActivityRow = {
   created_at: string | Date;
 };
 
+type SiteStatsRow = {
+  site: SiteId;
+  views: number | string;
+  visits: number | string;
+  visits_today: number | string;
+  visits_day: string | Date;
+  launched_at: string | Date;
+  hype_locked: boolean;
+};
+
 function asIso(value: string | Date) {
   if (value instanceof Date) return value.toISOString();
   return String(value);
@@ -54,6 +71,7 @@ function mapListing(row: ListingRow): Listing {
     title: row.title,
     tagline: row.tagline,
     team: row.team,
+    socials: clampSocials(row.socials),
     bidCents: Number(row.bid_cents),
     rank: row.rank == null ? null : Number(row.rank),
     clicks: Number(row.clicks),
@@ -93,7 +111,7 @@ async function recastRanks(site: SiteId) {
 async function fetchListing(id: string) {
   const sql = await getSql();
   const rows = await sql.query<ListingRow>(
-    `select id, site, url, title, tagline, team, bid_cents, rank, clicks, swap_count,
+    `select id, site, url, title, tagline, team, socials, bid_cents, rank, clicks, swap_count,
             last_bid_at::text as last_bid_at, created_at::text as created_at
      from listings where id = $1`,
     [id],
@@ -120,8 +138,72 @@ function assertWholeDollars(amount: number) {
   }
 }
 
-const listingSelect = `id, site, url, title, tagline, team, bid_cents, rank, clicks, swap_count,
+const listingSelect = `id, site, url, title, tagline, team, socials, bid_cents, rank, clicks, swap_count,
   last_bid_at::text as last_bid_at, created_at::text as created_at`;
+
+async function ensureSiteStats(site: SiteId) {
+  const sql = await getSql();
+  await sql.query(
+    `insert into site_stats (site, views, visits, visits_today, visits_day, launched_at, hype_locked)
+     values ($1, 0, 0, 0, current_date, now(), false)
+     on conflict (site) do nothing`,
+    [site],
+  );
+  await sql.query(
+    `update site_stats
+     set visits_today = 0, visits_day = current_date
+     where site = $1 and visits_day < current_date`,
+    [site],
+  );
+}
+
+function publicHype(row: SiteStatsRow) {
+  const visitsTodayReal = Number(row.visits_today);
+  const viewsReal = Number(row.views);
+  const locked = Boolean(row.hype_locked) || visitsTodayReal >= HYPE_LOCK_DAILY_VISITS;
+  const multiplier = hypeMultiplier({
+    launchedAt: row.launched_at,
+    locked,
+  });
+  return {
+    visitsToday: displayCount(visitsTodayReal, multiplier),
+    totalViews: displayCount(viewsReal, multiplier),
+  };
+}
+
+async function loadHype(site: SiteId) {
+  const sql = await getSql();
+  await ensureSiteStats(site);
+  const rows = await sql.query<SiteStatsRow>(
+    `select site, views, visits, visits_today, visits_day::text as visits_day,
+            launched_at::text as launched_at, hype_locked
+     from site_stats where site = $1`,
+    [site],
+  );
+  const row = rows[0];
+  if (!row) {
+    return { visitsToday: 0, totalViews: 0 };
+  }
+  const visitsTodayReal = Number(row.visits_today);
+  if (!row.hype_locked && visitsTodayReal >= HYPE_LOCK_DAILY_VISITS) {
+    await sql.query(`update site_stats set hype_locked = true where site = $1`, [site]);
+    row.hype_locked = true;
+  }
+  return publicHype(row);
+}
+
+async function bumpVisits(site: SiteId) {
+  const sql = await getSql();
+  await ensureSiteStats(site);
+  await sql.query(
+    `update site_stats
+     set visits = visits + 1,
+         visits_today = visits_today + 1,
+         hype_locked = hype_locked or (visits_today + 1 >= $2)
+     where site = $1`,
+    [site, HYPE_LOCK_DAILY_VISITS],
+  );
+}
 
 async function loadBoard(site: SiteId): Promise<BoardPayload> {
   const sql = await getSql();
@@ -153,12 +235,15 @@ async function loadBoard(site: SiteId): Promise<BoardPayload> {
     [site],
   );
   const stats = statsRows[0];
+  const hype = await loadHype(site);
   return {
     listings: listings.map(mapListing),
     stats: {
       count: Number(stats?.count ?? 0),
       poolCents: Number(stats?.pool ?? 0),
       clicks: Number(stats?.clicks ?? 0),
+      visitsToday: hype.visitsToday,
+      totalViews: hype.totalViews,
     },
     activity: activity.map(mapActivity),
   };
@@ -251,11 +336,15 @@ export const createBidOrder = createServerFn({ method: "POST" })
       title: z.string().min(2).max(80),
       tagline: z.string().max(140),
       team: z.string().max(140),
+      socials: z.array(z.string()).max(5).optional(),
       amountDollars: z.number(),
     }).parse,
   )
   .handler(async ({ data }) => {
     assertWholeDollars(data.amountDollars);
+    if (data.site === "founders" && data.team.trim().length < 2) {
+      throw new Error("Founding team names are required.");
+    }
     const url = normalizeUrl(data.url);
     const key = urlKey(url);
     const sql = await getSql();
@@ -273,14 +362,23 @@ export const createBidOrder = createServerFn({ method: "POST" })
     const charge = current ? target - current.bidCents : target;
     const orderId = makeId("ord");
     const manageToken = current ? null : makeToken();
+    const { createCashfreeSession } = await import("@/lib/cashfree");
+    const session = await createCashfreeSession({
+      orderId,
+      amountCents: charge,
+    });
     const payload = {
       url,
       urlKey: key,
       title: data.title.trim(),
       tagline: data.tagline.trim(),
       team: data.team.trim(),
+      socials: clampSocials(data.socials),
       targetBidCents: target,
       listingId: current?.id ?? null,
+      paymentSessionId: session.paymentSessionId,
+      gatewayLive: session.live,
+      gatewayMode: session.mode,
     };
     await sql.query(
       `insert into orders (id, site, kind, amount_cents, status, listing_id, manage_token, payload)
@@ -329,12 +427,20 @@ export const createSwapOrder = createServerFn({ method: "POST" })
     );
     if (clash[0]) throw new Error("Another listing already holds that URL.");
     const orderId = makeId("ord");
+    const { createCashfreeSession } = await import("@/lib/cashfree");
+    const session = await createCashfreeSession({
+      orderId,
+      amountCents: quote.feeCents,
+    });
     const payload = {
       listingId: listing.id,
       newUrl: url,
       urlKey: key,
       title: listing.title,
       nextSwapNumber: quote.nextSwapNumber,
+      paymentSessionId: session.paymentSessionId,
+      gatewayLive: session.live,
+      gatewayMode: session.mode,
     };
     await sql.query(
       `insert into orders (id, site, kind, amount_cents, status, listing_id, manage_token, payload)
@@ -372,6 +478,12 @@ export const getOrder = createServerFn({ method: "GET" })
         : payload.listingId
           ? "Re-bid difference"
           : "New listing bid";
+    const paymentSessionId = String(
+      payload.paymentSessionId ?? `session_${row.id}`,
+    );
+    const gatewayLive = payload.gatewayLive === true;
+    const gatewayMode =
+      payload.gatewayMode === "production" ? "production" : "sandbox";
     return {
       id: row.id,
       site: row.site,
@@ -382,6 +494,10 @@ export const getOrder = createServerFn({ method: "GET" })
       url,
       chargeLabel,
       listingId: row.listing_id,
+      paymentSessionId,
+      gateway: "cashfree",
+      gatewayLive,
+      gatewayMode,
     };
   });
 
@@ -429,6 +545,7 @@ export const confirmPayment = createServerFn({ method: "POST" })
       const title = String(payload.title ?? "Listing");
       const tagline = String(payload.tagline ?? "");
       const team = String(payload.team ?? "");
+      const socialsIn = clampSocials(payload.socials);
       const url = String(payload.url);
       const key = String(payload.urlKey);
       if (listingId) {
@@ -437,11 +554,13 @@ export const confirmPayment = createServerFn({ method: "POST" })
         if (targetBidCents <= current.bidCents) {
           throw new Error("This bid is no longer high enough.");
         }
+        const socials = socialsIn.length ? socialsIn : current.socials;
         await sql.query(
           `update listings
-           set bid_cents = $1, title = $2, tagline = $3, team = $4, url = $5, url_key = $6, last_bid_at = now()
-           where id = $7`,
-          [targetBidCents, title, tagline, team, url, key, listingId],
+           set bid_cents = $1, title = $2, tagline = $3, team = $4, url = $5, url_key = $6,
+               socials = $7::jsonb, last_bid_at = now()
+           where id = $8`,
+          [targetBidCents, title, tagline, team, url, key, JSON.stringify(socials), listingId],
         );
         kind = "rebid";
         const tok = await sql.query<{ manage_token: string }>(
@@ -454,8 +573,8 @@ export const confirmPayment = createServerFn({ method: "POST" })
         token = token ?? makeToken();
         await sql.query(
           `insert into listings
-            (id, site, url, url_key, title, tagline, team, bid_cents, clicks, swap_count, manage_token, last_bid_at)
-           values ($1,$2,$3,$4,$5,$6,$7,$8,0,0,$9, now())`,
+            (id, site, url, url_key, title, tagline, team, socials, bid_cents, clicks, swap_count, manage_token, last_bid_at)
+           values ($1,$2,$3,$4,$5,$6,$7,$8::jsonb,$9,0,0,$10, now())`,
           [
             listingId,
             order.site,
@@ -464,6 +583,7 @@ export const confirmPayment = createServerFn({ method: "POST" })
             title,
             tagline,
             team,
+            JSON.stringify(socialsIn),
             targetBidCents,
             token,
           ],
@@ -555,11 +675,21 @@ export const trackClick = createServerFn({ method: "POST" })
   .validator(z.object({ id: z.string().min(1) }).parse)
   .handler(async ({ data }) => {
     const sql = await getSql();
-    const rows = await sql.query<{ url: string; clicks: number }>(
-      `update listings set clicks = clicks + 1 where id = $1 returning url, clicks`,
+    const rows = await sql.query<{ url: string; clicks: number; site: string }>(
+      `update listings set clicks = clicks + 1 where id = $1 returning url, clicks, site`,
       [data.id],
     );
     const row = rows[0];
     if (!row) throw new Error("Listing not found.");
+    if (isSiteId(row.site)) await bumpVisits(row.site);
     return { url: row.url, clicks: Number(row.clicks) };
+  });
+
+export const trackView = createServerFn({ method: "POST" })
+  .validator(siteSchema.parse)
+  .handler(async ({ data }) => {
+    const sql = await getSql();
+    await ensureSiteStats(data.site);
+    await sql.query(`update site_stats set views = views + 1 where site = $1`, [data.site]);
+    return loadHype(data.site);
   });
