@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
+import { Link, createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Building2, CreditCard, Smartphone, Wallet } from "lucide-react";
@@ -8,6 +8,7 @@ import { formatUsd, hostOf } from "@/lib/format";
 import { rememberOwned } from "@/lib/owned";
 import { COPY, isSiteId } from "@/lib/sites";
 import { cn } from "@/lib/cn";
+import { ManageLinkSave, manageHref } from "@/components/manage-link-save";
 import type { PublicOrder } from "@/lib/types";
 
 export const Route = createFileRoute("/$site/checkout/$orderId")({
@@ -31,9 +32,9 @@ type CfWindow = Window & {
 function CheckoutPage() {
   const { site: siteParam, orderId } = Route.useParams();
   const site = isSiteId(siteParam) ? siteParam : "founders";
-  const navigate = useNavigate();
   const [busy, setBusy] = useState(false);
   const [method, setMethod] = useState<(typeof METHODS)[number]["id"]>("upi");
+  const [saved, setSaved] = useState<{ token: string; email?: string } | null>(null);
   const initial = Route.useLoaderData();
   const order = useQuery({
     queryKey: ["order", orderId],
@@ -64,24 +65,26 @@ function CheckoutPage() {
         ? `Live at rank ${result.listing.rank}.`
         : "Payment recorded.",
     );
-    await navigate({
-      to: "/$site/manage/$token",
-      params: { site: result.site, token: result.token },
-    });
+    setSaved({ token: result.token });
   }
 
   async function pay(data: PublicOrder) {
     setBusy(true);
     try {
-      if (data.gatewayLive) {
-        const Cashfree = (window as CfWindow).Cashfree;
-        if (Cashfree) {
-          const cf = Cashfree({ mode: data.gatewayMode });
-          await cf.checkout({
-            paymentSessionId: data.paymentSessionId,
-            redirectTarget: "_modal",
-          });
-        }
+      if (!data.gatewayLive || data.gatewayMode !== "production") {
+        throw new Error("Live Cashfree checkout is not available for this order.");
+      }
+      const Cashfree = (window as CfWindow).Cashfree;
+      if (!Cashfree) {
+        throw new Error("Cashfree checkout is still loading. Wait a moment and try again.");
+      }
+      const cf = Cashfree({ mode: "production" });
+      const result = (await cf.checkout({
+        paymentSessionId: data.paymentSessionId,
+        redirectTarget: "_modal",
+      })) as { error?: { message?: string } } | undefined;
+      if (result?.error) {
+        throw new Error(result.error.message || "Payment was not completed.");
       }
       await settle();
     } catch (err) {
@@ -102,8 +105,8 @@ function CheckoutPage() {
         Pay the rank
       </h1>
       <p className="mt-3 text-sm text-muted">
-        Checkout is Cashfree. Confirm payment to settle the order — same path
-        as a <code>PAYMENT_SUCCESS</code> webhook.
+        Checkout is live Cashfree. Rank updates only after Cashfree marks the
+        order paid.
       </p>
 
       {order.isError ? (
@@ -112,10 +115,26 @@ function CheckoutPage() {
         </p>
       ) : null}
 
-      {data ? (
+      {saved ? (
+        <div className="mt-8">
+          <p className="text-sm text-up">Paid. The listing is live.</p>
+          <ManageLinkSave href={manageHref(window.location.origin, site, saved.token)} />
+          <Link
+            to="/$site/manage/$token"
+            params={{ site, token: saved.token }}
+            className="mt-6 inline-block text-sm text-fg hover:underline"
+          >
+            Open the manage page
+          </Link>
+        </div>
+      ) : data ? (
         data.status === "paid" ? (
           <p className="mt-8 text-sm text-up">
             Already paid on Cashfree. Open manage from your saved link.
+          </p>
+        ) : !data.gatewayLive ? (
+          <p className="mt-8 text-danger">
+            Live Cashfree session missing. Go back and place the bid again.
           </p>
         ) : (
           <CashfreePanel
@@ -217,11 +236,7 @@ function CashfreePanel({
             : `Pay ${formatUsd(data.amountCents)} · ${METHODS.find((m) => m.id === method)?.label}`}
         </button>
         <p className="mt-3 text-center text-xs cf-muted">
-          PCI DSS · Powered by Cashfree Payments
-          {data.gatewayLive ? " · live session" : " · sandbox session"}
-        </p>
-        <p className="mt-1 text-center text-xs cf-muted">
-          Webhook POST /api/webhooks/cashfree on PAYMENT_SUCCESS
+          PCI DSS · Powered by Cashfree Payments · live
         </p>
       </div>
     </div>

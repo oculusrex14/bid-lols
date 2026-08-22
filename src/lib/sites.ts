@@ -216,4 +216,6 @@ export const COPY = {
   checkoutDemo: "Cashfree Payments · USD",
   minBid: "Minimum $5. Whole dollars only.",
   rebidHint: "Re-bidding the same URL only charges the difference.",
+  saveManage:
+    "Save this link. It is the only way to manage or swap this listing.",
 };

@@ -84,7 +84,10 @@ function BoardHome() {
           ) : (
             <p className="mt-4 text-sm text-subtle">Loading the tape…</p>
           )}
-          <YourListings site={site} />
+          <YourListings
+            site={site}
+            liveIds={board.listings.map((row) => row.id)}
+          />
           <SwapCard />
         </div>
       </aside>

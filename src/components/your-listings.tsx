@@ -1,14 +1,21 @@
 import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { ownedFor, type OwnedListing } from "@/lib/owned";
+import { pruneOwned, type OwnedListing } from "@/lib/owned";
 import type { SiteId } from "@/lib/sites";
 
-export function YourListings({ site }: { site: SiteId }) {
+export function YourListings({
+  site,
+  liveIds,
+}: {
+  site: SiteId;
+  liveIds: string[];
+}) {
   const [rows, setRows] = useState<OwnedListing[]>([]);
 
+  const liveKey = liveIds.join(",");
   useEffect(() => {
-    setRows(ownedFor(site));
-  }, [site]);
+    setRows(pruneOwned(site, liveKey ? liveKey.split(",") : []));
+  }, [site, liveKey]);
 
   if (rows.length === 0) return null;
 

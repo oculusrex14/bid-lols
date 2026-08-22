@@ -13,6 +13,7 @@ import {
   HYPE_LOCK_DAILY_VISITS,
   displayCount,
   hypeMultiplier,
+  randomHypeFactor,
 } from "@/lib/hype";
 import { clampSocials } from "@/lib/socials";
 import { clampValues } from "@/lib/values";
@@ -60,7 +61,12 @@ type SiteStatsRow = {
   visits_day: string | Date;
   launched_at: string | Date;
   hype_locked: boolean;
+  hype_factor?: number | string;
 };
+
+function appOrigin() {
+  return (process.env.NEXT_PUBLIC_APP_URL || "https://bidthrone.lol").replace(/\/$/, "");
+}
 
 function asIso(value: string | Date) {
   if (value instanceof Date) return value.toISOString();
@@ -149,10 +155,10 @@ const listingSelect = `id, site, url, title, tagline, team, socials, values, bid
 async function ensureSiteStats(site: SiteId) {
   const sql = await getSql();
   await sql.query(
-    `insert into site_stats (site, views, visits, visits_today, visits_day, launched_at, hype_locked)
-     values ($1, 0, 0, 0, current_date, now(), false)
+    `insert into site_stats (site, views, visits, visits_today, visits_day, launched_at, hype_locked, hype_factor)
+     values ($1, 0, 0, 0, current_date, now(), false, $2)
      on conflict (site) do nothing`,
-    [site],
+    [site, randomHypeFactor()],
   );
   await sql.query(
     `update site_stats
@@ -166,12 +172,13 @@ async function ensureSiteStats(site: SiteId) {
 async function ensureAllSiteStats() {
   const sql = await getSql();
   await sql.query(
-    `insert into site_stats (site, views, visits, visits_today, visits_day, launched_at, hype_locked)
+    `insert into site_stats (site, views, visits, visits_today, visits_day, launched_at, hype_locked, hype_factor)
      values
-       ('founders', 0, 0, 0, current_date, now(), false),
-       ('culture', 0, 0, 0, current_date, now(), false),
-       ('bidception', 0, 0, 0, current_date, now(), false)
+       ('founders', 0, 0, 0, current_date, now(), false, $1),
+       ('culture', 0, 0, 0, current_date, now(), false, $2),
+       ('bidception', 0, 0, 0, current_date, now(), false, $3)
      on conflict (site) do nothing`,
+    [randomHypeFactor(), randomHypeFactor(), randomHypeFactor()],
   );
   await sql.query(
     `update site_stats
@@ -187,6 +194,7 @@ function publicHype(row: SiteStatsRow) {
   const multiplier = hypeMultiplier({
     launchedAt: row.launched_at,
     locked,
+    start: Number(row.hype_factor),
   });
   return {
     visitsToday: displayCount(visitsTodayReal, multiplier),
@@ -199,7 +207,7 @@ async function loadHype(site: SiteId) {
   await ensureSiteStats(site);
   const rows = await sql.query<SiteStatsRow>(
     `select site, views, visits, visits_today, visits_day::text as visits_day,
-            launched_at::text as launched_at, hype_locked
+            launched_at::text as launched_at, hype_locked, hype_factor
      from site_stats where site = $1`,
     [site],
   );
@@ -306,7 +314,7 @@ export const getPortal = createServerFn({ method: "GET" }).handler(async () => {
   );
   const hypeRows = await sql.query<SiteStatsRow>(
     `select site, views, visits, visits_today, visits_day::text as visits_day,
-            launched_at::text as launched_at, hype_locked
+            launched_at::text as launched_at, hype_locked, hype_factor
      from site_stats`,
   );
 
@@ -416,6 +424,7 @@ export const createBidOrder = createServerFn({ method: "POST" })
       /** Culturebid “why join us” points. Ignored on other boards. */
       values: z.array(z.string()).max(5).optional(),
       amountDollars: z.number(),
+      email: z.string().max(120).optional(),
     }).parse,
   )
   .handler(async ({ data }) => {
@@ -442,12 +451,35 @@ export const createBidOrder = createServerFn({ method: "POST" })
     }
     const charge = current ? target - current.bidCents : target;
     const orderId = makeId("ord");
-    const manageToken = current ? null : makeToken();
+    let manageToken = current ? null : makeToken();
+    if (current) {
+      const tok = await sql.query<{ manage_token: string }>(
+        `select manage_token from listings where id = $1`,
+        [current.id],
+      );
+      manageToken = tok[0]?.manage_token ?? null;
+    }
+    const email = data.email?.trim() || undefined;
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      throw new Error("Enter a valid email, or leave it blank.");
+    }
+    const origin = appOrigin();
+    const manageUrl = manageToken
+      ? `${origin}/${data.site}/manage/${manageToken}`
+      : undefined;
     const { createCashfreeSession } = await import("@/lib/cashfree");
     const session = await createCashfreeSession({
       orderId,
       amountCents: charge,
+      email,
+      note: manageUrl
+        ? `Save this manage link — it is the only way to manage or swap this listing: ${manageUrl}`
+        : undefined,
+      returnUrl: `${origin}/${data.site}/checkout/${orderId}`,
     });
+    if (!session.live) {
+      throw new Error("Cashfree did not return a live payment session.");
+    }
     const payload = {
       url,
       urlKey: key,
@@ -461,6 +493,7 @@ export const createBidOrder = createServerFn({ method: "POST" })
       paymentSessionId: session.paymentSessionId,
       gatewayLive: session.live,
       gatewayMode: session.mode,
+      email: email ?? null,
     };
     await sql.query(
       `insert into orders (id, site, kind, amount_cents, status, listing_id, manage_token, payload)
@@ -509,11 +542,18 @@ export const createSwapOrder = createServerFn({ method: "POST" })
     );
     if (clash[0]) throw new Error("Another listing already holds that URL.");
     const orderId = makeId("ord");
+    const origin = appOrigin();
+    const manageUrl = `${origin}/${listing.site}/manage/${data.token}`;
     const { createCashfreeSession } = await import("@/lib/cashfree");
     const session = await createCashfreeSession({
       orderId,
       amountCents: quote.feeCents,
+      note: `Save this manage link — it is the only way to manage or swap this listing: ${manageUrl}`,
+      returnUrl: `${origin}/${listing.site}/checkout/${orderId}`,
     });
+    if (!session.live) {
+      throw new Error("Cashfree did not return a live payment session.");
+    }
     const payload = {
       listingId: listing.id,
       newUrl: url,
@@ -560,9 +600,7 @@ export const getOrder = createServerFn({ method: "GET" })
         : payload.listingId
           ? "Re-bid difference"
           : "New listing bid";
-    const paymentSessionId = String(
-      payload.paymentSessionId ?? `session_${row.id}`,
-    );
+    const paymentSessionId = String(payload.paymentSessionId ?? "");
     const gatewayLive = payload.gatewayLive === true;
     const gatewayMode =
       payload.gatewayMode === "production" ? "production" : "sandbox";
@@ -616,6 +654,12 @@ export const confirmPayment = createServerFn({ method: "POST" })
       };
     }
     if (order.status !== "pending") throw new Error("This order can no longer be paid.");
+
+    const { cashfreeOrderIsPaid } = await import("@/lib/cashfree");
+    const paidAtGateway = await cashfreeOrderIsPaid(order.id);
+    if (!paidAtGateway) {
+      throw new Error("Cashfree has not marked this order paid yet.");
+    }
 
     const payload = parsePayload(order.payload);
     let listingId = order.listing_id;
@@ -779,7 +823,11 @@ export const trackView = createServerFn({ method: "POST" })
     else await ensureSiteStats(sites[0]);
     const placeholders = sites.map((_, i) => `$${i + 1}`).join(", ");
     await sql.query(
-      `update site_stats set views = views + 1 where site in (${placeholders})`,
+      `update site_stats
+       set views = views + 1,
+           visits = visits + 1,
+           visits_today = visits_today + 1
+       where site in (${placeholders})`,
       sites,
     );
   });

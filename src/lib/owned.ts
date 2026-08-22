@@ -1,6 +1,6 @@
 import type { SiteId } from "@/lib/sites";
 
-const KEY = "bidlol.owned.v1";
+const KEY = "bidlol.owned.v2";
 
 export type OwnedListing = {
   site: SiteId;
@@ -31,4 +31,19 @@ export function rememberOwned(entry: OwnedListing) {
 
 export function ownedFor(site: SiteId) {
   return readOwned().filter((row) => row.site === site);
+}
+
+/** Drop browser-saved rows that are no longer on the live board. */
+export function pruneOwned(site: SiteId, liveIds: string[]) {
+  const live = new Set(liveIds);
+  const kept = readOwned().filter(
+    (row) => row.site !== site || live.has(row.listingId),
+  );
+  if (typeof window === "undefined") return ownedFor(site);
+  try {
+    localStorage.setItem(KEY, JSON.stringify(kept.slice(0, 40)));
+  } catch {
+    /* ignore quota */
+  }
+  return kept.filter((row) => row.site === site);
 }

@@ -49,6 +49,7 @@ function BidPage() {
   const [amount, setAmount] = useState(prefillAmount ?? String(MIN_BID_DOLLARS));
   const [quote, setQuote] = useState<string>("");
   const [charge, setCharge] = useState<number | null>(null);
+  const [email, setEmail] = useState("");
   const [busy, setBusy] = useState(false);
   const filledFromExisting = useRef(false);
   const board = useQuery({
@@ -134,6 +135,7 @@ function BidPage() {
           socials: founders ? clampSocials(socials) : [],
           values: culture ? clampValues(values) : [],
           amountDollars: dollars,
+          email: email.trim() || undefined,
         },
       });
       await navigate({
@@ -292,6 +294,19 @@ function BidPage() {
               </button>
             </div>
           </Field>
+          <Field
+            label="Email for the manage link (optional)"
+            hint="Cashfree puts the manage URL on the payment receipt. Leave blank to skip."
+          >
+            <Input
+              type="email"
+              inputMode="email"
+              autoComplete="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@company.com"
+            />
+          </Field>
           <RankHint amountDollars={amountDollars} leaderBidCents={leaderBidCents} />
           {quote ? (
             <p className="rounded-md bg-surface px-3 py-2.5 text-sm text-muted shadow-[var(--shadow-border)]">
@@ -324,9 +339,12 @@ function BidPage() {
           {site === "bidception" ? (
             <li>This board is for marketing platforms — leftover budget after foundersbid or culturebid.</li>
           ) : null}
-          <li>Payments via Cashfree. $5 minimum.</li>
-          <li>You get a manage link after payment. Save it.</li>
-          <li>The URL goes live the moment the order is marked paid.</li>
+          <li>Payments via Cashfree. Live checkout only — no sandbox fallback. $5 minimum.</li>
+          <li>
+            After payment you get a manage link. Save it. It is the only way to
+            manage or swap this listing.
+          </li>
+          <li>The URL goes live the moment Cashfree marks the order paid.</li>
           <li>
             Swaps are later, from the manage page, and cost a cut of the current
             bid.

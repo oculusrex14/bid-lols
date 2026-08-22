@@ -11,6 +11,7 @@ import { COPY, isSiteId, type SiteId } from "@/lib/sites";
 import { FounderSocials } from "@/components/founder-socials";
 import { CultureValues } from "@/components/culture-values";
 import { SiteFavicon } from "@/components/site-favicon";
+import { ManageLinkSave } from "@/components/manage-link-save";
 
 export const Route = createFileRoute("/$site/manage/$token")({
   loader: ({ params }) => getManaged({ data: { token: params.token } }),
@@ -30,8 +31,10 @@ function ManagePage() {
 
   const listing = managed.data?.listing;
   const quote = managed.data?.quote;
+  const [manageUrl, setManageUrl] = useState("");
 
   useEffect(() => {
+    setManageUrl(window.location.href);
     if (listing && isSiteId(listing.site)) {
       rememberOwned({
         site: listing.site,
@@ -102,6 +105,8 @@ function ManagePage() {
           ) : null}
         </>
       ) : null}
+
+      {manageUrl ? <ManageLinkSave href={manageUrl} /> : null}
 
       <dl className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Stat label="Rank" value={rankLabel(listing.rank)} />
