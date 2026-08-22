@@ -38,7 +38,7 @@ function Home() {
             {PORTAL.domain}
           </span>
           <Link to="/spec" className="text-sm text-muted hover:text-fg">
-            Full spec
+            How it works
           </Link>
         </div>
         <div className="mt-3">

@@ -74,9 +74,17 @@ export function legalDoc(site: SiteId, slug: LegalSlug): {
           ],
         },
         {
+          heading: "No results guarantee",
+          body: [
+            "Buying or holding a rank does not guarantee visits, clicks, leads, applications, hires, sales, conversions, or any other outcome. Traffic and attention depend on visitors, your page, and factors outside our control. Someone else can outbid you at any time.",
+            "Site-level visit and view figures shown on the boards may use temporary display multipliers during early launch. They are not a promise of traffic. Rank is never based on those figures.",
+          ],
+        },
+        {
           heading: "Liability",
           body: [
-            `${cfg.domain} is provided as-is. Rank is a paid public ordering, not an endorsement. We are not liable for lost manage links, downtime, or how a visitor reads a listing. Our aggregate liability is limited to the amount you paid us in the thirty days before a claim.`,
+            `${cfg.domain} is provided as-is, without warranties of merchantability, fitness for a particular purpose, or uninterrupted availability. Rank is a paid public ordering, not an endorsement of any listing, company, or page.`,
+            "We are not liable for lost manage links, downtime, outbids, chargebacks, third-party payment processor issues, or how a visitor reads a listing. To the maximum extent allowed by law, our aggregate liability for any claim related to the service is limited to the amount you paid us for the relevant order in the thirty days before the claim.",
           ],
         },
         {
