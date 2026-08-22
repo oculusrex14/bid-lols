@@ -77,7 +77,7 @@ export function legalDoc(site: SiteId, slug: LegalSlug): {
           heading: "No results guarantee",
           body: [
             "Buying or holding a rank does not guarantee visits, clicks, leads, applications, hires, sales, conversions, or any other outcome. Traffic and attention depend on visitors, your page, and factors outside our control. Someone else can outbid you at any time.",
-            "Site-level visit and view figures on the boards are real recorded counts. Zero means zero. They are not a promise of future traffic. Rank is never based on those figures — only on bid amount.",
+            "Site-level visit and view figures on the boards are not a promise of traffic. Rank is never based on those figures — only on bid amount.",
           ],
         },
         {

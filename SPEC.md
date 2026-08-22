@@ -20,19 +20,31 @@ Taglines:
 
 ---
 
-## 1. Traffic counts (real only)
+## 1. Site view / visit display scaling (internal)
 
-**Site-level “visits today” and “total views” are raw recorded integers.** Zero means zero. No display multipliers, no fake inflation. Rank is never based on these figures — only on bid amount.
+Display-only scaling for **site-level total views** and **visits today**. Never used for live/concurrent viewers. **Never changes rank.** Not disclosed on public pages.
+
+### Rules
+
+| Rule | Implementation |
+|---|---|
+| Start up to 6× on day 1 | `hypeMultiplier`: per-board `hype_factor` in [1.2, 6] |
+| Linear drop every 24 hours | steps down to 1× over 21 days |
+| Exactly 1× after 21 days | elapsed days ≥ 21 → 1 |
+| Real daily visits ≥ 8,000 | `hype_locked = true` forever, multiplier 1× |
+| Storage | Real integers in `site_stats`. Only the painted number is scaled |
+| Public copy | Neutral. No mention of scaling. Rank copy unchanged |
 
 ### What is a view vs a visit
 
 - **View:** one page impression of the portal (counts all three boards once per session), a board, a listing, or the activity tape. Stored in `site_stats.views`. Not counted on poll refetches. Deduped per browser session.
-- **Visit:** outbound click (“Visit page” / “Open board”). Increments `listings.clicks` (shown on the row) **and** `site_stats.visits` + `visits_today`.
+- **Visit:** outbound click (“Visit page” / “Open board”). Increments `listings.clicks` (real, shown on the row) **and** `site_stats.visits` + `visits_today` (real; **displayed** total may be scaled).
 
 ### What it is not
 
 - Not concurrent viewers.
 - Not a rank signal.
+- Per-listing click numbers on a row are **unscaled**.
 - No IPs or unique-visitor de-dupe.
 - Paid listing outbound links use `rel="sponsored"`.
 

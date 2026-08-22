@@ -102,10 +102,9 @@ function SpecPage() {
             platform.
           </li>
           <li>
-            <strong className="text-fg">Real counts only.</strong> Site-level “visits
-            today” and “total views” are recorded counts — zero means zero. They do
-            not affect rank. Per-listing click counts on a row are real outbound
-            clicks.
+            <strong className="text-fg">No traffic promise.</strong> Site-level “visits
+            today” and “total views” are not a promise of traffic and do not affect
+            rank. Per-listing click counts on a row are outbound clicks from the board.
           </li>
           <li>
             <strong className="text-fg">Manage links.</strong> If you lose the manage
