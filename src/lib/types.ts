@@ -62,4 +62,5 @@ export type PublicOrder = {
   /** Cashfree India charge in whole rupees (board bid stays USD). */
   inrRupees: number;
   inrPerUsd: number;
+  fxSource: "live" | "fallback";
 };

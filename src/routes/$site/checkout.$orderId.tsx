@@ -185,15 +185,14 @@ function CashfreePanel({
           <CashfreeMark />
           <span className="text-sm font-medium tracking-tight">cashfree</span>
         </div>
-        <span className="cf-chip rounded-full px-2.5 py-1 text-xs font-medium uppercase tracking-wider">
-          {data.gatewayMode}
-        </span>
       </div>
       <div className="px-5 pb-5">
         <p className="text-xs uppercase tracking-wider cf-muted">Amount payable (INR)</p>
         <p className="mt-1 tabular text-3xl font-medium">{formatInr(data.inrRupees)}</p>
         <p className="mt-1 text-sm cf-muted">
-          Board bid {formatUsd(data.amountCents)} · ≈ ₹{data.inrPerUsd}/USD
+          Board bid {formatUsd(data.amountCents)} · ₹
+          {Number(data.inrPerUsd).toFixed(2)}/USD
+          {data.fxSource === "live" ? " · live rate" : " · fallback rate"}
         </p>
         <p className="mt-1 text-sm cf-muted">
           {data.chargeLabel} · {data.title}
@@ -241,7 +240,18 @@ function CashfreePanel({
             : `Pay ${formatInr(data.inrRupees)} · ${METHODS.find((m) => m.id === method)?.label}`}
         </button>
         <p className="mt-3 text-center text-xs cf-muted">
-          PCI DSS · Powered by Cashfree Payments · India · live
+          PCI DSS · Powered by Cashfree Payments · India
+        </p>
+        <p className="mt-1 text-center text-xs cf-muted">
+          FX via{" "}
+          <a
+            href="https://www.exchangerate-api.com"
+            className="underline underline-offset-2"
+            target="_blank"
+            rel="noreferrer"
+          >
+            Exchange Rate API
+          </a>
         </p>
       </div>
     </div>

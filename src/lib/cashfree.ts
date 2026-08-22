@@ -1,5 +1,7 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 
+import { getUsdInrQuote, usdCentsToInrRupees } from "@/lib/fx";
+
 export type CashfreeSession = {
   live: boolean;
   mode: "sandbox" | "production";
@@ -8,18 +10,8 @@ export type CashfreeSession = {
   /** Amount sent to Cashfree in INR major units (rupees). */
   inrRupees: number;
   inrPerUsd: number;
+  fxSource: "live" | "fallback";
 };
-
-/** Board bids stay USD; Cashfree India collects INR until a global PG is wired. */
-export function inrPerUsdRate() {
-  const n = Number(process.env.INR_PER_USD || "85");
-  return Number.isFinite(n) && n > 0 ? n : 85;
-}
-
-export function usdCentsToInrRupees(amountCents: number) {
-  const dollars = Math.max(0, Number(amountCents) / 100);
-  return Math.max(1, Math.round(dollars * inrPerUsdRate()));
-}
 
 function envMode(): "sandbox" | "production" {
   return process.env.CASHFREE_MODE === "production" ? "production" : "sandbox";
@@ -63,8 +55,9 @@ export async function createCashfreeSession(opts: {
   const customerId =
     `anon_${opts.orderId.replace(/[^a-zA-Z0-9_-]/g, "").slice(-40)}` || "guest";
   const email = opts.email?.trim();
-  const inrPerUsd = inrPerUsdRate();
-  const inrRupees = usdCentsToInrRupees(opts.amountCents);
+  const fx = await getUsdInrQuote();
+  const inrPerUsd = fx.inrPerUsd;
+  const inrRupees = usdCentsToInrRupees(opts.amountCents, inrPerUsd);
   const res = await fetch(`${apiHost()}/pg/orders`, {
     method: "POST",
     headers: authHeaders(),
@@ -102,6 +95,7 @@ export async function createCashfreeSession(opts: {
     cfOrderId: json.order_id ?? opts.orderId,
     inrRupees,
     inrPerUsd,
+    fxSource: fx.source,
   };
 }
 
