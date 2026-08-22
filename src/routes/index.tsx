@@ -52,12 +52,13 @@ function Home() {
           Three boards. One mechanic.
         </p>
         <h1 className="rise-in rise-in-2 mt-3 max-w-3xl font-display text-4xl leading-tight tracking-tight sm:mt-4 sm:text-7xl">
-          Pay to rank.
+          Pay ONCE to rank.
           <span className="italic text-muted"> Highest bid stands first.</span>
         </h1>
         <p className="rise-in rise-in-3 mt-3 max-w-2xl text-sm text-muted sm:mt-5 sm:text-lg">
           Trust the founding team. Rank your culture. Then find where else to spend
-          the rest of the budget. Whole dollars. Five dollar floor. Re-bids pay the difference.
+          the rest of the budget. No complex algorithms to be seen. Five dollar floor.
+          Re-bids pay the difference.
         </p>
       </section>
 
