@@ -1,25 +1,23 @@
 # State
 
-Current phase: PHASE_00_FOUNDATION
-Status: COMPLETE (2026-08-26)
+Current phase: PHASE_00_5_ALIGNMENT
+Status: implementation complete — clean-SHA release in progress (2026-08-27)
+Phase 00 foundation: COMPLETE (2026-08-26).
 
 Completed:
-- documentation bootstrap (AGENTS.md contract; 00_PRODUCT; ROADMAP; 01–05; LEGACY_MIGRATION audit; ops/ runbooks)
-- Phase 00 (W1–W11): legacy product removed (boards/Crown/swap/hype/portal//spec), host-aware coming-next surfaces on all four domains, fail-closed webhook + atomic claim-guard settlement + FX fallback visibility, truthful views/visits/clicks analytics, pure build (no DB in build; local runtimes hermetic PGLite; Vercel production fails loudly without DATABASE_URL), request-id + JSON error envelope, Grok chrome / auth scaffold / 35 dead deps removed, 83 tests green, 0009_foundation.sql gated-applied to prod, SPEC.md + legacy docs archived
-- Production: deployment bidthrone-5e612txbc live on bidthrone.lol (+ www, foundersbid, bidception, www.culturebid) — domain-specific title/canonical/OG/robots/sitemap verified; legacy paths 308 → /; unknown host → bidthrone umbrella; unsigned webhook → 401 fail-closed; prod ledger 0002–0009; row counts unchanged (listings 0 / orders 4 pending / activity 0 / crown_* 0)
+- Phase 00 (W1–W11): legacy product removed; host-aware surfaces; fail-closed webhook + atomic settlement; truthful analytics; pure build; request-id + JSON envelope; 0009 gated-applied to prod.
+- Phase 00.5 (WS0–WS9): Phase 00 chain pushed to GitHub (origin/main, fast-forward, no force-push); legal copy rewritten to pre-launch truth (no legacy product language — regression-tested); four distinct pre-launch product pages with labelled EXAMPLE/DEMO content; founding-access capture (email + role + host-derived origin + consent; honeypot + per-IP rate limit + email uniqueness; migration 0010 gated-applied); header CTA primary / theme secondary; DNS-safe cross-links for culturebid; host-aware sitemaps + branded 404 (HTTP 404, noindex,follow, no canonical for missing paths); graceful stale-serverFn 404 instead of unhandled 500; security header baseline (non-permissive CSP with per-request nonces, nosniff, referrer, permissions); PGLite excluded from cloud build output (loud cloud misconfig); dormant Vercel env vars removed (12).
 
 Next:
-- specify PHASE_01_FOUNDERSBID (docs/phases/PHASE_01_FOUNDERSBID.md). Do NOT start Phase 01 until specified + authorized.
+- finish the release: push 00.5 chain, Vercel preview + production deploy from the clean pushed SHA, verify domains/logs, mark the phase checklist COMPLETE.
+- then: specify PHASE_01_FOUNDERSBID. Do NOT start Phase 01 until specified + authorized.
 
 Blocked / external (non-repo):
-- culturebid.lol APEX DNS: public A records resolve to private IPs (10.0.1.3 / 10.10.0.1) → apex unreachable from the internet; www.culturebid.lol + all other domains are live. Fix = update the culturebid.lol zone's apex A records to Vercel (DNS provider console) — out of repo scope by design.
-- 4 legacy PENDING Cashfree orders: settle only via verified webhook; manual close/expiry = post-Phase 00 ops task.
-- Dormant Vercel env vars (VITE_AUTH_ENABLED, NEXT_PUBLIC_*, SUPABASE_*, CASHFREE_ENV) may be deleted from the project.
+- culturebid.lol APEX DNS: public A records resolve to private IPs → apex unreachable from the internet; www.culturebid.lol works. Exact correction + verification in docs/ops/DEPLOYMENT.md ("DNS note"). Until fixed, clickable cross-links use www.culturebid.lol.
+- Vercel ↔ GitHub Git-integration: needs the Vercel GitHub App installed for the account (browser-side). Until then releases are CLI deploys from the clean pushed SHA (docs/ops/DEPLOYMENT.md, "Releasing from a clean SHA").
+- 4 legacy PENDING Cashfree orders: settle only via verified webhook — operational runbook in docs/ops/LEGACY_ORDERS.md.
 
 Do not work on:
-- Phase 01+ implementation
-- bounty marketplace features
-- future gamification
+- Phase 01+ implementation / bounty marketplace features / future gamification
 
-Last verified commit: 803139e (2026-08-26, "Phase 00 docs: amend AC/FR …") + final docs/STATE commit
-Last deployment: bidthrone.lol PRODUCTION = deployment bidthrone-5e612txbc (commit 803139e era code, 2026-08-26) — Phase 00 surface live; Vercel preview bidthrone-bnncr7ay7 (build clean; team deployment-protection blocks anonymous probes — verified via local built preview instead).
+Last release: see docs/phases/PHASE_00_5_ALIGNMENT.md completion notes.
