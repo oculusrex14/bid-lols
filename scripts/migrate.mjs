@@ -1,21 +1,27 @@
 #!/usr/bin/env node
 /**
- * Deploy-time database migrator (node-postgres, `pg`).
+ * The ONLY database migration applier for real Postgres (node-postgres, `pg`).
  *
- * Runs during `npm run build` — on every Vercel deploy — applying pending files
- * in ../migrations to DATABASE_URL. Each file is applied in one transaction and
- * recorded in a `_migrations` table, so it runs once and is safe to re-run.
+ * Decoupled from the build (Phase 00, FR-6/FR-7): `npm run build` is a pure
+ * `vite build` with zero DB access. This script is the gated release step, run
+ * as:  DATABASE_URL=… node scripts/migrate.mjs [--dry-run]
  *
- * The read is non-recursive, so the opt-in auth schema under migrations/auth/
- * is not applied to an app that never asked for sign-in.
+ * Pending files in ../migrations are applied to DATABASE_URL, each in one
+ * transaction and recorded in a `_migrations` ledger, so it runs once and is
+ * safe to re-run. `--dry-run` lists what would apply and changes nothing.
  *
- * No DATABASE_URL (local / preview builds) -> skip; the PGLite fallback applies
- * the same files at startup instead (see src/lib/db.ts).
+ * The read is non-recursive, so the archived auth schema under
+ * migrations/auth/ is never applied.
+ *
+ * No DATABASE_URL -> skip with a message (local PGLite dev/preview applies the
+ * same files at startup instead; see src/lib/db.ts).
  */
 import { readdir, readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import pg from "pg";
+
+const DRY_RUN = process.argv.includes("--dry-run");
 import { pendingMigrations } from "./migration-plan.mjs";
 
 const databaseUrl = process.env.DATABASE_URL;
@@ -52,8 +58,16 @@ async function main() {
       (r) => r.name,
     );
 
+    const pending = pendingMigrations(entries, applied);
+    if (DRY_RUN) {
+      if (pending.length === 0) console.log("[migrate] dry-run: up to date, nothing to apply.");
+      for (const { name } of pending) console.log(`[migrate] dry-run: would apply ${name}`);
+      console.log(`[migrate] dry-run done — ${pending.length} pending, nothing applied.`);
+      return;
+    }
+
     let count = 0;
-    for (const { name } of pendingMigrations(entries, applied)) {
+    for (const { name } of pending) {
       const text = await readFile(join(migrationsDir, name), "utf8");
       try {
         await client.query("BEGIN");

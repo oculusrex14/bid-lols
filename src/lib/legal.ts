@@ -1,5 +1,9 @@
-import type { SiteId } from "@/lib/sites";
-import { SITES } from "@/lib/sites";
+import { product, type ProductKey } from "@/lib/host";
+
+/**
+ * Legal copy per product domain (Phase 00 keeps the legacy content, now
+ * host-aware; full copy review is a logged follow-up, not blocking).
+ */
 
 export const LEGAL_SLUGS = ["terms", "privacy", "refund", "contact"] as const;
 export type LegalSlug = (typeof LEGAL_SLUGS)[number];
@@ -15,38 +19,66 @@ export const LEGAL_NAV: { slug: LegalSlug; label: string }[] = [
   { slug: "contact", label: "Contact" },
 ];
 
-export function contactEmail(site: SiteId) {
-  return `contact@${SITES[site].domain}`;
+export function contactEmail(productKey: ProductKey) {
+  return product(productKey).contactEmail;
 }
 
 type Block = { heading?: string; body: string[] };
 
-export function legalDoc(site: SiteId, slug: LegalSlug): {
+/**
+ * The product-specific "what this domain is" lines. The three legacy products
+ * keep their original service descriptions; the umbrella domain describes
+ * itself honestly (no live service yet).
+ */
+function serviceBody(productKey: ProductKey): string[] {
+  const cfg = product(productKey);
+  switch (productKey) {
+    case "foundersbid":
+      return [
+        `${cfg.name} is a public pay-to-rank board. Rank is determined solely by the highest total bid, in whole US dollars, with a minimum of $5. There is no editorial ranking, no free slot, and no algorithm beyond bid amount and time of bid.`,
+        "Listings are for founding-team pages, about pages, studio sites, and personal founder URLs. The founding names you submit are published on the board.",
+      ];
+    case "culturebid":
+      return [
+        `${cfg.name} is a public pay-to-rank board. Rank is determined solely by the highest total bid, in whole US dollars, with a minimum of $5. There is no editorial ranking, no free slot, and no algorithm beyond bid amount and time of bid.`,
+        "Listings are for company culture, careers, and why-join-us pages. Culture statements, values, and optional quotes you submit are published on the board.",
+      ];
+    case "bidception":
+      return [
+        `${cfg.name} is a public pay-to-rank board. Rank is determined solely by the highest total bid, in whole US dollars, with a minimum of $5. There is no editorial ranking, no free slot, and no algorithm beyond bid amount and time of bid.`,
+        "Listings are for marketing platforms, directories, pay-to-rank tools, newsletter sponsorship boards, and community visibility products. The short note you submit is published on the board.",
+      ];
+    case "bidthrone":
+    default:
+      return [
+        `${cfg.name} is the reputation and discovery layer of the Bid Network — an internet bounty network across foundersbid.lol, culturebid.lol, and bidception.lol.`,
+        "Bidthrone does not itself run a board. Reputation will be built from genuine completed work and outcomes; you cannot buy a reputation rank.",
+      ];
+  }
+}
+
+export function legalDoc(productKey: ProductKey, slug: LegalSlug): {
   title: string;
   updated: string;
   intro: string;
   blocks: Block[];
 } {
-  const cfg = SITES[site];
-  const email = contactEmail(site);
-  const updated = "22 August 2026";
+  const cfg = product(productKey);
+  const email = contactEmail(productKey);
+  const updated = "26 August 2026";
 
   if (slug === "terms") {
     return {
       title: "Terms of service",
       updated,
-      intro: `These terms govern use of ${cfg.domain}. Payments are processed by Cashfree. By placing a bid, paying a swap fee, or using a manage link, you agree to them.`,
+      intro:
+        productKey === "bidthrone"
+          ? `These terms govern use of ${cfg.apex}. By using the site you agree to them.`
+          : `These terms govern use of ${cfg.apex}. Payments are processed by Cashfree. By placing a bid, paying a swap fee, or using a manage link, you agree to them.`,
       blocks: [
         {
           heading: "The service",
-          body: [
-            `${cfg.name} is a public pay-to-rank board. Rank is determined solely by the highest total bid, in whole US dollars, with a minimum of $5. There is no editorial ranking, no free slot, and no algorithm beyond bid amount and time of bid.`,
-            site === "founders"
-              ? "Listings are for founding-team pages, about pages, studio sites, and personal founder URLs. The founding names you submit are published on the board."
-              : site === "culture"
-                ? "Listings are for company culture, careers, and why-join-us pages. Culture statements, values, and optional quotes you submit are published on the board."
-                : "Listings are for marketing platforms, directories, pay-to-rank tools, newsletter sponsorship boards, and community visibility products. The short note you submit is published on the board.",
-          ],
+          body: serviceBody(productKey),
         },
         {
           heading: "Accounts and manage links",
@@ -83,7 +115,7 @@ export function legalDoc(site: SiteId, slug: LegalSlug): {
         {
           heading: "Liability",
           body: [
-            `${cfg.domain} is provided as-is, without warranties of merchantability, fitness for a particular purpose, or uninterrupted availability. Rank is a paid public ordering, not an endorsement of any listing, company, or page.`,
+            `${cfg.apex} is provided as-is, without warranties of merchantability, fitness for a particular purpose, or uninterrupted availability. Rank is a paid public ordering, not an endorsement of any listing, company, or page.`,
             "We are not liable for lost manage links, downtime, outbids, chargebacks, third-party payment processor issues, or how a visitor reads a listing. To the maximum extent allowed by law, our aggregate liability for any claim related to the service is limited to the amount you paid us for the relevant order in the thirty days before the claim.",
           ],
         },
@@ -99,7 +131,7 @@ export function legalDoc(site: SiteId, slug: LegalSlug): {
     return {
       title: "Privacy policy",
       updated,
-      intro: `${cfg.domain} is built without user accounts. This policy describes what little we store and what Cashfree processes when you pay.`,
+      intro: `${cfg.apex} is built without user accounts. This policy describes what little we store and what Cashfree processes when you pay.`,
       blocks: [
         {
           heading: "What we store",
@@ -155,7 +187,7 @@ export function legalDoc(site: SiteId, slug: LegalSlug): {
         {
           heading: "All paid charges are final",
           body: [
-            `Once Cashfree marks an order paid, the charge is non-refundable. That includes new listing bids, re-bid differences, and URL swap fees on ${cfg.domain}.`,
+            `Once Cashfree marks an order paid, the charge is non-refundable. That includes new listing bids, re-bid differences, and URL swap fees on ${cfg.apex}.`,
             "Rank is a public, paid position. Buying it is not a trial, not a subscription you can cancel, and not a product that can be returned.",
           ],
         },
@@ -199,11 +231,13 @@ export function legalDoc(site: SiteId, slug: LegalSlug): {
       {
         heading: "Email",
         body: [
-          site === "founders"
+          productKey === "foundersbid"
             ? "contact@foundersbid.lol — the only address for foundersbid.lol."
-            : site === "culture"
+            : productKey === "culturebid"
               ? "contact@culturebid.lol — the address for culturebid.lol. Foundersbid remains contact@foundersbid.lol."
-              : "contact@bidception.lol — the address for bidception.lol. Foundersbid remains contact@foundersbid.lol. Culturebid remains contact@culturebid.lol.",
+              : productKey === "bidception"
+                ? "contact@bidception.lol — the address for bidception.lol. Foundersbid remains contact@foundersbid.lol. Culturebid remains contact@culturebid.lol."
+                : "contact@bidthrone.lol — the address for the Bid Network umbrella.",
           "Say what you need in the subject: listing, payment, or legal.",
         ],
       },

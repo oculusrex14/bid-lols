@@ -52,8 +52,7 @@ export async function createCashfreeSession(opts: {
   returnUrl?: string;
 }): Promise<CashfreeSession> {
   const mode = envMode();
-  const customerId =
-    `anon_${opts.orderId.replace(/[^a-zA-Z0-9_-]/g, "").slice(-40)}` || "guest";
+  const customerId = `anon_${opts.orderId.replace(/[^a-zA-Z0-9_-]/g, "").slice(-40)}`;
   const email = opts.email?.trim();
   const fx = await getUsdInrQuote();
   const inrPerUsd = fx.inrPerUsd;
@@ -115,14 +114,35 @@ export async function cashfreeOrderIsPaid(orderId: string): Promise<boolean> {
   return false;
 }
 
+/** Webhook timestamps older/newer than this are rejected (replay window). */
+export const WEBHOOK_MAX_AGE_MS = 15 * 60 * 1000;
+
+/**
+ * Verify a Cashfree webhook signature. **Fails closed** — every misconfigured
+ * or unprovable case returns `false` (the caller responds 401 and settles
+ * nothing):
+ *
+ *  - no dedicated `CASHFREE_WEBHOOK_SECRET` configured -> `false`
+ *    (the Cashfree client secret is deliberately NOT a fallback: a leaked or
+ *    rotated client secret must never be able to impersonate the webhook);
+ *  - missing signature or timestamp -> `false`;
+ *  - timestamp outside ±15 minutes of now -> `false` (replay window);
+ *  - signature mismatch (constant-time compare) -> `false`.
+ *
+ * Signature scheme (unchanged from the live integration): base64 HMAC-SHA256
+ * over `timestamp + rawBody`, keyed with the webhook secret.
+ */
 export function verifyCashfreeWebhook(opts: {
   signature: string | null;
   timestamp: string | null;
   rawBody: string;
 }): boolean {
-  const secret = process.env.CASHFREE_WEBHOOK_SECRET ?? process.env.CASHFREE_CLIENT_SECRET;
-  if (!secret) return true;
+  const secret = (process.env.CASHFREE_WEBHOOK_SECRET ?? "").trim();
+  if (!secret) return false;
   if (!opts.signature || !opts.timestamp) return false;
+  const ts = Number(opts.timestamp);
+  if (!Number.isFinite(ts)) return false;
+  if (Math.abs(Date.now() - ts * 1000) > WEBHOOK_MAX_AGE_MS) return false;
   const expected = createHmac("sha256", secret)
     .update(opts.timestamp + opts.rawBody)
     .digest("base64");

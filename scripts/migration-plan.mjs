@@ -1,16 +1,23 @@
 // @ts-check
+import { dirname } from "node:path";
+import { fileURLToPath } from "node:url";
+
 /**
  * Migration bookkeeping shared by the two appliers — `scripts/migrate.mjs`
- * (deploy, `readdir`) and `src/lib/db.ts` (PGLite preview, `import.meta.glob`).
+ * (deploy, `readdir`) and `src/lib/db.ts` (PGLite dev/preview,
+ * `import.meta.glob`).
  *
  * Applied files are keyed by BASENAME, so the same file applies once no matter
- * which directory it is globbed from. That is what makes the auth schema safe to
- * copy from `migrations/auth/` into `migrations/` when an app turns sign-in on:
- * a database that already has `0001_auth.sql` will not re-run it.
+ * which directory it is globbed from.
  *
- * Neither applier descends into subdirectories, so `migrations/auth/*.sql` is
- * out of scope for both until it is copied up.
+ * Neither applier descends into subdirectories, so `migrations/auth/*.sql`
+ * (the archived, never-applied Better Auth schema) is out of scope for both.
  */
+
+/** The workspace root (this file lives in `<root>/scripts/`). */
+export function projectRoot() {
+  return dirname(dirname(fileURLToPath(import.meta.url)));
+}
 
 /**
  * The `_migrations` key for a migration path (or bare filename).

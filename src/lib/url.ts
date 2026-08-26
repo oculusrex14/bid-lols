@@ -18,11 +18,3 @@ export function normalizeUrl(raw: string) {
   parsed.hostname = parsed.hostname.toLowerCase();
   return parsed.toString();
 }
-
-export function urlKey(url: string) {
-  const u = new URL(normalizeUrl(url));
-  const host = u.hostname.replace(/^www\./, "");
-  const path = u.pathname === "/" ? "" : u.pathname;
-  const search = u.search;
-  return `${host}${path}${search}`.toLowerCase();
-}

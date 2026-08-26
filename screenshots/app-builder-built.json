@@ -1,0 +1,34 @@
+{
+  "url": "http://127.0.0.1:8081/",
+  "viewports": {
+    "desktop": {
+      "width": 1280,
+      "height": 800,
+      "status": 200,
+      "title": "bidthrone.lol — Bidthrone, the Bid Network",
+      "hasCanvas": false,
+      "bodyTextLen": 764,
+      "bodyTextHash": "44568c330b20ffbd31975ce18cc873ee2dab37134ea10a1ed66305d1a7e7d9ee",
+      "bodyTextPrefix": "bidthrone COMING NEXT Light Dark BIDTHRONE.LOL Bidthrone The rep",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/Users/oculus/Projects/lol/screenshots/app-builder-built.png"
+    },
+    "mobile": {
+      "width": 390,
+      "height": 844,
+      "status": 200,
+      "title": "bidthrone.lol — Bidthrone, the Bid Network",
+      "hasCanvas": false,
+      "bodyTextLen": 752,
+      "bodyTextHash": "ead7ff2a2b711d1e0b0005dfe041970c31f5f884e5570a5585304625a42c46fd",
+      "bodyTextPrefix": "bidthrone Light Dark BIDTHRONE.LOL Bidthrone The reputation & di",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/Users/oculus/Projects/lol/screenshots/app-builder-built-mobile.png"
+    }
+  },
+  "verdictFile": "/Users/oculus/Projects/lol/screenshots/app-builder-built.json"
+}

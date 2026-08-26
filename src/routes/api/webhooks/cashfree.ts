@@ -1,25 +1,41 @@
+import { randomUUID } from "node:crypto";
 import { createFileRoute } from "@tanstack/react-router";
-import { confirmPayment } from "@/lib/board-fns";
 import { verifyCashfreeWebhook } from "@/lib/cashfree";
 
+/**
+ * Cashfree webhook — the ONLY settlement entry point (Phase 00, S-2).
+ *
+ * Fail-closed: missing/invalid signature, stale timestamp, or no configured
+ * webhook secret -> 401, nothing settled. Only verified paid events reach
+ * `settleOrder`, which re-verifies at the provider, claims atomically, and is
+ * idempotent. Machine-readable envelope { code, message, requestId } on
+ * errors (AC-18).
+ */
 export const Route = createFileRoute("/api/webhooks/cashfree")({
   component: () => null,
   server: {
     handlers: {
       POST: async ({ request }: { request: Request }) => {
+        const requestId = randomUUID();
+        const fail = (status: number, code: string, message: string) =>
+          Response.json({ code, message, requestId }, {
+            status,
+            headers: { "x-request-id": requestId },
+          });
+
         const rawBody = await request.text();
-        const signed = verifyCashfreeWebhook({
+        const verified = verifyCashfreeWebhook({
           signature: request.headers.get("x-webhook-signature"),
           timestamp: request.headers.get("x-webhook-timestamp"),
           rawBody,
         });
-        if (!signed) return new Response("invalid signature", { status: 401 });
+        if (!verified) return fail(401, "invalid_signature", "Webhook signature verification failed.");
 
         let body: Record<string, unknown> = {};
         try {
           body = JSON.parse(rawBody) as Record<string, unknown>;
         } catch {
-          return new Response("invalid json", { status: 400 });
+          return fail(400, "invalid_json", "Body is not valid JSON.");
         }
 
         const type = String(body.type ?? body.event ?? "");
@@ -37,21 +53,31 @@ export const Route = createFileRoute("/api/webhooks/cashfree")({
           type === "order.paid" ||
           status === "SUCCESS" ||
           status === "PAID";
-        if (type && !paidEvent) {
-          return Response.json({ ok: true, ignored: type });
+        if (!paidEvent) {
+          return Response.json({ ok: true, ignored: type || "unpaid_event", requestId }, { status: 200 });
         }
 
-        const orderId = String(
-          order.order_id ?? order.orderId ?? body.order_id ?? "",
-        );
-        if (!orderId) return new Response("missing order", { status: 400 });
-        try {
-          await confirmPayment({ data: { orderId } });
-        } catch (err) {
-          const message = err instanceof Error ? err.message : "settle failed";
-          return Response.json({ ok: false, error: message }, { status: 409 });
+        const orderId = String(order.order_id ?? order.orderId ?? body.order_id ?? "");
+        if (!orderId) return fail(400, "missing_order_id", "Paid event has no order id.");
+
+        // Server-only module (DB + provider access): the SSR guard keeps it
+        // out of the client bundle; this handler never runs client-side.
+        if (!import.meta.env.SSR) return fail(500, "internal_error", "Settlement is unavailable.");
+        const { settleOrder } = await import("@/lib/settlement.server");
+        const result = await settleOrder(orderId);
+        if (result.ok) {
+          return Response.json(
+            { ok: true, orderId: result.orderId, alreadySettled: result.alreadySettled, requestId },
+            { status: 200, headers: { "x-request-id": requestId } },
+          );
         }
-        return Response.json({ ok: true, gateway: "cashfree" });
+        const statusByCode = {
+          order_not_found: 400,
+          order_not_settlable: 409,
+          not_paid_at_gateway: 409,
+          effect_failed: 500,
+        } as const;
+        return fail(statusByCode[result.code], result.code, result.message);
       },
     },
   },

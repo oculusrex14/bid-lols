@@ -10,21 +10,11 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as SiteRouteImport } from './routes/$site'
-import { Route as SpecRouteImport } from './routes/spec'
-import { Route as SiteIndexRouteImport } from './routes/$site/index'
-import { Route as SiteActivityRouteImport } from './routes/$site/activity'
-import { Route as SiteBidRouteImport } from './routes/$site/bid'
-import { Route as SiteContactRouteImport } from './routes/$site/contact'
-import { Route as SiteCrownRouteImport } from './routes/$site/crown'
-import { Route as SitePrivacyRouteImport } from './routes/$site/privacy'
-import { Route as SiteRefundRouteImport } from './routes/$site/refund'
-import { Route as SiteRulesRouteImport } from './routes/$site/rules'
-import { Route as SiteTermsRouteImport } from './routes/$site/terms'
+import { Route as ContactRouteImport } from './routes/contact'
+import { Route as PrivacyRouteImport } from './routes/privacy'
+import { Route as RefundRouteImport } from './routes/refund'
+import { Route as TermsRouteImport } from './routes/terms'
 import { Route as ApiFaviconRouteImport } from './routes/api/favicon'
-import { Route as SiteCheckoutOrderIdRouteImport } from './routes/$site/checkout.$orderId'
-import { Route as SiteListingIdRouteImport } from './routes/$site/listing.$id'
-import { Route as SiteManageTokenRouteImport } from './routes/$site/manage.$token'
 import { Route as ApiWebhooksCashfreeRouteImport } from './routes/api/webhooks/cashfree'
 
 const IndexRoute = IndexRouteImport.update({
@@ -32,80 +22,30 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const SiteRoute = SiteRouteImport.update({
-  id: '/$site',
-  path: '/$site',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SpecRoute = SpecRouteImport.update({
-  id: '/spec',
-  path: '/spec',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SiteIndexRoute = SiteIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => SiteRoute,
-} as any)
-const SiteActivityRoute = SiteActivityRouteImport.update({
-  id: '/activity',
-  path: '/activity',
-  getParentRoute: () => SiteRoute,
-} as any)
-const SiteBidRoute = SiteBidRouteImport.update({
-  id: '/bid',
-  path: '/bid',
-  getParentRoute: () => SiteRoute,
-} as any)
-const SiteContactRoute = SiteContactRouteImport.update({
+const ContactRoute = ContactRouteImport.update({
   id: '/contact',
   path: '/contact',
-  getParentRoute: () => SiteRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-const SiteCrownRoute = SiteCrownRouteImport.update({
-  id: '/crown',
-  path: '/crown',
-  getParentRoute: () => SiteRoute,
-} as any)
-const SitePrivacyRoute = SitePrivacyRouteImport.update({
+const PrivacyRoute = PrivacyRouteImport.update({
   id: '/privacy',
   path: '/privacy',
-  getParentRoute: () => SiteRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-const SiteRefundRoute = SiteRefundRouteImport.update({
+const RefundRoute = RefundRouteImport.update({
   id: '/refund',
   path: '/refund',
-  getParentRoute: () => SiteRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-const SiteRulesRoute = SiteRulesRouteImport.update({
-  id: '/rules',
-  path: '/rules',
-  getParentRoute: () => SiteRoute,
-} as any)
-const SiteTermsRoute = SiteTermsRouteImport.update({
+const TermsRoute = TermsRouteImport.update({
   id: '/terms',
   path: '/terms',
-  getParentRoute: () => SiteRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
 const ApiFaviconRoute = ApiFaviconRouteImport.update({
   id: '/api/favicon',
   path: '/api/favicon',
   getParentRoute: () => rootRouteImport,
-} as any)
-const SiteCheckoutOrderIdRoute = SiteCheckoutOrderIdRouteImport.update({
-  id: '/checkout/$orderId',
-  path: '/checkout/$orderId',
-  getParentRoute: () => SiteRoute,
-} as any)
-const SiteListingIdRoute = SiteListingIdRouteImport.update({
-  id: '/listing/$id',
-  path: '/listing/$id',
-  getParentRoute: () => SiteRoute,
-} as any)
-const SiteManageTokenRoute = SiteManageTokenRouteImport.update({
-  id: '/manage/$token',
-  path: '/manage/$token',
-  getParentRoute: () => SiteRoute,
 } as any)
 const ApiWebhooksCashfreeRoute = ApiWebhooksCashfreeRouteImport.update({
   id: '/api/webhooks/cashfree',
@@ -115,124 +55,68 @@ const ApiWebhooksCashfreeRoute = ApiWebhooksCashfreeRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/$site': typeof SiteRouteWithChildren
-  '/spec': typeof SpecRoute
-  '/$site/activity': typeof SiteActivityRoute
-  '/$site/bid': typeof SiteBidRoute
-  '/$site/contact': typeof SiteContactRoute
-  '/$site/crown': typeof SiteCrownRoute
-  '/$site/privacy': typeof SitePrivacyRoute
-  '/$site/refund': typeof SiteRefundRoute
-  '/$site/rules': typeof SiteRulesRoute
-  '/$site/terms': typeof SiteTermsRoute
+  '/contact': typeof ContactRoute
+  '/privacy': typeof PrivacyRoute
+  '/refund': typeof RefundRoute
+  '/terms': typeof TermsRoute
   '/api/favicon': typeof ApiFaviconRoute
-  '/$site/': typeof SiteIndexRoute
-  '/$site/checkout/$orderId': typeof SiteCheckoutOrderIdRoute
-  '/$site/listing/$id': typeof SiteListingIdRoute
-  '/$site/manage/$token': typeof SiteManageTokenRoute
   '/api/webhooks/cashfree': typeof ApiWebhooksCashfreeRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/spec': typeof SpecRoute
-  '/$site/activity': typeof SiteActivityRoute
-  '/$site/bid': typeof SiteBidRoute
-  '/$site/contact': typeof SiteContactRoute
-  '/$site/crown': typeof SiteCrownRoute
-  '/$site/privacy': typeof SitePrivacyRoute
-  '/$site/refund': typeof SiteRefundRoute
-  '/$site/rules': typeof SiteRulesRoute
-  '/$site/terms': typeof SiteTermsRoute
+  '/contact': typeof ContactRoute
+  '/privacy': typeof PrivacyRoute
+  '/refund': typeof RefundRoute
+  '/terms': typeof TermsRoute
   '/api/favicon': typeof ApiFaviconRoute
-  '/$site': typeof SiteIndexRoute
-  '/$site/checkout/$orderId': typeof SiteCheckoutOrderIdRoute
-  '/$site/listing/$id': typeof SiteListingIdRoute
-  '/$site/manage/$token': typeof SiteManageTokenRoute
   '/api/webhooks/cashfree': typeof ApiWebhooksCashfreeRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/$site': typeof SiteRouteWithChildren
-  '/spec': typeof SpecRoute
-  '/$site/activity': typeof SiteActivityRoute
-  '/$site/bid': typeof SiteBidRoute
-  '/$site/contact': typeof SiteContactRoute
-  '/$site/crown': typeof SiteCrownRoute
-  '/$site/privacy': typeof SitePrivacyRoute
-  '/$site/refund': typeof SiteRefundRoute
-  '/$site/rules': typeof SiteRulesRoute
-  '/$site/terms': typeof SiteTermsRoute
+  '/contact': typeof ContactRoute
+  '/privacy': typeof PrivacyRoute
+  '/refund': typeof RefundRoute
+  '/terms': typeof TermsRoute
   '/api/favicon': typeof ApiFaviconRoute
-  '/$site/': typeof SiteIndexRoute
-  '/$site/checkout/$orderId': typeof SiteCheckoutOrderIdRoute
-  '/$site/listing/$id': typeof SiteListingIdRoute
-  '/$site/manage/$token': typeof SiteManageTokenRoute
   '/api/webhooks/cashfree': typeof ApiWebhooksCashfreeRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/$site'
-    | '/spec'
-    | '/$site/activity'
-    | '/$site/bid'
-    | '/$site/contact'
-    | '/$site/crown'
-    | '/$site/privacy'
-    | '/$site/refund'
-    | '/$site/rules'
-    | '/$site/terms'
+    | '/contact'
+    | '/privacy'
+    | '/refund'
+    | '/terms'
     | '/api/favicon'
-    | '/$site/'
-    | '/$site/checkout/$orderId'
-    | '/$site/listing/$id'
-    | '/$site/manage/$token'
     | '/api/webhooks/cashfree'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/spec'
-    | '/$site/activity'
-    | '/$site/bid'
-    | '/$site/contact'
-    | '/$site/crown'
-    | '/$site/privacy'
-    | '/$site/refund'
-    | '/$site/rules'
-    | '/$site/terms'
+    | '/contact'
+    | '/privacy'
+    | '/refund'
+    | '/terms'
     | '/api/favicon'
-    | '/$site'
-    | '/$site/checkout/$orderId'
-    | '/$site/listing/$id'
-    | '/$site/manage/$token'
     | '/api/webhooks/cashfree'
   id:
     | '__root__'
     | '/'
-    | '/$site'
-    | '/spec'
-    | '/$site/activity'
-    | '/$site/bid'
-    | '/$site/contact'
-    | '/$site/crown'
-    | '/$site/privacy'
-    | '/$site/refund'
-    | '/$site/rules'
-    | '/$site/terms'
+    | '/contact'
+    | '/privacy'
+    | '/refund'
+    | '/terms'
     | '/api/favicon'
-    | '/$site/'
-    | '/$site/checkout/$orderId'
-    | '/$site/listing/$id'
-    | '/$site/manage/$token'
     | '/api/webhooks/cashfree'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  SiteRoute: typeof SiteRouteWithChildren
-  SpecRoute: typeof SpecRoute
+  ContactRoute: typeof ContactRoute
+  PrivacyRoute: typeof PrivacyRoute
+  RefundRoute: typeof RefundRoute
+  TermsRoute: typeof TermsRoute
   ApiFaviconRoute: typeof ApiFaviconRoute
   ApiWebhooksCashfreeRoute: typeof ApiWebhooksCashfreeRoute
 }
@@ -246,82 +130,33 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/$site': {
-      id: '/$site'
-      path: '/$site'
-      fullPath: '/$site'
-      preLoaderRoute: typeof SiteRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/spec': {
-      id: '/spec'
-      path: '/spec'
-      fullPath: '/spec'
-      preLoaderRoute: typeof SpecRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/$site/': {
-      id: '/$site/'
-      path: '/'
-      fullPath: '/$site/'
-      preLoaderRoute: typeof SiteIndexRouteImport
-      parentRoute: typeof SiteRoute
-    }
-    '/$site/activity': {
-      id: '/$site/activity'
-      path: '/activity'
-      fullPath: '/$site/activity'
-      preLoaderRoute: typeof SiteActivityRouteImport
-      parentRoute: typeof SiteRoute
-    }
-    '/$site/bid': {
-      id: '/$site/bid'
-      path: '/bid'
-      fullPath: '/$site/bid'
-      preLoaderRoute: typeof SiteBidRouteImport
-      parentRoute: typeof SiteRoute
-    }
-    '/$site/contact': {
-      id: '/$site/contact'
+    '/contact': {
+      id: '/contact'
       path: '/contact'
-      fullPath: '/$site/contact'
-      preLoaderRoute: typeof SiteContactRouteImport
-      parentRoute: typeof SiteRoute
+      fullPath: '/contact'
+      preLoaderRoute: typeof ContactRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/$site/crown': {
-      id: '/$site/crown'
-      path: '/crown'
-      fullPath: '/$site/crown'
-      preLoaderRoute: typeof SiteCrownRouteImport
-      parentRoute: typeof SiteRoute
-    }
-    '/$site/privacy': {
-      id: '/$site/privacy'
+    '/privacy': {
+      id: '/privacy'
       path: '/privacy'
-      fullPath: '/$site/privacy'
-      preLoaderRoute: typeof SitePrivacyRouteImport
-      parentRoute: typeof SiteRoute
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/$site/refund': {
-      id: '/$site/refund'
+    '/refund': {
+      id: '/refund'
       path: '/refund'
-      fullPath: '/$site/refund'
-      preLoaderRoute: typeof SiteRefundRouteImport
-      parentRoute: typeof SiteRoute
+      fullPath: '/refund'
+      preLoaderRoute: typeof RefundRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/$site/rules': {
-      id: '/$site/rules'
-      path: '/rules'
-      fullPath: '/$site/rules'
-      preLoaderRoute: typeof SiteRulesRouteImport
-      parentRoute: typeof SiteRoute
-    }
-    '/$site/terms': {
-      id: '/$site/terms'
+    '/terms': {
+      id: '/terms'
       path: '/terms'
-      fullPath: '/$site/terms'
-      preLoaderRoute: typeof SiteTermsRouteImport
-      parentRoute: typeof SiteRoute
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/api/favicon': {
       id: '/api/favicon'
@@ -329,27 +164,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/api/favicon'
       preLoaderRoute: typeof ApiFaviconRouteImport
       parentRoute: typeof rootRouteImport
-    }
-    '/$site/checkout/$orderId': {
-      id: '/$site/checkout/$orderId'
-      path: '/checkout/$orderId'
-      fullPath: '/$site/checkout/$orderId'
-      preLoaderRoute: typeof SiteCheckoutOrderIdRouteImport
-      parentRoute: typeof SiteRoute
-    }
-    '/$site/listing/$id': {
-      id: '/$site/listing/$id'
-      path: '/listing/$id'
-      fullPath: '/$site/listing/$id'
-      preLoaderRoute: typeof SiteListingIdRouteImport
-      parentRoute: typeof SiteRoute
-    }
-    '/$site/manage/$token': {
-      id: '/$site/manage/$token'
-      path: '/manage/$token'
-      fullPath: '/$site/manage/$token'
-      preLoaderRoute: typeof SiteManageTokenRouteImport
-      parentRoute: typeof SiteRoute
     }
     '/api/webhooks/cashfree': {
       id: '/api/webhooks/cashfree'
@@ -361,42 +175,12 @@ declare module '@tanstack/react-router' {
   }
 }
 
-interface SiteRouteChildren {
-  SiteActivityRoute: typeof SiteActivityRoute
-  SiteBidRoute: typeof SiteBidRoute
-  SiteContactRoute: typeof SiteContactRoute
-  SiteCrownRoute: typeof SiteCrownRoute
-  SitePrivacyRoute: typeof SitePrivacyRoute
-  SiteRefundRoute: typeof SiteRefundRoute
-  SiteRulesRoute: typeof SiteRulesRoute
-  SiteTermsRoute: typeof SiteTermsRoute
-  SiteIndexRoute: typeof SiteIndexRoute
-  SiteCheckoutOrderIdRoute: typeof SiteCheckoutOrderIdRoute
-  SiteListingIdRoute: typeof SiteListingIdRoute
-  SiteManageTokenRoute: typeof SiteManageTokenRoute
-}
-
-const SiteRouteChildren: SiteRouteChildren = {
-  SiteActivityRoute: SiteActivityRoute,
-  SiteBidRoute: SiteBidRoute,
-  SiteContactRoute: SiteContactRoute,
-  SiteCrownRoute: SiteCrownRoute,
-  SitePrivacyRoute: SitePrivacyRoute,
-  SiteRefundRoute: SiteRefundRoute,
-  SiteRulesRoute: SiteRulesRoute,
-  SiteTermsRoute: SiteTermsRoute,
-  SiteIndexRoute: SiteIndexRoute,
-  SiteCheckoutOrderIdRoute: SiteCheckoutOrderIdRoute,
-  SiteListingIdRoute: SiteListingIdRoute,
-  SiteManageTokenRoute: SiteManageTokenRoute,
-}
-
-const SiteRouteWithChildren = SiteRoute._addFileChildren(SiteRouteChildren)
-
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  SiteRoute: SiteRouteWithChildren,
-  SpecRoute: SpecRoute,
+  ContactRoute: ContactRoute,
+  PrivacyRoute: PrivacyRoute,
+  RefundRoute: RefundRoute,
+  TermsRoute: TermsRoute,
   ApiFaviconRoute: ApiFaviconRoute,
   ApiWebhooksCashfreeRoute: ApiWebhooksCashfreeRoute,
 }

@@ -10,8 +10,12 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
-import { isMigrationFile, migrationName, pendingMigrations } from "./migration-plan.mjs";
-import { projectRoot } from "./with-app-env.mjs";
+import {
+  isMigrationFile,
+  migrationName,
+  pendingMigrations,
+  projectRoot,
+} from "./migration-plan.mjs";
 
 const AUTH_MIGRATION = "0001_auth.sql";
 
@@ -58,8 +62,11 @@ test("non-.sql entries are dropped (readdir also yields the auth/ directory)", (
 
 test("the auth schema ships outside the globbed directory", () => {
   const migrationsDir = join(projectRoot(), "migrations");
-  assert.deepEqual(pendingMigrations(readdirSync(migrationsDir), []), []);
-  assert.ok(readdirSync(join(migrationsDir, "auth")).includes("0001_auth.sql"));
+  // The Better Auth schema is opt-in and must NOT live in the top-level
+  // globbed directory — it sits in migrations/auth/ and is never applied by
+  // either applier until an app turns sign-in on.
+  assert.ok(!readdirSync(migrationsDir).includes(AUTH_MIGRATION));
+  assert.ok(readdirSync(join(migrationsDir, "auth")).includes(AUTH_MIGRATION));
 });
 
 test("this workspace's auth schema copy is byte-identical to its source", () => {

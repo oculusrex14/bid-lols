@@ -1,14 +1,7 @@
 import { Link } from "@tanstack/react-router";
-import type { SiteId } from "@/lib/sites";
 import { cn } from "@/lib/cn";
 
-export function LegalLinks({
-  site,
-  className,
-}: {
-  site: SiteId;
-  className?: string;
-}) {
+export function LegalLinks({ className }: { className?: string }) {
   return (
     <nav
       aria-label="Legal"
@@ -17,16 +10,16 @@ export function LegalLinks({
         className,
       )}
     >
-      <Link to="/$site/terms" params={{ site }} className="underline-offset-4 hover:underline">
+      <Link to="/terms" className="underline-offset-4 hover:underline">
         Terms
       </Link>
-      <Link to="/$site/privacy" params={{ site }} className="underline-offset-4 hover:underline">
+      <Link to="/privacy" className="underline-offset-4 hover:underline">
         Privacy
       </Link>
-      <Link to="/$site/refund" params={{ site }} className="underline-offset-4 hover:underline">
+      <Link to="/refund" className="underline-offset-4 hover:underline">
         Refund
       </Link>
-      <Link to="/$site/contact" params={{ site }} className="underline-offset-4 hover:underline">
+      <Link to="/contact" className="underline-offset-4 hover:underline">
         Contact
       </Link>
     </nav>

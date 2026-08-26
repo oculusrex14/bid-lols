@@ -56,13 +56,25 @@ export async function getUsdInrQuote(): Promise<FxQuote> {
   } catch {
     /* use fallback */
   }
+  // S-7 (Phase 00): a fallback rate is a visible, logged, recorded event —
+  // never a silent swap. Callers persist the quote (rate + source + asOf) on
+  // the order payload / audit trail so any charge is explainable.
   const fallback: FxQuote = {
     inrPerUsd: envFallbackRate(),
     source: "fallback",
     asOf: null,
   };
+  console.warn(
+    "[fx] live USD->INR rate unavailable; charging at the configured fallback rate",
+    { inrPerUsd: fallback.inrPerUsd, source: fallback.source },
+  );
   cache = { quote: fallback, fetchedAt: now };
   return fallback;
+}
+
+/** Test seam: drop the in-process quote cache so the next call re-fetches. */
+export function resetFxCache(): void {
+  cache = null;
 }
 
 export function usdCentsToInrRupees(amountCents: number, inrPerUsd: number) {
