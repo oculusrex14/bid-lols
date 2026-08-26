@@ -1,7 +1,11 @@
 node_modules/
 .project_id
 .github_repo
-.env
-.env.*
-.vercel
 .env*
+.vercel
+
+# Smoke/test artifacts: track only the two baseline verdict JSONs the smoke gate
+# consumes (scripts/browser-smoke.mjs), ignore every capture (PNG + other JSON).
+screenshots/*
+!screenshots/app-builder-preview.json
+!screenshots/app-builder-built.json
