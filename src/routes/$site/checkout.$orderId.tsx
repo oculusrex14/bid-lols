@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Building2, CreditCard, Smartphone, Wallet } from "lucide-react";
 import { confirmPayment, getOrder } from "@/lib/board-fns";
-import { formatInr, formatUsd, hostOf } from "@/lib/format";
+import { formatInr, formatPassDate, formatUsd, hostOf } from "@/lib/format";
 import { rememberOwned } from "@/lib/owned";
 import { COPY, isSiteId } from "@/lib/sites";
 import { cn } from "@/lib/cn";
@@ -35,7 +35,7 @@ function CheckoutPage() {
   const site = isSiteId(siteParam) ? siteParam : "founders";
   const [busy, setBusy] = useState(false);
   const [method, setMethod] = useState<(typeof METHODS)[number]["id"]>("upi");
-  const [saved, setSaved] = useState<{ token: string; email?: string } | null>(null);
+  const [saved, setSaved] = useState<{ token?: string; passExpiresAt?: string } | null>(null);
   const initial = Route.useLoaderData();
   const order = useQuery({
     queryKey: ["order", orderId],
@@ -54,7 +54,12 @@ function CheckoutPage() {
 
   async function settle() {
     const result = await confirmPayment({ data: { orderId } });
-    if (!result.token) throw new Error("Payment settled, manage link missing.");
+    if (result.kind === "oracle") {
+      setSaved({ passExpiresAt: result.passExpiresAt ?? undefined });
+      toast.success("Oracle Pass active.");
+      return;
+    }
+    if (!result.listing || !result.token) throw new Error("Payment settled, manage link missing.");
     rememberOwned({
       site: result.site,
       listingId: result.listing.id,
@@ -72,14 +77,14 @@ function CheckoutPage() {
   async function pay(data: PublicOrder) {
     setBusy(true);
     try {
-      if (!data.gatewayLive || data.gatewayMode !== "production") {
-        throw new Error("Live Cashfree checkout is not available for this order.");
+      if (!data.gatewayLive) {
+        throw new Error("Cashfree checkout is not available for this order.");
       }
       const Cashfree = (window as CfWindow).Cashfree;
       if (!Cashfree) {
         throw new Error("Cashfree checkout is still loading. Wait a moment and try again.");
       }
-      const cf = Cashfree({ mode: "production" });
+      const cf = Cashfree({ mode: data.gatewayMode });
       const result = (await cf.checkout({
         paymentSessionId: data.paymentSessionId,
         redirectTarget: "_modal",
@@ -117,7 +122,22 @@ function CheckoutPage() {
         </p>
       ) : null}
 
-      {saved ? (
+      {saved?.passExpiresAt ? (
+        <div className="mt-8 rounded-xl bg-surface p-5 shadow-[var(--shadow-border)]">
+          <p className="text-sm font-medium text-up">Oracle Pass is live.</p>
+          <p className="mt-1 text-sm text-muted">
+            Active until {formatPassDate(saved.passExpiresAt)} (UTC). Extra picks,
+            5× points and crowd odds are on.
+          </p>
+          <Link
+            to="/$site/crown"
+            params={{ site }}
+            className="mt-4 inline-block text-sm text-fg hover:underline"
+          >
+            Back to the crown →
+          </Link>
+        </div>
+      ) : saved?.token ? (
         <div className="mt-8">
           <p className="text-sm text-up">Paid. The listing is live.</p>
           <ManageLinkSave href={manageHref(window.location.origin, site, saved.token)} />
@@ -131,12 +151,30 @@ function CheckoutPage() {
         </div>
       ) : data ? (
         data.status === "paid" ? (
-          <p className="mt-8 text-sm text-up">
-            Already paid on Cashfree. Open manage from your saved link.
-          </p>
+          data.kind === "oracle" ? (
+            <div className="mt-8">
+              <p className="text-sm text-up">Oracle Pass is active.</p>
+              <p className="mt-1 text-sm text-muted">
+                This order was already paid.
+              </p>
+              <Link
+                to="/$site/crown"
+                params={{ site }}
+                className="mt-4 inline-block text-sm text-fg hover:underline"
+              >
+                Back to the crown →
+              </Link>
+            </div>
+          ) : (
+            <p className="mt-8 text-sm text-up">
+              Already paid on Cashfree. Open manage from your saved link.
+            </p>
+          )
         ) : !data.gatewayLive ? (
           <p className="mt-8 text-danger">
-            Live Cashfree session missing. Go back and place the bid again.
+            {data.kind === "oracle"
+              ? "Live Cashfree session missing. Go back and buy the pass again."
+              : "Live Cashfree session missing. Go back and place the bid again."}
           </p>
         ) : (
           <CashfreePanel
@@ -190,14 +228,16 @@ function CashfreePanel({
         <p className="text-xs uppercase tracking-wider cf-muted">Amount payable (INR)</p>
         <p className="mt-1 tabular text-3xl font-medium">{formatInr(data.inrRupees)}</p>
         <p className="mt-1 text-sm cf-muted">
-          Board bid {formatUsd(data.amountCents)} · ₹
+          {data.kind === "oracle" ? "Oracle Pass" : "Board bid"} {formatUsd(data.amountCents)} · ₹
           {Number(data.inrPerUsd).toFixed(2)}/USD
           {data.fxSource === "live" ? " · live rate" : " · fallback rate"}
         </p>
         <p className="mt-1 text-sm cf-muted">
           {data.chargeLabel} · {data.title}
         </p>
-        <p className="mt-1 truncate text-xs cf-muted">{hostOf(data.url) || data.url}</p>
+        {data.url ? (
+          <p className="mt-1 truncate text-xs cf-muted">{hostOf(data.url)}</p>
+        ) : null}
 
         <dl className="mt-4 space-y-2 text-xs cf-muted">
           <div className="flex justify-between gap-3">

@@ -1,0 +1,38 @@
+{
+  "url": "http://127.0.0.1:8080/bidception/crown",
+  "viewports": {
+    "desktop": {
+      "width": 1280,
+      "height": 800,
+      "status": 200,
+      "title": "bidception.lol",
+      "hasCanvas": false,
+      "bodyTextLen": 620,
+      "bodyTextHash": "2eab410488c186208e184594fa1721c85f48bdea089bbaec97e51ba7b187eea7",
+      "bodyTextPrefix": "b bidception .lol Board Crown Rules Live Bid now APPEARANCE Ligh",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/Users/oculus/Projects/lol/screenshots/crown-crown-dev.png"
+    },
+    "mobile": {
+      "width": 390,
+      "height": 844,
+      "status": 200,
+      "title": "bidception.lol",
+      "hasCanvas": false,
+      "bodyTextLen": 660,
+      "bodyTextHash": "9ebbdb56be504e52e85aa80fe5c0ab8a4d15120f2ec0cf4fdc89611782400ac0",
+      "bodyTextPrefix": "b bidception Bid now Board Crown Rules Live APPEARANCE Light Dar",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/Users/oculus/Projects/lol/screenshots/crown-crown-dev-mobile.png"
+    }
+  },
+  "brandWarnings": [
+    "BRAND NOTE: no custom public/og.jpg — the platform will serve the og.grok.me placeholder. Custom cards are the default for games of every kind (DOM board/word games included), whimsical apps, creative tools, and brand-forward pages — only plain utilities (converters, CRUD trackers, admin dashboards) keep the placeholder. If this app is not a plain utility, finish the brand-asset pass per /workspace/.grok/skills/og/SKILL.md."
+  ],
+  "authWarnings": [],
+  "verdictFile": "/Users/oculus/Projects/lol/screenshots/crown-crown-dev.json"
+}

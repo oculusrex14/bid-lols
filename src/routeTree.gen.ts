@@ -16,6 +16,7 @@ import { Route as SiteIndexRouteImport } from './routes/$site/index'
 import { Route as SiteActivityRouteImport } from './routes/$site/activity'
 import { Route as SiteBidRouteImport } from './routes/$site/bid'
 import { Route as SiteContactRouteImport } from './routes/$site/contact'
+import { Route as SiteCrownRouteImport } from './routes/$site/crown'
 import { Route as SitePrivacyRouteImport } from './routes/$site/privacy'
 import { Route as SiteRefundRouteImport } from './routes/$site/refund'
 import { Route as SiteRulesRouteImport } from './routes/$site/rules'
@@ -59,6 +60,11 @@ const SiteBidRoute = SiteBidRouteImport.update({
 const SiteContactRoute = SiteContactRouteImport.update({
   id: '/contact',
   path: '/contact',
+  getParentRoute: () => SiteRoute,
+} as any)
+const SiteCrownRoute = SiteCrownRouteImport.update({
+  id: '/crown',
+  path: '/crown',
   getParentRoute: () => SiteRoute,
 } as any)
 const SitePrivacyRoute = SitePrivacyRouteImport.update({
@@ -114,6 +120,7 @@ export interface FileRoutesByFullPath {
   '/$site/activity': typeof SiteActivityRoute
   '/$site/bid': typeof SiteBidRoute
   '/$site/contact': typeof SiteContactRoute
+  '/$site/crown': typeof SiteCrownRoute
   '/$site/privacy': typeof SitePrivacyRoute
   '/$site/refund': typeof SiteRefundRoute
   '/$site/rules': typeof SiteRulesRoute
@@ -131,6 +138,7 @@ export interface FileRoutesByTo {
   '/$site/activity': typeof SiteActivityRoute
   '/$site/bid': typeof SiteBidRoute
   '/$site/contact': typeof SiteContactRoute
+  '/$site/crown': typeof SiteCrownRoute
   '/$site/privacy': typeof SitePrivacyRoute
   '/$site/refund': typeof SiteRefundRoute
   '/$site/rules': typeof SiteRulesRoute
@@ -150,6 +158,7 @@ export interface FileRoutesById {
   '/$site/activity': typeof SiteActivityRoute
   '/$site/bid': typeof SiteBidRoute
   '/$site/contact': typeof SiteContactRoute
+  '/$site/crown': typeof SiteCrownRoute
   '/$site/privacy': typeof SitePrivacyRoute
   '/$site/refund': typeof SiteRefundRoute
   '/$site/rules': typeof SiteRulesRoute
@@ -170,6 +179,7 @@ export interface FileRouteTypes {
     | '/$site/activity'
     | '/$site/bid'
     | '/$site/contact'
+    | '/$site/crown'
     | '/$site/privacy'
     | '/$site/refund'
     | '/$site/rules'
@@ -187,6 +197,7 @@ export interface FileRouteTypes {
     | '/$site/activity'
     | '/$site/bid'
     | '/$site/contact'
+    | '/$site/crown'
     | '/$site/privacy'
     | '/$site/refund'
     | '/$site/rules'
@@ -205,6 +216,7 @@ export interface FileRouteTypes {
     | '/$site/activity'
     | '/$site/bid'
     | '/$site/contact'
+    | '/$site/crown'
     | '/$site/privacy'
     | '/$site/refund'
     | '/$site/rules'
@@ -274,6 +286,13 @@ declare module '@tanstack/react-router' {
       path: '/contact'
       fullPath: '/$site/contact'
       preLoaderRoute: typeof SiteContactRouteImport
+      parentRoute: typeof SiteRoute
+    }
+    '/$site/crown': {
+      id: '/$site/crown'
+      path: '/crown'
+      fullPath: '/$site/crown'
+      preLoaderRoute: typeof SiteCrownRouteImport
       parentRoute: typeof SiteRoute
     }
     '/$site/privacy': {
@@ -346,6 +365,7 @@ interface SiteRouteChildren {
   SiteActivityRoute: typeof SiteActivityRoute
   SiteBidRoute: typeof SiteBidRoute
   SiteContactRoute: typeof SiteContactRoute
+  SiteCrownRoute: typeof SiteCrownRoute
   SitePrivacyRoute: typeof SitePrivacyRoute
   SiteRefundRoute: typeof SiteRefundRoute
   SiteRulesRoute: typeof SiteRulesRoute
@@ -360,6 +380,7 @@ const SiteRouteChildren: SiteRouteChildren = {
   SiteActivityRoute: SiteActivityRoute,
   SiteBidRoute: SiteBidRoute,
   SiteContactRoute: SiteContactRoute,
+  SiteCrownRoute: SiteCrownRoute,
   SitePrivacyRoute: SitePrivacyRoute,
   SiteRefundRoute: SiteRefundRoute,
   SiteRulesRoute: SiteRulesRoute,

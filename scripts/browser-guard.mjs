@@ -9,6 +9,15 @@ import { resolve, sep } from "node:path";
 
 const LOOPBACK_HOSTNAMES = new Set(["127.0.0.1", "localhost", "::1", "[::1]"]);
 
+/**
+ * Where screenshots/verdicts may be written. The sandbox contract pins this to
+ * `/workspace`; `BROWSER_SMOKE_ROOT` lets a dev host (e.g. macOS) use its own
+ * project dir without loosening the loopback-URL rule.
+ */
+export function smokeOutputRoot() {
+  return process.env.BROWSER_SMOKE_ROOT || "/workspace";
+}
+
 /** http/https loopback only, else exit 1. `BROWSER_ALLOW_EXTERNAL_HOST=1` opts out. */
 export function checkedUrl(url) {
   let parsed;

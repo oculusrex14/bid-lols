@@ -1,7 +1,7 @@
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { getBoard } from "@/lib/board-fns";
-import { isSiteId, SITES } from "@/lib/sites";
+import { isSiteId, SITES, type SiteId } from "@/lib/sites";
 import { Leaderboard } from "@/components/leaderboard";
 import { ActivityFeed } from "@/components/activity-feed";
 import { StatsBar } from "@/components/stats-bar";
@@ -10,6 +10,7 @@ import { FoundersMasthead } from "@/components/founders-masthead";
 import { TrackSiteView } from "@/components/track-site-view";
 import { ClaimBox } from "@/components/claim-box";
 import { LeftoverBudgetCard, DiscoveryNote } from "@/components/leftover-budget";
+import { Crown } from "lucide-react";
 
 export const Route = createFileRoute("/$site/")({
   loader: ({ params }) => {
@@ -84,6 +85,7 @@ function BoardHome() {
           ) : (
             <p className="mt-4 text-sm text-subtle">Loading the tape…</p>
           )}
+          <CrownCard site={site} />
           <YourListings
             site={site}
             liveIds={board.listings.map((row) => row.id)}
@@ -91,6 +93,28 @@ function BoardHome() {
           <SwapCard />
         </div>
       </aside>
+    </div>
+  );
+}
+
+function CrownCard({ site }: { site: SiteId }) {
+  return (
+    <div className="mt-8 rounded-xl bg-surface p-4 shadow-[var(--shadow-border)]">
+      <div className="flex items-center gap-2">
+        <Crown className="size-4" />
+        <h3 className="text-sm font-medium">The Crown</h3>
+      </div>
+      <p className="mt-2 text-xs text-muted">
+        Who holds #1 at midnight UTC? Pick before the clock runs out — one free
+        pick a day, no account.
+      </p>
+      <Link
+        to="/$site/crown"
+        params={{ site }}
+        className="mt-2 inline-block text-xs font-medium hover:underline"
+      >
+        Play the crown →
+      </Link>
     </div>
   );
 }

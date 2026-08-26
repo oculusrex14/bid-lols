@@ -19,6 +19,7 @@ export function SiteShell({
 
   const nav = [
     { to: "/$site", label: "Board" },
+    { to: "/$site/crown", label: "Crown" },
     { to: "/$site/rules", label: "Rules" },
     { to: "/$site/activity", label: "Live" },
   ] as const;

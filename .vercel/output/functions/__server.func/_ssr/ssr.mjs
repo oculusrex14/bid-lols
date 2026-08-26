@@ -3,7 +3,7 @@ import { n as require_react } from "../_libs/@radix-ui/react-compose-refs+[...].
 import { A as _getRenderedMatches, B as rootRouteId, D as getStylesheetHref, E as getScriptPreloadAttrs, I as isRedirect, L as isResolvedRedirect, M as invariant, O as resolveManifestAssetLink, R as parseRedirect, V as isNotFound, a as isSsrResponse, c as stripSsrResponseBody, i as disposeSsrResponseDetached, j as executeRewriteInput, k as resolveManifestCssLink, n as bindSsrResponseToRequest, o as normalizeSsrResponse, p as RouterProvider, r as defineHandlerCallback, s as replaceSsrResponse, t as renderRouterToStream } from "../_libs/@tanstack/react-router+[...].mjs";
 import { n as createMemoryHistory } from "../_libs/tanstack__history.mjs";
 import { a as getOrigin, c as createSerializationAdapter, d as toCrossJSONAsync, f as toCrossJSONStream, i as getNormalizedURL, l as makeSerovalPlugin, n as mergeHeaders, o as defaultSerovalPlugins, r as attachRouterServerSsrUtils, s as createRawStreamRPCPlugin, t as waitForRequest, u as fromJSON } from "../_libs/@tanstack/router-core+[...].mjs";
-import { r as require_jsx_runtime } from "../_libs/react+tanstack__react-query.mjs";
+import { i as require_jsx_runtime } from "../_libs/react+tanstack__react-query.mjs";
 import { n as toResponse, t as H3Event } from "../_libs/h3-v2+rou3.mjs";
 import { AsyncLocalStorage } from "node:async_hooks";
 //#region node_modules/.nitro/vite/services/ssr/index.js
@@ -89,7 +89,7 @@ var HEADERS = { TSS_SHELL: "X-TSS_SHELL" };
 * the dev styles URL for route-scoped CSS collection.
 */
 async function getStartManifest(matchedRoutes) {
-	const { tsrStartManifest } = await import("../_tanstack-start-manifest_v-V2YMPHe3.mjs");
+	const { tsrStartManifest } = await import("../_tanstack-start-manifest_v-DTBATj_-.mjs");
 	const startManifest = tsrStartManifest();
 	let routes = startManifest.routes;
 	routes[rootRouteId];
@@ -111,47 +111,63 @@ async function getStartManifest(matchedRoutes) {
 var manifest = {
 	"02ce8b4f5428c757d1b2cc3d317cec158d6fe5fc562ae4ba365a5ce828860e9b": {
 		functionName: "getManaged_createServerFn_handler",
-		importer: () => import("./board-fns-BRuMf6MF.mjs")
+		importer: () => import("./board-fns-BiIfWICq.mjs")
 	},
 	"05da579c6e516855476589258619df623ee7e496651ed18189b61aec62d8f377": {
 		functionName: "getListing_createServerFn_handler",
-		importer: () => import("./board-fns-BRuMf6MF.mjs")
+		importer: () => import("./board-fns-BiIfWICq.mjs")
 	},
 	"51d37da3a6a2e78172cb3001e7058285bd097df76f95d491549e0a60dd724ab0": {
 		functionName: "quoteBid_createServerFn_handler",
-		importer: () => import("./board-fns-BRuMf6MF.mjs")
+		importer: () => import("./board-fns-BiIfWICq.mjs")
+	},
+	"5a045c76bc8ab5f2b9fcadfc1bb87281b106c18ad2c64046af91ba7316f8eded": {
+		functionName: "getCrown_createServerFn_handler",
+		importer: () => import("./crown-F04rL5Na.mjs")
 	},
 	"69cfd1c9eb676871b2ed4db048de66e189206315587bc346d376d6cfe83a2db1": {
 		functionName: "trackView_createServerFn_handler",
-		importer: () => import("./board-fns-BRuMf6MF.mjs")
+		importer: () => import("./board-fns-BiIfWICq.mjs")
 	},
 	"75257d72de85c38c000aa3cf197609266057a6483d5408a520738f52425a5a4f": {
 		functionName: "confirmPayment_createServerFn_handler",
-		importer: () => import("./board-fns-BRuMf6MF.mjs")
+		importer: () => import("./board-fns-BiIfWICq.mjs")
+	},
+	"7e3640d0254137b68eea2e561c9535acea8fec641e3ae1f3f696f5c6cedc0dd3": {
+		functionName: "placeCrownPick_createServerFn_handler",
+		importer: () => import("./crown-F04rL5Na.mjs")
 	},
 	"84518a2bc72d0e2a7fb249b94ca8fb8bf4d934d2b8c284841c592b4346689f0f": {
 		functionName: "getBoard_createServerFn_handler",
-		importer: () => import("./board-fns-BRuMf6MF.mjs")
+		importer: () => import("./board-fns-BiIfWICq.mjs")
 	},
 	"900f1ccade2f1f50c07d87c4cebdc51cec854abf9e3d4a6cc2753caf43bdfcd6": {
 		functionName: "trackClick_createServerFn_handler",
-		importer: () => import("./board-fns-BRuMf6MF.mjs")
+		importer: () => import("./board-fns-BiIfWICq.mjs")
+	},
+	"95ae428f7d917e9be639d971d29078b0fd53b6b0f7154a423120c43c8a489a12": {
+		functionName: "removeCrownPick_createServerFn_handler",
+		importer: () => import("./crown-F04rL5Na.mjs")
 	},
 	"a0a5a5e21f8c3bd454681d3ff96d69abe659cd6378bc36c6e0023acffe53de5c": {
 		functionName: "createBidOrder_createServerFn_handler",
-		importer: () => import("./board-fns-BRuMf6MF.mjs")
+		importer: () => import("./board-fns-BiIfWICq.mjs")
 	},
 	"c684eae2b96453e54df19cdd67254722ceb4de2211854072e82574ce27b081af": {
 		functionName: "createSwapOrder_createServerFn_handler",
-		importer: () => import("./board-fns-BRuMf6MF.mjs")
+		importer: () => import("./board-fns-BiIfWICq.mjs")
 	},
 	"cd84e7f71e960890cbda70e6a2d7be7585cec800f415e0220056268fd8d47a6e": {
 		functionName: "getPortal_createServerFn_handler",
-		importer: () => import("./board-fns-BRuMf6MF.mjs")
+		importer: () => import("./board-fns-BiIfWICq.mjs")
+	},
+	"da57c3ef176ae0555ac185d1474a911a8acd01929990f4b1495eb9b1e1f77e1e": {
+		functionName: "createOracleOrder_createServerFn_handler",
+		importer: () => import("./crown-F04rL5Na.mjs")
 	},
 	"db5ad1d49b89b6b6279ee9211d68cc12f07b60afc370b24cd18f74573d5f226a": {
 		functionName: "getOrder_createServerFn_handler",
-		importer: () => import("./board-fns-BRuMf6MF.mjs")
+		importer: () => import("./board-fns-BiIfWICq.mjs")
 	}
 };
 async function getServerFnById(id, access) {
@@ -1421,7 +1437,7 @@ var getBaseManifest = getProdBaseManifest;
 var createEarlyHintsForRequest = createEarlyHintsCollector;
 async function loadEntries() {
 	const [routerEntry, startEntry, pluginAdapters] = await Promise.all([
-		import("./router-D2Zs3BlN.mjs").then((n) => n.t),
+		import("./router-BbkAMFJI.mjs").then((n) => n.t),
 		import("./start-5Z2QO8AU.mjs"),
 		import("./empty-plugin-adapters-D9UWiqvJ.mjs")
 	]);

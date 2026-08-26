@@ -1,0 +1,40 @@
+{
+  "url": "http://127.0.0.1:8081/:",
+  "viewports": {
+    "desktop": {
+      "width": 1280,
+      "height": 800,
+      "status": 200,
+      "title": "bidthrone.lol",
+      "hasCanvas": false,
+      "bodyTextLen": 1036,
+      "bodyTextHash": "5b9fc7f43b5d73eb57cadccde17d13d7c89e8ce4bfd930e6d480c7d79cdea251",
+      "bodyTextPrefix": "BIDTHRONE.LOL How it works APPEARANCE Light Dark THREE BOARDS. O",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/Users/oculus/Projects/lol/screenshots/crown-root-preview.png"
+    },
+    "mobile": {
+      "width": 390,
+      "height": 844,
+      "status": 200,
+      "title": "bidthrone.lol",
+      "hasCanvas": false,
+      "bodyTextLen": 1036,
+      "bodyTextHash": "0d1d1443ffc6a126e8ea2175e79210bb3ce3273c40c994f6ecc070e5b30e65d7",
+      "bodyTextPrefix": "BIDTHRONE.LOL How it works APPEARANCE Light Dark THREE BOARDS. O",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/Users/oculus/Projects/lol/screenshots/crown-root-preview-mobile.png"
+    }
+  },
+  "brandWarnings": [
+    "BRAND NOTE: no custom public/og.jpg — the platform will serve the og.grok.me placeholder. Custom cards are the default for games of every kind (DOM board/word games included), whimsical apps, creative tools, and brand-forward pages — only plain utilities (converters, CRUD trackers, admin dashboards) keep the placeholder. If this app is not a plain utility, finish the brand-asset pass per /workspace/.grok/skills/og/SKILL.md."
+  ],
+  "authWarnings": [],
+  "verdictFile": "/Users/oculus/Projects/lol/screenshots/crown-root-preview.json",
+  "divergesFromBaseline": false,
+  "baselineReasons": []
+}

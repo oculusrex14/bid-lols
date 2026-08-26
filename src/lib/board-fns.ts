@@ -584,7 +584,7 @@ export const getOrder = createServerFn({ method: "GET" })
     const rows = await sql.query<{
       id: string;
       site: string;
-      kind: "bid" | "swap";
+      kind: "bid" | "swap" | "oracle";
       amount_cents: number;
       status: PublicOrder["status"];
       listing_id: string | null;
@@ -597,14 +597,16 @@ export const getOrder = createServerFn({ method: "GET" })
     const row = rows[0];
     if (!row || !isSiteId(row.site)) throw new Error("Order not found.");
     const payload = parsePayload(row.payload);
-    const title = String(payload.title ?? "Listing");
+    const title = String(payload.title ?? (row.kind === "oracle" ? "Oracle Pass" : "Listing"));
     const url = String(payload.url ?? payload.newUrl ?? "");
     const chargeLabel =
-      row.kind === "swap"
-        ? "URL swap fee"
-        : payload.listingId
-          ? "Re-bid difference"
-          : "New listing bid";
+      row.kind === "oracle"
+        ? "Oracle Pass · 7 days"
+        : row.kind === "swap"
+          ? "URL swap fee"
+          : payload.listingId
+            ? "Re-bid difference"
+            : "New listing bid";
     const paymentSessionId = String(payload.paymentSessionId ?? "");
     const gatewayLive = payload.gatewayLive === true;
     const gatewayMode =
@@ -641,7 +643,7 @@ export const confirmPayment = createServerFn({ method: "POST" })
     const rows = await sql.query<{
       id: string;
       site: string;
-      kind: "bid" | "swap";
+      kind: "bid" | "swap" | "oracle";
       amount_cents: number;
       status: string;
       listing_id: string | null;
@@ -654,6 +656,56 @@ export const confirmPayment = createServerFn({ method: "POST" })
     );
     const order = rows[0];
     if (!order || !isSiteId(order.site)) throw new Error("Order not found.");
+    if (order.kind === "oracle") {
+      const payload = parsePayload(order.payload);
+      const passToken = String(payload.token ?? "");
+      if (!passToken) throw new Error("Oracle order is missing identity.");
+      if (order.status === "paid") {
+        const expiry = await sql.query<{ expires_at: string | Date }>(
+          `select max(expires_at) as expires_at from crown_passes where site = $1 and token = $2`,
+          [order.site, passToken],
+        );
+        const t = expiry[0]?.expires_at;
+        return {
+          alreadyPaid: true,
+          listing: null,
+          token: null,
+          site: order.site,
+          kind: "oracle",
+          passExpiresAt: t ? new Date(t instanceof Date ? t : Date.parse(String(t))).toISOString() : null,
+        };
+      }
+      if (order.status !== "pending") throw new Error("This order can no longer be paid.");
+      const { cashfreeOrderIsPaid } = await import("@/lib/cashfree");
+      const paidAtGateway = await cashfreeOrderIsPaid(order.id);
+      if (!paidAtGateway) {
+        throw new Error("Cashfree has not marked this order paid yet.");
+      }
+      const passId = makeId("pass");
+      const handle = String(payload.handle ?? "Oracle");
+      await sql.query(
+        `insert into crown_passes (id, site, token, handle, order_id, expires_at)
+         values ($1, $2, $3, $4, $5,
+                 greatest(now(), (select coalesce(max(expires_at), now()) from crown_passes where site = $2 and token = $3))
+                 + interval '7 day')
+         on conflict (order_id) do nothing`,
+        [passId, order.site, passToken, handle, order.id],
+      );
+      await sql.query(`update orders set status = 'paid', paid_at = now() where id = $1`, [order.id]);
+      const after = await sql.query<{ expires_at: string | Date }>(
+        `select max(expires_at) as expires_at from crown_passes where site = $1 and token = $2`,
+        [order.site, passToken],
+      );
+      const t = after[0]?.expires_at;
+      return {
+        alreadyPaid: false,
+        listing: null,
+        token: null,
+        site: order.site,
+        kind: "oracle",
+        passExpiresAt: t ? new Date(t instanceof Date ? t : Date.parse(String(t))).toISOString() : null,
+      };
+    }
     if (order.status === "paid") {
       const listingId = order.listing_id;
       if (!listingId) throw new Error("Paid order is missing a listing.");
@@ -664,6 +716,8 @@ export const confirmPayment = createServerFn({ method: "POST" })
         listing,
         token: order.manage_token,
         site: order.site,
+        kind: order.kind,
+        passExpiresAt: null,
       };
     }
     if (order.status !== "pending") throw new Error("This order can no longer be paid.");
@@ -792,7 +846,14 @@ export const confirmPayment = createServerFn({ method: "POST" })
 
     const listing = listingId ? await fetchListing(listingId) : null;
     if (!listing || !token) throw new Error("Payment recorded, listing missing.");
-    return { alreadyPaid: false, listing, token, site: order.site, kind };
+    return {
+      alreadyPaid: false,
+      listing,
+      token,
+      site: order.site,
+      kind: order.kind,
+      passExpiresAt: null,
+    };
   });
 
 export const getManaged = createServerFn({ method: "GET" })

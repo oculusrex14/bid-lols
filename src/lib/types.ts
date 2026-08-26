@@ -43,7 +43,7 @@ export type BoardPayload = {
   activity: Activity[];
 };
 
-export type OrderKind = "bid" | "swap";
+export type OrderKind = "bid" | "swap" | "oracle";
 
 export type PublicOrder = {
   id: string;
@@ -63,4 +63,55 @@ export type PublicOrder = {
   inrRupees: number;
   inrPerUsd: number;
   fxSource: "live" | "fallback";
+  /** Set only for `oracle` orders: when the pass is/was active. */
+  passExpiresAt?: string | null;
+};
+
+export type CrownCandidate = {
+  id: string;
+  rank: number | null;
+  title: string;
+  url: string;
+  bidCents: number;
+  pickCount: number;
+  picked: boolean;
+  isLeader: boolean;
+};
+
+export type CrownLeader = {
+  handle: string;
+  points: number;
+  wins: number;
+  streak: number;
+  isOracle: boolean;
+  isYou: boolean;
+};
+
+export type CrownMe = {
+  token: string;
+  handle: string;
+  points: number;
+  wins: number;
+  streak: number;
+  bestStreak: number;
+  picks: string[];
+  hasPass: boolean;
+  passExpiresAt: string | null;
+  pickLimit: number;
+};
+
+export type CrownPayload = {
+  site: SiteId;
+  /** UTC day key the active round is named after. */
+  roundDay: string;
+  closesAt: string;
+  candidates: CrownCandidate[];
+  me: CrownMe;
+  leaderboard: CrownLeader[];
+  lastResult: {
+    roundDay: string;
+    winnerId: string | null;
+    winnerTitle: string | null;
+    youWon: boolean;
+  } | null;
 };

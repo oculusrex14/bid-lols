@@ -164,4 +164,4 @@ function useQuery(options, queryClient) {
 	return useBaseQuery(options, QueryObserver, queryClient);
 }
 //#endregion
-export { QueryClientProvider as n, require_jsx_runtime as r, useQuery as t };
+export { require_jsx_runtime as i, QueryClientProvider as n, useQueryClient as r, useQuery as t };

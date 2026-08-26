@@ -45,3 +45,16 @@ export function rankLabel(rank: number | null | undefined) {
   if (!rank) return "—";
   return String(rank).padStart(2, "0");
 }
+
+export function formatPassDate(iso: string) {
+  const date = new Date(iso);
+  if (!Number.isFinite(date.getTime())) return iso;
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    timeZone: "UTC",
+  }).format(date);
+}
