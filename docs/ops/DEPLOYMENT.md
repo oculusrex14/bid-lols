@@ -6,7 +6,8 @@
 
 - **Platform:** Vercel project `bidthrone` (`prj_sJF1T6PBZoNkFnXRD9jvjqnr5PUt`), Nitro `vercel` preset, `serverDir: ./server`. No `vercel.json` — platform behavior is default; if a setting must change, create `vercel.json` deliberately.
 - **Database:** Postgres (Neon) via `DATABASE_URL` (Vercel env; `.env.local` locally, never committed). Production requires it — the runtime fails to start without it (`resolveDbConfig`).
-- **Build chain (Phase 00):** `npm run build` = `vite build` only — no DB connection, no DDL, no PGLite assets. Migrations run exclusively through the gated step below. `node scripts/copy-pglite.mjs` stages PGLite wasm **into the local preview loop only** (`.vercel/output` after a local build) — it is not part of `build`, and deployed runtimes never execute PGLite (production: Neon; preview: see env scoping in `ENVIRONMENT.md`).
+- **Git remote (Phase 00.5):** `origin` = `github.com/oculusrex14/bid-lols` (public; `main`). `new-repo` (`lark-zenith-able-tulip`) is the superseded export — never push release work there. Vercel project `bidthrone` is **not yet Git-integrated** (`vercel git connect` fails without the Vercel GitHub App installed for the account — browser-side, external follow-up). Until then, releases are CLI deploys from a clean local tree at the pushed SHA (see "Releasing from a clean SHA").
+- **Build chain (Phase 00/00.5):** `npm run build` = `vite build` only — no DB connection, no DDL. Migrations run exclusively through the gated step below. **PGLite is excluded from cloud build output** (Phase 00.5, AC-9.1): Vercel sets `VERCEL=true` at build time, `vite.config.ts` bakes that into `import.meta.env.VERCEL_BUILD`, and `db.server.ts` dead-code-eliminates the PGLite fallback + its migration glob from the artifact. A Vercel runtime without `DATABASE_URL` fails loudly at module load (AC-9.2) instead of falling back. `node scripts/copy-pglite.mjs` stages PGLite wasm **into the local preview loop only** — local builds keep PGLite; the local built preview (:8081) is hermetic.
 - **Host routing:** each of the four domains serves its own product surface from the same app (Host header → product). No cross-domain 302 mapping; legacy board paths 308 → same-host `/` (`server/middleware/seo-host.ts` + dev twin in `scripts/host-seo-plugin.mjs`, shared logic in `scripts/host-seo-shared.mjs`).
 
 ## Expected domains
@@ -17,6 +18,39 @@
 - `bidception.lol` (+ `www.`) — nested & team bounties
 
 All four are in `vite.config.ts` `allowedHosts` (dev Host-header testing). Each domain serves its own product surface from the same app; unknown hosts get the bidthrone umbrella default. CNAME/Vercel-domain state is **out of repo** — verify on the Vercel project before relying on a domain.
+
+## Releasing from a clean SHA (Phase 00.5)
+
+Production must be reproducible from GitHub. The release protocol:
+
+1. Working tree clean: `git status --porcelain` prints nothing.
+2. Commit all intended work (focused commits; never env files, secrets, `.vercel/`, or generated output).
+3. Push fast-forward only — **never force-push**: `git push origin main`.
+4. Verify identity: `git fetch origin && [ "$(git rev-parse main)" = "$(git rev-parse origin/main)" ]` — local release SHA == remote SHA.
+5. Deploy production from that exact tree: `vercel deploy --prod` (or the platform mechanism) while `git status --porcelain` is still empty. Record the deployment id and confirm the deployment's recorded git SHA == the released SHA and its dirty flag is not set (`vercel inspect <url>` / API).
+6. Until Vercel Git-integration is available (external follow-up below), step 5's clean-tree CLI deploy is the reproducibility guarantee: anyone checking out the pushed SHA and running `vite build` produces the deployed artifact.
+
+External follow-up (not in repo scope): install the Vercel GitHub App for the account (browser: github.com/settings/apps), then `vercel git connect https://github.com/oculusrex14/bid-lols.git` so pushes to `main` auto-deploy production from the SHA.
+
+## DNS note — culturebid.lol apex (Phase 00.5, WS5)
+
+`culturebid.lol`'s **apex** A records publicly resolve to private `10.x` addresses (verified via Cloudflare DoH), so the apex is unreachable from the internet while `www.culturebid.lol` works. The other three apex domains are healthy.
+
+Exact correction at the DNS provider (zone `culturebid.lol`):
+
+- apex: replace the broken A records with Vercel's apex record — A `76.76.21.21` (confirm the current value in the Vercel dashboard → project → Domains; Vercel may update its anycast IP).
+- www: keep/set CNAME `www.culturebid.lol` → `cname.vercel-dns.com`.
+
+Verification after the change (run both before trusting the apex):
+
+```bash
+# public resolution must be Vercel's anycast IP, not 10.x
+curl -s "https://cloudflare-dns.com/dns-query?name=culturebid.lol&type=A" -H "accept: application/dns-json" | grep -o '"data":"[0-9.]*"'
+curl -sI https://culturebid.lol | head -3   # expect HTTP 200
+curl -sI https://www.culturebid.lol | head -3  # expect HTTP 200
+```
+
+Until the apex is verified reachable, the app routes **clickable** cross-product links to `https://www.culturebid.lol` (`linkOrigin()` in `scripts/host-seo-shared.mjs`); declarative URLs (canonical/OG/sitemap) keep the apex origin. Re-check after the DNS fix and flip `linkOrigin` back to apex-only if ever desired (the helper makes that a one-line change).
 
 ## Autonomous-safe deployment sequence
 
@@ -46,6 +80,7 @@ Execute in order; any BLOCKING failure (below) stops the run and triggers rollba
 - Any expected domain returning 5xx, failing host routing, or rendering the wrong product surface.
 - Secrets or `.env*` content appearing in any diff, log, or deployed asset.
 - Unresolvable provider verification in prod mode (cannot confirm a test order end-to-end).
+- Phase 00.5 additions: a production deployment whose source tree is not exactly the pushed `origin/main` SHA, or whose deployment reports dirty (AC-0.3); PGLite artifacts present in a Vercel build output (AC-9.1); a 404 response missing `noindex,follow` or carrying a canonical for the missing path (AC-6.4); HTML responses on deployed runtimes missing the security header baseline (AC-8.1).
 
 ## Non-negotiables
 

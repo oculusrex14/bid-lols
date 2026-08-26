@@ -14,6 +14,19 @@ Key targets (from the legacy audit, PRIORITY):
 
 Spec: `docs/phases/PHASE_00_FOUNDATION.md` — **COMPLETE 2026-08-26** (checklist + evidence in that file; one external exception: the `culturebid.lol` apex DNS A-records, a DNS-provider change out of repo scope).
 
+## Phase 00.5 — Foundation alignment & reproducibility
+
+Corrective phase after the Phase 00 post-deployment review: production was
+deployed from a dirty tree with the Phase 00 commits absent from the GitHub
+remote, and the public surfaces carried legacy product language / internal
+status copy. Restores source-control integrity (release from one clean
+pushed SHA), rewrites legal copy to pre-launch truth, ships deliberate
+pre-launch product pages + founding-access capture, branded 404 + host-aware
+sitemaps, security-header baseline, graceful stale-serverFn handling, and
+excludes PGLite from cloud build output. No Phase 01 features.
+
+Spec: `docs/phases/PHASE_00_5_ALIGNMENT.md` — IN PROGRESS.
+
 ## Phase 01 — FoundersBid
 
 - **Goal:** Startup bounties/projects on `foundersbid.lol`.

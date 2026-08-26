@@ -43,8 +43,32 @@ export function resolveDbConfig(env: Record<string, string | undefined>): DbConf
   return { source: "pglite" };
 }
 
+/**
+ * Build-time platform flag (vite `define`, Phase 00.5, AC-9.1): true when
+ * this bundle was built on Vercel. In cloud builds the PGLite fallback is
+ * dead-code-eliminated entirely, so a cloud runtime that somehow resolved to
+ * "pglite" must fail LOUDLY below (AC-9.2) instead of crashing later with an
+ * opaque missing-module error.
+ *
+ * `__VERCEL_BUILD__` is a bare identifier defined in vite.config.ts. It must
+ * be read through `typeof` first: under plain Node/tsx (tests) the
+ * identifier is undeclared, which yields "undefined" → false, without
+ * throwing (local semantics unchanged).
+ */
+const VERCEL_BUILD: boolean =
+  typeof __VERCEL_BUILD__ !== "undefined" && __VERCEL_BUILD__;
+
 // Server-only module: resolved once, from the real process env.
 const dbConfig = resolveDbConfig(process.env);
+
+if (VERCEL_BUILD && dbConfig.source === "pglite") {
+  throw new Error(
+    "Cloud build without a resolvable DATABASE_URL: PGLite is not shipped in " +
+      "Vercel builds. Set DATABASE_URL for this environment — production always " +
+      "requires it, and previews do now that the PGLite fallback is excluded " +
+      "from cloud artifacts.",
+  );
+}
 
 /** Active backend. */
 export const dbSource: DbSource = dbConfig.source;
@@ -286,6 +310,12 @@ async function createSql(): Promise<Sql> {
         "or a server route loader, never from client code.",
     );
   }
+  if (VERCEL_BUILD) {
+    // Cloud builds ship neon only: PGLite is eliminated from the artifact
+    // (AC-9.1), so this branch must never reach the local fallback.
+    // resolveDbConfig guarantees a URL here (or threw at module load, AC-9.2).
+    return createNeonSql();
+  }
   return dbSource === "neon" ? createNeonSql() : createPgliteSql();
 }
 
@@ -310,6 +340,9 @@ export function getSql(): Promise<Sql> {
  * applied. Throws when `DATABASE_URL` is set (that path uses Neon).
  */
 export async function getPglite(): Promise<import("@electric-sql/pglite").PGlite> {
+  if (VERCEL_BUILD) {
+    throw new Error("PGLite is excluded from cloud builds (Phase 00.5, AC-9.1)");
+  }
   if (dbSource !== "pglite") {
     throw new Error("getPglite() is only available on the PGLite fallback (no DATABASE_URL)");
   }

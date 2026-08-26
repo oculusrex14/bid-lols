@@ -4,12 +4,12 @@
 
 ## How environment reaches the app
 
-- **No build flags.** Phase 00 removed the last `VITE_*` flags (auth) and the `.grok/app-env.json` merge wrapper (`with-app-env.mjs`). `npm run dev|build|preview` run Vite directly; there is nothing client-inlined that can diverge between environments.
+- **One build flag (build-time only):** `import.meta.env.VERCEL_BUILD` is baked in by `vite.config.ts` from the platform's `VERCEL` variable. It is NOT a runtime env var and is never read from `process.env` — it exists solely so the Vercel build can dead-code-eliminate the local-only PGLite fallback from the server artifact (Phase 00.5, AC-9.1). Nothing else is client-inlined.
 - **Server-only variables** are read via `process.env` at runtime (Vercel env in production/preview; `.env.local` locally).
 - **Database source** is decided by `resolveDbConfig` in `src/lib/db.server.ts`:
   - `VERCEL_ENV=production` → `DATABASE_URL` is **required** (missing/blank = startup error naming the variable).
+  - **Vercel preview** → `DATABASE_URL` is now required too: cloud builds exclude PGLite, so a preview without it fails loudly at module load (AC-9.2). The Development scope carries the URL; keep it set.
   - **Local** runtimes (dev, local `vite preview`) → hermetic **PGLite**, even when a `DATABASE_URL` is present locally. This is deliberate: `.env.local` holds production credentials and Vite surfaces them to the dev SSR process, so local work must not connect to them by accident.
-  - **Vercel preview** → uses a project-scoped `DATABASE_URL` when present (the Development scope carries one; deliberate platform configuration), otherwise PGLite.
   - Opt into a real database from a local runtime with `USE_REAL_DB=1` + `DATABASE_URL` (intentional integration work only; documented in the phase completion notes when used).
 
 ## Required in production (Vercel)
@@ -51,6 +51,19 @@
 | `VITE_PUBLIC_HOSTNAME`, `VITE_STUN_URLS` | Were read only by removed Grok PWA chrome / dead p2p module. |
 | `GROK_AUTH_ISSUER` | Removed with the Better Auth scaffold. |
 | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` | Supabase CLI residue; no code references — `supabase/` removed. |
+
+## Removed in Phase 00.5
+
+The variables above that still existed as **Vercel project env vars** were
+verified unreferenced by the current codebase (grep of `src/`, `scripts/`,
+`server/`, `vite.config.ts`) and deleted from the project with
+`vercel env rm` (both scopes). Re-check before any future cleanup: a var is
+safe to remove only when no code reads it and no middleware/platform feature
+depends on it.
+
+The four pending legacy Cashfree orders have a dedicated operational
+treatment: `docs/ops/LEGACY_ORDERS.md` (settle only via verified webhook;
+no manual settlement/refund/deletion).
 
 ## Rules
 

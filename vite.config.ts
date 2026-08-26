@@ -75,6 +75,23 @@ export default defineConfig(({ command, isPreview }) => ({
     strictPort: true,
   },
   resolve: { tsconfigPaths: true },
+  define: {
+    // Vercel sets VERCEL=true for every build it runs. Baking that into the
+    // bundle lets src/lib/db.server.ts statically eliminate the PGLite
+    // fallback (local runtimes only) from the cloud server output
+    // (Phase 00.5, AC-9.1/9.2). Local builds (no VERCEL var) keep PGLite.
+    //
+    // A bare identifier (NOT `import.meta.env.*`): in this pipeline the
+    // env-object substitution of import.meta.env.* outranks custom define
+    // keys, which would silently fold the flag to false. The value is an
+    // unquoted boolean literal; db.server.ts reads it through
+    // `typeof __VERCEL_BUILD__ !== "undefined" && __VERCEL_BUILD__`, which
+    // is also safe under plain Node/tsx where the identifier is undeclared.
+    __VERCEL_BUILD__:
+      process.env.VERCEL === "true" || process.env.VERCEL === "1"
+        ? "true"
+        : "false",
+  },
   plugins: [
     pgliteBootstrapPlugin(),
     // Host-aware robots/sitemap/legacy-308s + per-domain head injection
