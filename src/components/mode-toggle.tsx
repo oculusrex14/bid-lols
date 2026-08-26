@@ -3,7 +3,17 @@ import { Moon, Sun } from "lucide-react";
 import { applyMode, readMode, type Mode } from "@/lib/mode";
 import { cn } from "@/lib/cn";
 
-export function ModeToggle({ variant = "bar" }: { variant?: "bar" | "inline" }) {
+/**
+ * - "bar": the labelled appearance panel (footer/settings context).
+ * - "inline": the two-button switch (legacy header context).
+ * - "icon": a compact single-button light/dark toggle — the header's
+ *   secondary control (Phase 00.5, AC-4.1: the CTA must stay primary).
+ */
+export function ModeToggle({
+  variant = "bar",
+}: {
+  variant?: "bar" | "inline" | "icon";
+}) {
   const [mode, setMode] = useState<Mode>("light");
 
   useEffect(() => {
@@ -52,6 +62,21 @@ export function ModeToggle({ variant = "bar" }: { variant?: "bar" | "inline" }) 
   );
 
   if (variant === "inline") return switches;
+
+  if (variant === "icon") {
+    const next: Mode = mode === "dark" ? "light" : "dark";
+    return (
+      <button
+        type="button"
+        onClick={() => pick(next)}
+        aria-label={mode === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+        title={mode === "dark" ? "Light mode" : "Dark mode"}
+        className="inline-flex size-9 shrink-0 items-center justify-center rounded-md text-muted hover:bg-raised hover:text-fg"
+      >
+        {mode === "dark" ? <Sun className="size-4" /> : <Moon className="size-4" />}
+      </button>
+    );
+  }
 
   return (
     <div

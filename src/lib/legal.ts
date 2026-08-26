@@ -1,8 +1,15 @@
 import { product, type ProductKey } from "@/lib/host";
 
 /**
- * Legal copy per product domain (Phase 00 keeps the legacy content, now
- * host-aware; full copy review is a logged follow-up, not blocking).
+ * Pre-launch legal copy per product domain (Phase 00.5, WS1).
+ *
+ * These pages describe ONLY what the currently deployed application does:
+ * public pre-launch pages, the founding-access capture, and host-level page
+ * analytics. They make explicit that marketplace transactions are not yet
+ * available and that no payment is accepted. No legacy product language
+ * remains anywhere in public copy (AC-1.1), and no final marketplace terms
+ * are invented (those are specified separately before Phase 01 opens
+ * transactions).
  */
 
 export const LEGAL_SLUGS = ["terms", "privacy", "refund", "contact"] as const;
@@ -15,7 +22,7 @@ export function isLegalSlug(value: string | undefined): value is LegalSlug {
 export const LEGAL_NAV: { slug: LegalSlug; label: string }[] = [
   { slug: "terms", label: "Terms" },
   { slug: "privacy", label: "Privacy" },
-  { slug: "refund", label: "Refund" },
+  { slug: "refund", label: "Refund & payments" },
   { slug: "contact", label: "Contact" },
 ];
 
@@ -25,35 +32,18 @@ export function contactEmail(productKey: ProductKey) {
 
 type Block = { heading?: string; body: string[] };
 
-/**
- * The product-specific "what this domain is" lines. The three legacy products
- * keep their original service descriptions; the umbrella domain describes
- * itself honestly (no live service yet).
- */
-function serviceBody(productKey: ProductKey): string[] {
-  const cfg = product(productKey);
+/** What this domain will become, in one honest sentence each. */
+function productIntent(productKey: ProductKey): string {
   switch (productKey) {
     case "foundersbid":
-      return [
-        `${cfg.name} is a public pay-to-rank board. Rank is determined solely by the highest total bid, in whole US dollars, with a minimum of $5. There is no editorial ranking, no free slot, and no algorithm beyond bid amount and time of bid.`,
-        "Listings are for founding-team pages, about pages, studio sites, and personal founder URLs. The founding names you submit are published on the board.",
-      ];
+      return "FoundersBid will be the network's startup execution product: funded work for founders, from development to go-to-market.";
     case "culturebid":
-      return [
-        `${cfg.name} is a public pay-to-rank board. Rank is determined solely by the highest total bid, in whole US dollars, with a minimum of $5. There is no editorial ranking, no free slot, and no algorithm beyond bid amount and time of bid.`,
-        "Listings are for company culture, careers, and why-join-us pages. Culture statements, values, and optional quotes you submit are published on the board.",
-      ];
+      return "CultureBid will be the network's creative bounty product: funded creative briefs with fair, capped competition.";
     case "bidception":
-      return [
-        `${cfg.name} is a public pay-to-rank board. Rank is determined solely by the highest total bid, in whole US dollars, with a minimum of $5. There is no editorial ranking, no free slot, and no algorithm beyond bid amount and time of bid.`,
-        "Listings are for marketing platforms, directories, pay-to-rank tools, newsletter sponsorship boards, and community visibility products. The short note you submit is published on the board.",
-      ];
+      return "Bidception will be the network's nested, team-based bounty product: one funded problem, decomposed into funded pieces a team works together.";
     case "bidthrone":
     default:
-      return [
-        `${cfg.name} is the reputation and discovery layer of the Bid Network — an internet bounty network across foundersbid.lol, culturebid.lol, and bidception.lol.`,
-        "Bidthrone does not itself run a board. Reputation will be built from genuine completed work and outcomes; you cannot buy a reputation rank.",
-      ];
+      return "Bidthrone is the network's reputation and discovery layer.";
   }
 }
 
@@ -71,52 +61,52 @@ export function legalDoc(productKey: ProductKey, slug: LegalSlug): {
     return {
       title: "Terms of service",
       updated,
-      intro:
-        productKey === "bidthrone"
-          ? `These terms govern use of ${cfg.apex}. By using the site you agree to them.`
-          : `These terms govern use of ${cfg.apex}. Payments are processed by Cashfree. By placing a bid, paying a swap fee, or using a manage link, you agree to them.`,
+      intro: `These terms govern use of ${cfg.apex}, part of the Bid Network. By using the site you agree to them.`,
       blocks: [
         {
-          heading: "The service",
-          body: serviceBody(productKey),
-        },
-        {
-          heading: "Accounts and manage links",
+          heading: "The service today",
           body: [
-            "We do not issue accounts, passwords, or logins. After a successful payment, Cashfree checkout returns you to a secret manage URL. That URL is the only key to re-bid or swap. If you lose it, we cannot restore access from an email or name — we do not store those.",
+            `${cfg.name} is part of the Bid Network — an internet bounty network that is being built. Today the site offers: public pages describing what each network product will do, a founding-access request form, and internal page analytics. Nothing else.`,
+            productIntent(productKey),
+            "The marketplace is not live. Bounties and projects cannot yet be listed, funded, competed on, or paid out. No payment of any kind is accepted on this site today.",
+            "Content marked EXAMPLE or DEMO is illustrative. It is not an offer, not a real transaction, and not evidence of any activity.",
           ],
         },
         {
-          heading: "Payments",
+          heading: "Founding access",
           body: [
-            "All charges are processed by Cashfree Payments. Board ranks are priced in USD; checkout currently collects the INR equivalent through Indian payment methods only (UPI, cards, netbanking, wallets). International / global gateways will be added later. A new listing is charged the full bid. A re-bid on the same URL is charged only the difference to the new total. A URL swap is charged the full swap fee for that swap number (see the Rules page), then clamped between $10 and $2,500.",
-            "An order is complete when Cashfree marks it paid. Rank updates only after that.",
+            "The founding-access form collects your email address, your role or intention, which site of the network you submitted from, and your consent to be contacted. We use it only to contact you about early access. We do not sell or share it.",
+            "Submitting the form creates no account and grants no entitlement. When access opens, it is at our discretion and may be limited in size or scope.",
           ],
         },
         {
-          heading: "No refunds",
+          heading: "Future terms",
           body: [
-            "Bids, re-bids, and swap fees are final once paid. See the Refund policy. Chargebacks or payment disputes may result in the listing being removed from the board.",
+            "Terms for marketplace transactions — bounties, projects, payouts, and disputes — will be specified and published before any transactions are enabled. They are not implied by this page.",
           ],
         },
         {
           heading: "Acceptable use",
           body: [
-            "Do not list illegal content, malware, phishing, or pages that impersonate another person or company. We may remove a listing that breaks the law or these terms without a refund. We do not moderate for taste or quality.",
+            "Do not submit false or abusive content, attempt to access systems you are not authorized to use, submit the founding-access form at abusive volume, or scrape the site. We may refuse or end use of the site for violations.",
           ],
         },
         {
-          heading: "No results guarantee",
+          heading: "No guarantees",
           body: [
-            "Buying or holding a rank does not guarantee visits, clicks, leads, applications, hires, sales, conversions, or any other outcome. Traffic and attention depend on visitors, your page, and factors outside our control. Someone else can outbid you at any time.",
-            "Site-level visit and view figures on the boards are not a promise of traffic. Rank is never based on those figures — only on bid amount.",
+            "The site is provided as-is, without warranties of any kind. Nothing here promises when — or whether — the marketplace will launch, or what it will offer.",
           ],
         },
         {
           heading: "Liability",
           body: [
-            `${cfg.apex} is provided as-is, without warranties of merchantability, fitness for a particular purpose, or uninterrupted availability. Rank is a paid public ordering, not an endorsement of any listing, company, or page.`,
-            "We are not liable for lost manage links, downtime, outbids, chargebacks, third-party payment processor issues, or how a visitor reads a listing. To the maximum extent allowed by law, our aggregate liability for any claim related to the service is limited to the amount you paid us for the relevant order in the thirty days before the claim.",
+            "To the maximum extent permitted by law, we are not liable for indirect or consequential damages. Our aggregate liability for any claim relating to this site is limited to amounts you paid us in the thirty days before the claim — which is none, because no payments are accepted today.",
+          ],
+        },
+        {
+          heading: "Changes",
+          body: [
+            "We may update these terms; the date above is the latest revision. Continued use after a change means you accept the updated terms.",
           ],
         },
         {
@@ -131,48 +121,44 @@ export function legalDoc(productKey: ProductKey, slug: LegalSlug): {
     return {
       title: "Privacy policy",
       updated,
-      intro: `${cfg.apex} is built without user accounts. This policy describes what little we store and what Cashfree processes when you pay.`,
+      intro: `${cfg.apex} has no account system and accepts no payment. This policy describes the limited data the current pre-launch site actually collects.`,
       blocks: [
         {
-          heading: "What we store",
+          heading: "What we collect",
           body: [
-            "Public listing data: URL, title, tagline, team or quote, culture values, bid amount, rank, click count, swap count, and timestamps. This is shown on the board.",
-            "A secret manage token, issued at payment, used only to prove control of that listing. It is not an email, name, or login.",
-            "Order records needed to settle Cashfree payments: amount, kind (bid or swap), status, and payment identifiers from Cashfree.",
-            "We do not create accounts. We do not store names, emails, phone numbers, or passwords. Click counts are incremented without storing IP addresses as a profile.",
+            "Page analytics: we count page views, visits, and outbound link clicks per site. These are aggregate counts. We do not store IP addresses, device identifiers, or anything that identifies you personally.",
+            `Founding access: if you submit the form, we store your email address; your role or intention; which site of the network you submitted from (derived from the domain you were on, not from anything you type); when you submitted; and the consent you gave. We use this only to contact you about founding access.`,
+            "On your device: your browser may keep your appearance choice (light/dark) and a per-session flag so a visit is counted once. That data stays on your device.",
+            "Hosting: the site runs on Vercel. Vercel may process standard hosting logs and performance data under its own privacy policy.",
           ],
         },
         {
-          heading: "Optional email on the bid form",
+          heading: "What we do not collect",
           body: [
-            "The bid form lets you optionally enter an email so Cashfree can put the manage link on the payment receipt. That address is forwarded to Cashfree for that checkout only. We do not save it in our database, and we cannot look up or restore a manage link from an email later.",
-          ],
-        },
-        {
-          heading: "What stays on your device",
-          body: [
-            "This browser may keep a list of listings you paid for (so “your listings” can link back to the manage URL) and your light/dark preference. That data does not leave the device unless you copy the manage link yourself.",
-          ],
-        },
-        {
-          heading: "Cashfree Payments",
-          body: [
-            "Card, UPI, net banking, and wallet details are entered on Cashfree’s checkout. We do not see or store full card numbers. Cashfree’s own privacy policy applies to that checkout. We receive payment status and order identifiers so we can rank the listing.",
+            "No names, no phone numbers, no passwords, no payment data, no advertising cookies, no third-party analytics or tracking scripts.",
           ],
         },
         {
           heading: "Contact email",
           body: [
-            `If you write to ${email}, we use that message only to reply. We do not add you to a marketing list.`,
+            `If you write to ${email}, we use that address only to reply. We do not add senders to marketing lists.`,
           ],
         },
         {
           heading: "Retention and requests",
           body: [
-            "Public bids remain on the board while the listing exists. You can ask " +
-              email +
-              " to remove a listing you control (prove it with the manage link). We will not refund the bid.",
+            `To correct or delete your founding-access entry, write to ${email} with the address you used. We will delete it on request.`,
           ],
+        },
+        {
+          heading: "Changes",
+          body: [
+            "If what we collect changes, this page is updated and the date above changes with it.",
+          ],
+        },
+        {
+          heading: "Contact",
+          body: [`Privacy questions: ${email}`],
         },
       ],
     };
@@ -180,44 +166,28 @@ export function legalDoc(productKey: ProductKey, slug: LegalSlug): {
 
   if (slug === "refund") {
     return {
-      title: "Refund policy",
+      title: "Refund & payment policy",
       updated,
-      intro: "No refunds. Read this before you pay.",
+      intro: "No payment of any kind is accepted on this site today. There is nothing to buy, no checkout, and no payment method can be entered.",
       blocks: [
         {
-          heading: "All paid charges are final",
+          heading: "Future payments",
           body: [
-            `Once Cashfree marks an order paid, the charge is non-refundable. That includes new listing bids, re-bid differences, and URL swap fees on ${cfg.apex}.`,
-            "Rank is a public, paid position. Buying it is not a trial, not a subscription you can cancel, and not a product that can be returned.",
+            "When the marketplace opens, payment and refund terms will be specified and published before any payment flow is enabled. They will not be inferred from this page.",
           ],
         },
         {
-          heading: "What we will not refund",
+          heading: "Past payments",
           body: [
-            "A listing that is outbid later.",
-            "A manage link you lost or leaked.",
-            "A URL you later want to change — use a paid swap instead.",
-            "A bid placed in error, at the wrong amount, or on the wrong URL.",
-            "Fees Cashfree charged as part of checkout.",
-          ],
-        },
-        {
-          heading: "Payment failures and duplicates",
-          body: [
-            "If Cashfree does not mark the order paid, you are not ranked and not charged by us. If two paid events arrive for the same order, we settle once.",
-          ],
-        },
-        {
-          heading: "Chargebacks",
-          body: [
-            "A dispute or chargeback on a paid bid or swap may get the listing taken down. It does not restore a manage link or a previous rank.",
+            "If a payment was initiated on this domain by an earlier version of the service, it remains under the terms in effect at the time. Write to " +
+              email +
+              " with your payment reference to ask for its status.",
+            "Do not send new payments for earlier versions of the service — this site cannot process them.",
           ],
         },
         {
           heading: "Contact",
-          body: [
-            `Payment questions: ${email}. Include the Cashfree order id from checkout. We still do not issue refunds.`,
-          ],
+          body: [`Payment questions: ${email}`],
         },
       ],
     };
@@ -226,39 +196,32 @@ export function legalDoc(productKey: ProductKey, slug: LegalSlug): {
   return {
     title: "Contact",
     updated,
-    intro: `Write to ${email}. There is no phone line, no chat, and no login to open a ticket.`,
+    intro: `Write to ${email}. There is no phone line, no chat, and no ticket system.`,
     blocks: [
       {
         heading: "Email",
         body: [
           productKey === "foundersbid"
-            ? "contact@foundersbid.lol — the only address for foundersbid.lol."
+            ? "contact@foundersbid.lol — the address for foundersbid.lol."
             : productKey === "culturebid"
-              ? "contact@culturebid.lol — the address for culturebid.lol. Foundersbid remains contact@foundersbid.lol."
+              ? "contact@culturebid.lol — the address for culturebid.lol."
               : productKey === "bidception"
-                ? "contact@bidception.lol — the address for bidception.lol. Foundersbid remains contact@foundersbid.lol. Culturebid remains contact@culturebid.lol."
+                ? "contact@bidception.lol — the address for bidception.lol."
                 : "contact@bidthrone.lol — the address for the Bid Network umbrella.",
-          "Say what you need in the subject: listing, payment, or legal.",
+          "Say what you need in the subject.",
         ],
       },
       {
         heading: "What to include",
         body: [
-          "For a payment: Cashfree order id, amount, and the listing URL.",
-          "For a listing you control: the manage URL (or enough of the token that we can match it). Do not post that URL in public.",
-          "We cannot reset a manage link from an email — optional checkout emails are forwarded to Cashfree only and are not stored by us.",
+          "For a founding-access request: the email address you used in the form.",
+          "For a question about a past payment: your payment reference and the date.",
         ],
       },
       {
-        heading: "Payments",
+        heading: "Response time",
         body: [
-          "Checkout is Cashfree Payments. Card and UPI issues that happen on Cashfree's page are also Cashfree's to diagnose. We can confirm whether our order is paid or pending.",
-        ],
-      },
-      {
-        heading: "Refunds",
-        body: [
-          "Do not write for a refund of a paid bid or swap. The refund policy is no refunds.",
+          "We answer in the order messages arrive. Before launch, some responses may take a few days.",
         ],
       },
     ],

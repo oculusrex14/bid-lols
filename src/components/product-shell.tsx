@@ -1,13 +1,26 @@
 import { useEffect, type ReactNode } from "react";
-import { pageTitleFor, product, PRODUCT_KEYS, type ProductKey } from "@/lib/host";
+import { pageTitleFor, product, PRODUCT_KEYS, linkOrigin, type ProductKey } from "@/lib/host";
 import { ModeToggle } from "@/components/mode-toggle";
 import { LegalLinks } from "@/components/legal-links";
 
 /**
- * The host-aware page shell (replaces the legacy SiteShell): product-themed
- * header + honest footer. No board navigation — Phase 00 surfaces have no
- * marketplace, and unknown hosts fall back to the bidthrone umbrella.
+ * The host-aware page shell: product-themed header + footer.
+ *
+ * Phase 00.5 (WS4/WS5):
+ *  - the founding-access CTA is the header's PRIMARY action; the theme
+ *    control is a compact secondary icon (AC-4.1).
+ *  - cross-product links use `linkOrigin` — culturebid.lol's apex DNS is
+ *    misconfigured, so visitors are sent to www.culturebid.lol until it is
+ *    verified reachable (AC-5.2).
+ *  - client title sync only for known paths: the 404 page owns its own
+ *    title, and unknown paths must not be retitled to the home page
+ *    (AC-6.4).
  */
+
+/** Paths whose tab title the shell may manage; everything else (e.g. an
+ *  unknown route) leaves the title alone. */
+const TITLE_OWNED_PATHS = new Set(["", "/", "/terms", "/privacy", "/refund", "/contact"]);
+
 export function ProductShell({
   site,
   children,
@@ -18,34 +31,42 @@ export function ProductShell({
   const cfg = product(site);
   const others = PRODUCT_KEYS.filter((key) => key !== site);
 
-  // Client-side head sync: after hydration (and on SPA navigation between the
-  // page and the legal routes) make the tab title match what the deployed
-  // SEO middleware already emitted into the SSR HTML. A no-op on first load
-  // of a deployed page; in dev it upgrades the static umbrella title.
+  // Client-side head sync after hydration (and on SPA navigation): make the
+  // tab title match what the deployed SEO middleware emitted for known
+  // paths. A no-op on first load of a deployed known page.
   useEffect(() => {
     const path = window.location.pathname;
-    const title = pageTitleFor(site, path);
-    document.title = title;
-    document
-      .querySelector('meta[property="og:title"]')
-      ?.setAttribute("content", title);
-  }, [site]);
+    if (TITLE_OWNED_PATHS.has(path)) {
+      const title = pageTitleFor(site, path);
+      document.title = title;
+      document
+        .querySelector('meta[property="og:title"]')
+        ?.setAttribute("content", title);
+    }
+    // Theme on <html> so the body background stays product-themed across
+    // SPA navigations (the 404 page manages the same attribute).
+    if (cfg.theme) document.documentElement.setAttribute("data-theme", cfg.theme);
+    else document.documentElement.removeAttribute("data-theme");
+  }, [site, cfg.theme]);
 
   return (
     <div data-theme={cfg.theme ?? undefined} className="flex min-h-screen flex-col">
       <header className="sticky top-0 z-10 border-b-2 border-fg/20 bg-surface/95 backdrop-blur">
-        <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-4 px-4 sm:px-5">
+        <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-3 px-4 sm:px-5">
           <a
-            href={`https://${cfg.apex}/`}
+            href={`${linkOrigin(site)}/`}
             className="font-display-site text-lg tracking-tight"
           >
             {cfg.wordmark}
           </a>
-          <div className="flex items-center gap-3">
-            <span className="hidden text-xs uppercase tracking-kicker text-subtle sm:inline">
-              coming next
-            </span>
-            <ModeToggle variant="inline" />
+          <div className="flex items-center gap-1 sm:gap-2">
+            <a
+              href="/#access"
+              className="inline-flex h-9 items-center rounded-md bg-accent px-3 text-sm font-semibold text-accent-fg sm:px-4"
+            >
+              Founding access
+            </a>
+            <ModeToggle variant="icon" />
           </div>
         </div>
       </header>
@@ -61,7 +82,7 @@ export function ProductShell({
             {others.map((key) => (
               <a
                 key={key}
-                href={`https://${product(key).apex}/`}
+                href={`${linkOrigin(key)}/`}
                 className="inline-flex items-center gap-1 underline-offset-4 hover:text-muted hover:underline"
               >
                 {product(key).name}
