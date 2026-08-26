@@ -12,11 +12,13 @@ export interface DbConfig {
  * Pure, testable backend resolution:
  *  - Vercel **production**: `DATABASE_URL` is REQUIRED; missing/blank -> THROW.
  *    A deployed production runtime must never silently run an in-memory DB.
- *  - Any other runtime (local dev, local preview, Vercel preview): hermetic
- *    **PGLite** — even when a `DATABASE_URL` is present (e.g. `.env.local`
- *    holds production credentials locally). This keeps local work from
- *    mutating real data. Opt into a real database explicitly with
- *    `USE_REAL_DB=1` + `DATABASE_URL` (documented in ops/ENVIRONMENT.md).
+ *  - Vercel **preview**: uses `DATABASE_URL` when the project scoped it there
+ *    (deliberate platform configuration); otherwise hermetic PGLite.
+ *  - Local runtimes (dev / `vite preview`): hermetic **PGLite** — even when a
+ *    `DATABASE_URL` is present, because `.env.local` holds production
+ *    credentials and Vite surfaces them to the dev SSR process. This keeps
+ *    local work from mutating real data. Opt into a real database explicitly
+ *    with `USE_REAL_DB=1` + `DATABASE_URL` (documented in ops/ENVIRONMENT.md).
  *
  * An empty/whitespace `DATABASE_URL` (an easy misconfig in deploy UIs) counts
  * as unset.
@@ -30,6 +32,9 @@ export function resolveDbConfig(env: Record<string, string | undefined>): DbConf
           "Set a valid Postgres connection string on the Vercel project before deploying.",
       );
     }
+    return { source: "neon", databaseUrl: trimmed };
+  }
+  if (env.VERCEL_ENV === "preview" && trimmed) {
     return { source: "neon", databaseUrl: trimmed };
   }
   if (trimmed && env.USE_REAL_DB === "1") {

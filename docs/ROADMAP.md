@@ -12,7 +12,7 @@ Key targets (from the legacy audit, PRIORITY):
 - Separate the ordinary app build from potentially-mutating prod migrations (dedicated, gated release step).
 - Legacy REMOVE/VERIFY items resolved; data posture is additive — never drop `listings`/`orders`.
 
-Spec: `docs/phases/PHASE_00_FOUNDATION.md` (active).
+Spec: `docs/phases/PHASE_00_FOUNDATION.md` — **COMPLETE 2026-08-26** (checklist + evidence in that file; one external exception: the `culturebid.lol` apex DNS A-records, a DNS-provider change out of repo scope).
 
 ## Phase 01 — FoundersBid
 

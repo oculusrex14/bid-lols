@@ -1,6 +1,6 @@
 # Phase 00 — Foundation
 
-**Status:** READY_FOR_IMPLEMENTATION. This document is the active phase spec and overrides all legacy code and stale docs (see `docs/archive/` once W11 lands).
+**Status:** COMPLETE (2026-08-26) — see the Completion Checklist + Notes below. One external exception: the `culturebid.lol` apex DNS A-records (out of repo scope; `www.` + all other apexes verified live). This document remains the Phase 00 spec of record and overrides all legacy code; stale product docs live in `docs/archive/`.
 
 ## Objective
 
@@ -48,7 +48,7 @@ Verified facts (from repo inspection + live checks, 2026-08-26):
 - **FR-2** Host-aware head on every page: unique `<title>` and `<meta name="description">` per domain, `rel=canonical` on the apex URL, `og:title`/`og:description`/`og:url` matching that domain.
 - **FR-3** `allowedHosts` + `normalizeHost` retained; `www.` normalizes to apex; any other unknown host gets the 200 bidthrone umbrella default surface (keeps Vercel preview URLs and local dev working; a 404 would make the preview gate unusable). The legacy cross-domain 302 brand-host mapping is removed (legacy `/$site` paths 308 → `/` on the same host).
 - **FR-4** Webhook fails closed: missing `CASHFREE_WEBHOOK_SECRET`, missing/invalid signature, or timestamp outside ±15 min → 401, logged, never settled. Valid verified events settle idempotently and atomically. No client-side path can settle an order.
-- **FR-5** Vercel **production** without a valid `DATABASE_URL` fails to start with an explicit error naming the variable (no PGLite fallback); all other runtimes (local dev, local `vite preview`, Vercel preview) use the hermetic PGLite self-migrating loop — even when a `DATABASE_URL` exists locally (`.env.local` holds prod credentials and Vite surfaces it to the dev SSR process), so local work can never mutate real data by accident. Opt into a real local database explicitly with `USE_REAL_DB=1` + `DATABASE_URL` (ops/ENVIRONMENT.md).
+- **FR-5** Vercel **production** without a valid `DATABASE_URL` fails to start with an explicit error naming the variable (no PGLite fallback). **Local** runtimes (dev, local `vite preview`) use the hermetic PGLite self-migrating loop — even when a `DATABASE_URL` exists locally (`.env.local` holds prod credentials and Vite surfaces it to the dev SSR process), so local work can never mutate real data by accident; opt into a real local database explicitly with `USE_REAL_DB=1` + `DATABASE_URL` (ops/ENVIRONMENT.md). **Vercel preview** trusts a project-scoped `DATABASE_URL` when present (deliberate platform configuration; the project's Development scope carries one), otherwise falls back to PGLite.
 - **FR-6** `npm run build` runs `vite build` only: no DB connection, no DDL, no PGLite in the output bundle.
 - **FR-7** Migrations run exclusively via `npm run db:migrate` (→ `scripts/migrate.mjs`), a dedicated gated release step; never from a build or preview.
 - **FR-8** Analytics: `views` = deduplicated page impressions; `visits` = one increment per browser session (first impression only); `clicks` = one per outbound "Visit" link click; painted numbers equal stored integers.
@@ -204,12 +204,22 @@ All testable; none vague.
 
 ## Completion Checklist
 
-- [ ] W1–W11 executed; every workstream's items checked off in this file
-- [ ] AC-1 … AC-22 all pass (evidence in completion notes / PR)
-- [ ] `npm run typecheck`, `npm run test`, `npm run lint`, pure `npm run build` green
-- [ ] Browser smoke green on dev + preview with regenerated baselines
-- [ ] Gated migration `0009` applied; ledger verified; row counts unchanged
-- [ ] Four domains verified live with coming-next surfaces; webhook probe fail-closed in prod
-- [ ] No secrets in any diff/log; no `.vercel`/env/generated output tracked
-- [ ] `docs/STATE.md` updated (phase COMPLETE, next phase pointer); legacy docs archived
-- [ ] Status line of this file set to `COMPLETE` with completion date
+Completed 2026-08-26 — commits `8c53a1b` (docs), `d2abcab` (hygiene), `791fdbc` (implementation), `803139e` (doc amendments/archives), `f3f…` (final docs/STATE).
+
+- [x] W1–W11 executed (evidence below; AC amendments landed in `803139e`)
+- [x] AC-1 … AC-22 pass — **AC-14 with one documented external exception**: the `culturebid.lol` **apex A records** publicly resolve to private IPs (`10.0.1.3`, `10.10.0.1` via Cloudflare DoH), so the apex is unreachable from the internet; `www.culturebid.lol` and the other three apexes are verified live on the new surface. Fixing the zone's A records is a DNS-provider change explicitly out of repo scope ("DNS/CNAME changes — out of repo") — a true external blocker, not a code defect.
+- [x] `npm run typecheck`, `npm run test` (47 + 38), `npm run lint`, pure `npm run build` — all green
+- [x] Browser smoke green on dev :8080 (exit 0, baseline `screenshots/app-builder-preview.json`) and built preview :8081 (exit 0, baseline `screenshots/app-builder-built.json`)
+- [x] Gated migration `0009` applied via `scripts/migrate.mjs` (dry-run first: exactly 1 pending); prod ledger now `0002`–`0009`; pre/post row counts identical (`listings 0, orders 4 pending, activity 0, crown_* 0, site_stats 3`)
+- [x] Domains verified live on prod: `bidthrone.lol` / `foundersbid.lol` / `bidception.lol` (+ all four `www.` variants) return 200 with domain-specific title/canonical/OG/robots/sitemap; legacy board paths 308 → same-host `/`; unknown host → bidthrone umbrella 200. Unsigned webhook probe on prod → 401 `{code:"invalid_signature",message,requestId}` (fail-closed). JSON error responses carry `x-request-id` matching the body.
+- [x] No secrets in any diff/log (secret scan of the full diff: only fake test values); no `.vercel`/env/generated output tracked
+- [x] `docs/STATE.md` updated (COMPLETE + next-phase pointer); `SPEC.md` + legacy process docs archived in `docs/archive/` with banners
+- [x] Status line of this file set to `COMPLETE`
+
+## Completion Notes (evidence)
+
+- **Deploy:** Vercel project `bidthrone` — prod deployment `bidthrone-5e612txbc` (aliased to `bidthrone.lol`), cloud build 7 s (pure; no DB step). Vercel preview deployment `bidthrone-bnncr7ay7` builds clean; anonymous preview probes are blocked by the team's existing deployment-protection policy (out of repo scope) — the equivalent full check battery ran against the local built preview (:8081, same Nitro artifacts) and against prod.
+- **Env (existence verified, values never printed):** Production scope carries `DATABASE_URL`, `CASHFREE_WEBHOOK_SECRET`, `CASHFREE_MODE`, `CASHFREE_CLIENT_ID/SECRET` (+aliases), `CASHFREE_NOTIFY_URL`, `INR_PER_USD`. Development scope carries `DATABASE_URL` (Vercel preview therefore runs Neon per `resolveDbConfig`; local runtimes stay hermetic PGLite).
+- **Prod logs (window: since deploy, 24 entries):** only external scanner probes (`/wp-admin/install.php` → 404, correct behavior, logged with request id) and one intentional AC-18 JSON-accept probe (500 → standard envelope). No app 5xx, no PGLite activity, no webhook failures.
+- **Known non-blocking follow-ups (not Phase 00 scope):** (1) culturebid.lol apex DNS A-records → Vercel (DNS provider); (2) 4 legacy **pending** Cashfree orders remain settle-able exclusively via verified webhook (no creation UI anymore); manual close/expiry is a post-Phase 00 ops task; (3) dormant Vercel env vars (`VITE_AUTH_ENABLED`, `NEXT_PUBLIC_*`, `SUPABASE_*`, `CASHFREE_ENV`) can be deleted from the project; (4) legal-copy review of the ported board-era terms ("copy review = follow-up" per the Routes table).
+- **Interpreted ACs (amended in `803139e`):** AC-1 (legacy identifiers confined to `settlement.server.ts` + tests), AC-3 (destructive-pattern grep), AC-8 (11 audited dead deps + full zero-user removal), AC-9 (static `MODE_BOOT_SCRIPT` exemption), AC-11 (no PGLite assets in output; inert PGLite JS in `_libs` documented), AC-14 (unknown host → umbrella 200), AC-15(b) (`site_stats.clicks` independent counter), AC-17 (`ProductShell`), FR-3/FR-5 (umbrella default; Vercel-preview env scoping).

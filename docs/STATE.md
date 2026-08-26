@@ -1,27 +1,25 @@
 # State
 
 Current phase: PHASE_00_FOUNDATION
-Status: IMPLEMENTATION_IN_PROGRESS (code complete locally; prod migration + deploys pending)
+Status: COMPLETE (2026-08-26)
 
 Completed:
 - documentation bootstrap (AGENTS.md contract; 00_PRODUCT; ROADMAP; 01–05; LEGACY_MIGRATION audit; ops/ runbooks)
-- Phase 00 code: W1 legacy removal, W2 truthful analytics, W3 fail-closed webhook + atomic claim-guard settlement, W4 repo/grok/auth/deps cleanup, W5 pure build + hermetic PGLite + prod fail-loud, W6/W7/W8 host-aware coming-next + SEO (host-seo middleware + dev plugin + shared source), W9 request-id + JSON error envelope, W10 tests (83 green), 0009_foundation.sql authored (NOT yet applied to prod), W11 archives + doc amendments
-- local gates green: typecheck, lint, test, pure build, dev :8080 + preview :8081 smoke (baselines regenerated)
-
-Current objective:
-- gated prod migration 0009 + row-count snapshot, then Vercel preview verify, then prod deploy + 4-domain verification per docs/ops/DEPLOYMENT.md
+- Phase 00 (W1–W11): legacy product removed (boards/Crown/swap/hype/portal//spec), host-aware coming-next surfaces on all four domains, fail-closed webhook + atomic claim-guard settlement + FX fallback visibility, truthful views/visits/clicks analytics, pure build (no DB in build; local runtimes hermetic PGLite; Vercel production fails loudly without DATABASE_URL), request-id + JSON error envelope, Grok chrome / auth scaffold / 35 dead deps removed, 83 tests green, 0009_foundation.sql gated-applied to prod, SPEC.md + legacy docs archived
+- Production: deployment bidthrone-5e612txbc live on bidthrone.lol (+ www, foundersbid, bidception, www.culturebid) — domain-specific title/canonical/OG/robots/sitemap verified; legacy paths 308 → /; unknown host → bidthrone umbrella; unsigned webhook → 401 fail-closed; prod ledger 0002–0009; row counts unchanged (listings 0 / orders 4 pending / activity 0 / crown_* 0)
 
 Next:
-- `DATABASE_URL=… node scripts/migrate.mjs --dry-run` then apply; Vercel env existence check (CASHFREE_WEBHOOK_SECRET, CASHFREE_MODE=production, DATABASE_URL); preview deploy + probes; prod deploy; domain/SEO/log verification; STATE → COMPLETE
+- specify PHASE_01_FOUNDERSBID (docs/phases/PHASE_01_FOUNDERSBID.md). Do NOT start Phase 01 until specified + authorized.
 
-Blocked:
-- none known
+Blocked / external (non-repo):
+- culturebid.lol APEX DNS: public A records resolve to private IPs (10.0.1.3 / 10.10.0.1) → apex unreachable from the internet; www.culturebid.lol + all other domains are live. Fix = update the culturebid.lol zone's apex A records to Vercel (DNS provider console) — out of repo scope by design.
+- 4 legacy PENDING Cashfree orders: settle only via verified webhook; manual close/expiry = post-Phase 00 ops task.
+- Dormant Vercel env vars (VITE_AUTH_ENABLED, NEXT_PUBLIC_*, SUPABASE_*, CASHFREE_ENV) may be deleted from the project.
 
 Do not work on:
-- Phase 01+
+- Phase 01+ implementation
 - bounty marketplace features
 - future gamification
 
-Last verified commit: 791fdbc (2026-08-26, "Phase 00: foundation — host-aware coming-next surfaces, fail-closed payments, truthful analytics, safe build")
-Last deployment: bidthrone.lol production still on commit fdc55e0 (legacy pay-to-rank + Crown surface) — Phase 00 not yet live.
-Live check 2026-08-26 (dev env): bidthrone.lol 200; foundersbid/bidception.lol 302 → legacy paths; culturebid.lol apex DNS anomaly from dev env (www OK) — re-verify from Vercel after deploy.
+Last verified commit: 803139e (2026-08-26, "Phase 00 docs: amend AC/FR …") + final docs/STATE commit
+Last deployment: bidthrone.lol PRODUCTION = deployment bidthrone-5e612txbc (commit 803139e era code, 2026-08-26) — Phase 00 surface live; Vercel preview bidthrone-bnncr7ay7 (build clean; team deployment-protection blocks anonymous probes — verified via local built preview instead).

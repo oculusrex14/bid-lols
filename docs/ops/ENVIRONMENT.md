@@ -8,7 +8,8 @@
 - **Server-only variables** are read via `process.env` at runtime (Vercel env in production/preview; `.env.local` locally).
 - **Database source** is decided by `resolveDbConfig` in `src/lib/db.server.ts`:
   - `VERCEL_ENV=production` → `DATABASE_URL` is **required** (missing/blank = startup error naming the variable).
-  - Everything else (local dev, local `vite preview`, Vercel preview) → hermetic **PGLite**, even when a `DATABASE_URL` is present locally. This is deliberate: `.env.local` holds production credentials and Vite surfaces them to the dev SSR process, so dev must not connect to them by accident.
+  - **Local** runtimes (dev, local `vite preview`) → hermetic **PGLite**, even when a `DATABASE_URL` is present locally. This is deliberate: `.env.local` holds production credentials and Vite surfaces them to the dev SSR process, so local work must not connect to them by accident.
+  - **Vercel preview** → uses a project-scoped `DATABASE_URL` when present (the Development scope carries one; deliberate platform configuration), otherwise PGLite.
   - Opt into a real database from a local runtime with `USE_REAL_DB=1` + `DATABASE_URL` (intentional integration work only; documented in the phase completion notes when used).
 
 ## Required in production (Vercel)

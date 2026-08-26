@@ -70,11 +70,11 @@ Architecture boundaries only:
 
 - A provider-agnostic boundary: `payments` service + provider adapter. The existing Cashfree rail (session-first PG order, server-side paid-polling, HMAC webhook in `src/routes/api/webhooks/cashfree.ts`, INR conversion in `fx.ts`) is the reference implementation to generalize, not to fork.
 - The adapter claims only what the provider actually supports. Cashfree today is **collect-only** (PG order + webhook); there is no escrow, hold, or payout/withdrawal API. The payout direction for winning bounties is an open product decision (VERIFY in the audit) — the architecture keeps money actions idempotent, transactional, and ledgered so a second rail can be added later without a rewrite.
-- Invariants: payment proven only by server-side provider verification (redirects never count); webhooks fail closed (missing secret or unverifiable signature → reject — the current "accept when unconfigured" behavior is a Phase 00 fix); integer minor currency units; client-calculated amounts are never trusted; every monetary action writes an auditable ledger row.
+- Invariants: payment proven only by server-side provider verification (redirects never count); webhooks fail closed (missing secret or unverifiable signature → reject; the legacy "accept when unconfigured" behavior was removed in Phase 00); integer minor currency units; client-calculated amounts are never trusted; every monetary action writes an auditable ledger row.
 
 ## Database
 
-- **PostgreSQL is the authoritative production datastore** (existing `pg` pooler via `DATABASE_URL`). PGLite is a local dev/test aid only; production must fail loudly on a missing/invalid `DATABASE_URL` (Phase 00 PRIORITY).
+- **PostgreSQL is the authoritative production datastore** (existing `pg` pooler via `DATABASE_URL`). PGLite is a local dev/test aid only; production must fail loudly on a missing/invalid `DATABASE_URL` (in force since Phase 00 — `resolveDbConfig` in `src/lib/db.server.ts`).
 - Schema changes via migration files in `migrations/`, applied by a gated release step (not the app build), idempotent, tracked in the `_migrations` ledger.
 - Conventions: integer minor currency units (cents/paise), referential integrity via foreign keys, no manual DDL or destructive mutation against production.
 - Legacy `listings`/`orders` (including real paid orders) remain readable and auditable; the pivot is additive, never a drop.

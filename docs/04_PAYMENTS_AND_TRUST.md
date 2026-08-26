@@ -1,6 +1,6 @@
 # 04_PAYMENTS_AND_TRUST.md — Payments & Trust
 
-**Status:** Payment and trust contract for the Bid Network. The "current reality" section is verified against `src/lib/cashfree.ts`, `src/lib/fx.ts`, `src/routes/api/webhooks/cashfree.ts`, and the settlement path in `src/lib/board-fns.ts`. The target model is directional for Phase 01+; the defects marked Phase 00 (fail-open webhook, client-secret fallback, no replay check, non-atomic settlement, silent FX fallback) are executed in `docs/phases/PHASE_00_FOUNDATION.md`.
+**Status:** Payment and trust contract for the Bid Network. The "current reality" section is verified against `src/lib/cashfree.ts`, `src/lib/fx.ts`, `src/routes/api/webhooks/cashfree.ts`, and the settlement path in `src/lib/settlement.server.ts` (post-Phase 00). The target model is directional for Phase 01+. The defects marked Phase 00 (fail-open webhook, client-secret fallback, no replay check, non-atomic settlement, silent FX fallback) were **executed in Phase 00 on 2026-08-26** (commit `791fdbc`): the verifier is `verifyCashfreeWebhook` in `src/lib/cashfree.ts` (dedicated secret, +/-15 min replay window), settlement is `src/lib/settlement.server.ts` (claim guard in one transaction + provider re-verify + `audit_events` row), and the FX fallback logs and records `fxSource`.
 
 ## Current Provider Reality (verified)
 

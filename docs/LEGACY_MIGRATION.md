@@ -1,6 +1,8 @@
 # Legacy Repository Audit
 
-Audit of the bidthrone monorepo (three pay-to-rank boards + The Crown) ahead of the bounty-network pivot. Audit only — no code, schema, or deploy changes. Tags: KEEP / REFACTOR / REMOVE / VERIFY.
+Audit of the bidthrone monorepo (three pay-to-rank boards + The Crown) ahead of the bounty-network pivot. Audit only — no code, schema, or deploy changes at audit time. Tags: KEEP / REFACTOR / REMOVE / VERIFY.
+
+**Status (2026-08-26):** the Phase 00 removals, keep-lists, and VERIFY resolutions in this audit were executed — see `docs/phases/PHASE_00_FOUNDATION.md` completion checklist. The legacy product (boards, Crown, swap, hype, `/spec`) is removed; its tables remain as read-only history; `SPEC.md` + the legacy process docs live in `docs/archive/`.
 
 ## Current Stack
 

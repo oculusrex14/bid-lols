@@ -1,6 +1,6 @@
 # 05_SECURITY.md — Security Requirements
 
-**Status:** Minimum security baseline for the Bid Network, derived from repository inspection. No enterprise theater — only what this app's threat surface requires. Legacy webhook fail-open is classified UNACCEPTABLE (Phase 00 fix).
+**Status:** Minimum security baseline for the Bid Network, derived from repository inspection. No enterprise theater — only what this app's threat surface requires. Legacy webhook fail-open was classified UNACCEPTABLE and **fixed in Phase 00** (2026-08-26): dedicated `CASHFREE_WEBHOOK_SECRET` only, +/-15 min replay window, constant-time compare, no client-secret fallback.
 
 ## Legacy Baseline (verified)
 

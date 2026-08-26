@@ -27,11 +27,19 @@ test("local runtimes are hermetic: PGLite even when a DATABASE_URL is present", 
   // them to the dev SSR process. Dev must NOT connect to them by accident.
   assert.equal(resolveDbConfig({ DATABASE_URL: "postgres://prod" }).source, "pglite");
   assert.equal(resolveDbConfig({}).source, "pglite");
+  assert.equal(resolveDbConfig({ VERCEL: "1" }).source, "pglite");
+});
+
+test("Vercel preview trusts a project-scoped DATABASE_URL, else PGLite", () => {
   assert.equal(
     resolveDbConfig({ VERCEL_ENV: "preview", DATABASE_URL: "postgres://x" }).source,
+    "neon",
+  );
+  assert.equal(resolveDbConfig({ VERCEL_ENV: "preview" }).source, "pglite");
+  assert.equal(
+    resolveDbConfig({ VERCEL_ENV: "preview", DATABASE_URL: "  " }).source,
     "pglite",
   );
-  assert.equal(resolveDbConfig({ VERCEL: "1" }).source, "pglite");
 });
 
 test("an empty or whitespace DATABASE_URL counts as unset", () => {
