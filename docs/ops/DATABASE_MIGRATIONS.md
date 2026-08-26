@@ -1,14 +1,14 @@
 # DATABASE_MIGRATIONS.md — Migration Operations
 
-**Status:** Runbook for schema changes. No schema changes yet — this defines how Phase 00 and later migrations are created, verified, and applied.
+**Status:** Runbook for schema changes. `0009_foundation` is authored and pending the gated prod apply; everything after it follows this runbook.
 
 ## Current mechanism (verified)
 
-- **Files:** `migrations/NNNN_name.sql`, applied in filename order. Today: `0002_boards` through `0008_crown` (0001 was the auth opt-in, applied only if present in `migrations/`).
-- **Ledger:** `_migrations(name, applied_at)` on each backend; files keyed by **basename**, applied once, never re-run. Bookkeeping shared by both appliers (`scripts/migration-plan.mjs`: `pendingMigrations`/`isMigrationFile`).
-- **Prod applier:** `scripts/migrate.mjs` — `pg` pooler against `DATABASE_URL`, each file in one transaction; skips when `DATABASE_URL` is unset.
-- **Local applier:** `src/lib/db.ts` PGLite fallback applies the same `migrations/*.sql` glob (non-recursive) at dev startup — the zero-config local loop. Keep the glob + vite bootstrap plugin together or the loop breaks.
-- **Known hazard:** `npm run build` ends with `db:migrate`, so a production build mutates prod DDL (this is how `0008_crown.sql` reached prod). See Production strategy below.
+- **Files:** `migrations/NNNN_name.sql`, applied in filename order. Prod today: `0002_boards` through `0008_crown` applied; `0009_foundation` pending. (`0001` was the auth opt-in under `migrations/auth/`, archived and never applied; the glob is non-recursive.)
+- **Ledger:** `_migrations(name, applied_at)` on each backend; files keyed by **basename**, applied once, never re-run. Bookkeeping shared by both appliers (`scripts/migration-plan.mjs`: `pendingMigrations`/`isMigrationFile`/`projectRoot`).
+- **Prod applier:** `scripts/migrate.mjs` — `pg` against `DATABASE_URL`, each file in one transaction, ledger insert in the same transaction; `--dry-run` lists pending without applying; skips (with a message) when `DATABASE_URL` is unset.
+- **Local applier:** `src/lib/db.server.ts` PGLite (hermetic dev/preview runtimes) applies the same `migrations/*.sql` set at startup — via the Vite glob when bundled, via a disk read in plain Node (the test runner). Keep the glob + the `pgliteBootstrapPlugin` in `vite.config.ts` together or the loop breaks.
+- **Build decoupling (Phase 00, done):** `npm run build` is pure `vite build` — no DB connection, no DDL. `db:migrate` is a separate script, run only as the gated release step below.
 
 ## Creation workflow
 
@@ -34,8 +34,8 @@
 
 ## Production migration strategy
 
-- **Decouple from build (Phase 00, PRIORITY):** remove `db:migrate` from `npm run build`. The build is pure (no DB connection, no PGLite bundling). Migrations run as a **dedicated, gated release step** — an explicit CI job or manual `DATABASE_URL=… node scripts/migrate.mjs` — ordered before the new build is activated, with the run's output captured.
-- Pre-flight: `SELECT name FROM _migrations ORDER BY name` to confirm expected state (today: 0002–0008) before applying.
+- **Gated release step (in force since Phase 00):** `DATABASE_URL=… node scripts/migrate.mjs` — first as `--dry-run` (lists pending, applies nothing), then for real, ordered **before** the new build is activated, with the run's output captured as evidence.
+- Pre-flight: the `--dry-run` output + `SELECT name FROM _migrations ORDER BY name` to confirm expected state (Phase 00 pre: 0002–0008; post: +0009) before applying.
 - Keep the per-file transaction + ledger insert (atomic per file).
 - `DATABASE_URL` set-and-valid is a hard deploy precondition; a missing/invalid value fails the step loudly.
 

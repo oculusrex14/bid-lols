@@ -1,3 +1,6 @@
+> **DEPRECATED — archived in Phase 00 (2026-08-26).** Legacy product research / ops
+> record; NOT authoritative. Active product definition: `docs/00_PRODUCT.md`.
+
 # Ideas — freemium ranking layer
 
 Five concrete candidates, all built on the existing three boards

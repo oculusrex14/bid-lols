@@ -1,3 +1,6 @@
+> **DEPRECATED — archived in Phase 00 (2026-08-26).** Legacy product research / ops
+> record; NOT authoritative. Active product definition: `docs/00_PRODUCT.md`.
+
 # Idea ranking
 
 Rubric (1–10 each; "build cost" is inverse — 10 = cheapest/smallest surface):

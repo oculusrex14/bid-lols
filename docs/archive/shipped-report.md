@@ -1,3 +1,6 @@
+> **DEPRECATED — archived in Phase 00 (2026-08-26).** Legacy product research / ops
+> record; NOT authoritative. Active product definition: `docs/00_PRODUCT.md`.
+
 # Shipped Report — The Crown (Oracle Pass)
 
 Date: 2026-08-26 · Status: **deployed to https://bidthrone.lol** (commit `fdc55e0`)

@@ -1,3 +1,6 @@
+> **DEPRECATED — archived in Phase 00 (2026-08-26).** Legacy product research / ops
+> record; NOT authoritative. Active product definition: `docs/00_PRODUCT.md`.
+
 # Research Brief — Freemium Ranking System (superseding Bidception)
 
 Date: 2026-07-25 · Run: autonomous overnight build

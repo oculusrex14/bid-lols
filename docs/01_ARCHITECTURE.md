@@ -1,6 +1,6 @@
 # 01_ARCHITECTURE.md — Target Shared Architecture
 
-**Status:** Target architecture for the Bid Network pivot. Based on repository inspection (August 2026); legacy-state findings in `docs/LEGACY_MIGRATION.md`. Phase 00 executes the deltas marked "Phase 00".
+**Status:** Target architecture for the Bid Network pivot. Based on repository inspection (August 2026); legacy-state findings in `docs/LEGACY_MIGRATION.md`. The Phase 00 foundation deltas are applied (2026-08-26, commit `791fdbc`); remaining "Phase 00" markers below are historical.
 
 ## Principles
 
@@ -21,12 +21,12 @@
 Retained, based on inspection:
 
 - **TanStack Start** (React 19) on **Vite 8**, SSR via **Nitro 3** (`vercel` preset, `serverDir: ./server`). File-based routes in `src/routes`; server functions via `createServerFn` + zod; TanStack Query for client data. This is the target runtime — no framework rewrite.
-- Tailwind v4 + Radix primitives + sonner + lucide; the `src/components/ui` primitives are the design-system base (see `03_DESIGN_SYSTEM`).
+- Tailwind v4 + sonner + lucide (Radix and the `src/components/ui` kit removed in Phase 00 with the legacy forms; reintroduce primitives deliberately when a phase needs them — see `03_DESIGN_SYSTEM`).
 - TypeScript strict (`tsconfig.json`, `strict: true`), `@/*` path alias, ESM, `node --test` harness in `scripts/`.
-- No ORM in use: one parameterized SQL surface in `src/lib/db.ts` (Postgres `pg` ⇄ PGLite). Kysely is a dependency but not wired to the SQL surface.
+- No ORM: one parameterized SQL surface in `src/lib/db.server.ts` (server-only; Postgres `pg` ⇄ PGLite dev/preview), with `resolveDbConfig` gating the backend (production requires `DATABASE_URL`; all other runtimes are hermetic PGLite). No ORM dependency remains (Kysely removed in Phase 00).
 - Quality gates retained: `typecheck`, `browser-smoke.mjs` (Playwright smoke with verdict/baseline), `node --test` script tests, eslint + prettier.
 
-Phase 00 runtime deltas: remove PGLite from the prod bundle (`copy-pglite`) and make a missing/invalid `DATABASE_URL` fail loudly in production; drop unused deps listed in the legacy audit; strip the hype layer, pay-to-rank board engine, and `SPEC.md`/`/spec` from the product.
+Phase 00 (applied): PGLite removed from the prod path (`copy-pglite` now stages assets for the local preview loop only); missing/invalid `DATABASE_URL` fails loudly in Vercel production; 35 unused deps dropped; hype layer, pay-to-rank board engine, Crown, and `SPEC.md`/`/spec` removed from the product.
 
 ## Domain Routing
 
@@ -41,7 +41,7 @@ Intended behavior — host-aware rendering, one app:
 
 - `www.` variants normalize to the apex host (existing `normalizeHost` already strips `www.`) — either serve the same host-aware app or 301 www → apex; no other redirects.
 - The app reads the request host (preferring `x-forwarded-host`) to resolve the active product context; the same route tree serves every domain, with per-host head (title/canonical/OG) and per-product content.
-- The current mechanism — `scripts/brand-host.mjs` + `server/middleware/brand-host.ts` 302-ing brand domains onto `/$site` paths on `bidthrone.lol` — is legacy URL-swap infrastructure (REMOVE/REPLACE per the audit). Its useful parts are kept: the host-normalization rules, the `allowedHosts` list, and the discipline of keeping SSR and client on the same URL. Cross-product links become absolute URLs on each product's own domain.
+- Phase 00 replaced the legacy cross-domain 302 mapping (`brand-host`, removed) with **host-aware serving**: one app, the request host resolves the active product (`scripts/host-seo-shared.mjs` single source of truth; Nitro middleware `server/middleware/seo-host.ts` for prod/preview, dev twin `scripts/host-seo-plugin.mjs`). Per-domain title/description/canonical/OG are injected into the SSR HTML by that middleware; `/robots.txt` and `/sitemap.xml` are host-aware; legacy `/$site` board paths 308 → same-host `/`; unknown hosts get the bidthrone umbrella default (keeps Vercel preview URLs working). Cross-product links are absolute URLs on each product's own domain. (Vite dev intentionally does not transform the HTML head — extra head nodes break React 19 hydration in the dev SSR stream; dev keeps the root's static umbrella head and a client-side sync in `ProductShell`.)
 
 ## Application Layers
 
@@ -64,7 +64,7 @@ Architecture boundaries only:
 - One shared account system: same login and same `user_id` across all four domains; reputation follows the user.
 - An `IdentityProvider` boundary (session create/verify, user lookup) consumed through server functions; `users` + sessions in the shared Postgres; a stable `user_id` that all domain tables reference.
 - No organization/team/sub-account structures before required. Bidception's "captains/teams" is an extension on top of flat users when that phase lands.
-- Open Phase 00 decision (record it in the phase spec): the dormant Better Auth scaffold in `src/lib/auth/*` is coupled to the platform's Grok auth broker and is REMOVE-by-default per the audit; pick its replacement (leaner provider or minimal session) when auth is actually needed.
+- Phase 00 decision (recorded in `docs/phases/PHASE_00_FOUNDATION.md`, executed): the dormant Better Auth scaffold (`src/lib/auth/*`) was removed — it was coupled to the platform's Grok auth broker and no route consumed a session. The same-site isolation check was retained as the reusable primitive `src/lib/security/isolation.ts`. `migrations/0009_foundation.sql` creates the identity foundation (`users`/`sessions`/`profiles`/`audit_events`/`payments`); the auth UI/provider choice is Phase 01.
 
 ## Payments
 
@@ -118,18 +118,16 @@ Minimum bar:
 
 ## PWA
 
-- **Decision: remove the legacy App Builder/Grok PWA chrome** — `public/__grok/**`, the `grok-pwa` Nitro middleware and Vite plugin, the `?install=1` install-page tutorial, and the dynamic `/__grok/manifest.webmanifest`. It is generated platform scaffolding, not a product requirement (per the audit: VERIFY item, default REMOVE).
+- **Removed in Phase 00:** the legacy App Builder/Grok PWA chrome — `public/__grok/**`, the `grok-pwa` Nitro middleware and Vite plugin, the `?install=1` install-page tutorial, the dynamic `/__grok/manifest.webmanifest`, and the manifest/apple-touch-icon head links. It was generated platform scaffolding, not a product requirement.
 - A PWA (installable/manifest) comes back only if a phase explicitly requires it; nothing depends on it today.
 
 ## Deployment
 
-- **Vercel** (Nitro `vercel` preset) + **Postgres** (Supabase pooler URL in `DATABASE_URL`).
-- Current state: `npm run build` = `vite build` → `copy-pglite` → `db:migrate` — i.e. **migrations run against production during an arbitrary build** (unsafe; applied `0008` to prod this way on the last deploy).
-- Target:
-  - The app build is pure — no DB connection, no PGLite bundling, no mutation of prod.
-  - Migrations run as a **dedicated, gated release step** (explicit CI job or manual deploy command), keeping the idempotent-file + `_migrations` ledger pattern.
-  - `DATABASE_URL` required in production: missing/invalid → deploy fails loudly, no silent PGLite fallback.
-- Keep: `.env.local` local-only and never committed; the `with-app-env` dev wrapper (single source of `VITE_` flags for dev/build/preview); the `allowedHosts` allowlist.
+- **Vercel** (Nitro `vercel` preset) + **Postgres** (Neon; `DATABASE_URL`).
+- Build chain (Phase 00, applied): `npm run build` = `vite build` only — no DB connection, no DDL, no PGLite assets in the output (the inert PGLite server JS stays in the function's `_libs` and is unreachable in production; its wasm assets are staged into the **local** preview loop only, by `node scripts/copy-pglite.mjs`).
+- Migrations run as a **dedicated, gated release step** (`DATABASE_URL=… node scripts/migrate.mjs`, optionally preceded by `--dry-run`), keeping the idempotent-file + `_migrations` ledger pattern — never from a build.
+- `DATABASE_URL` required in Vercel production: missing/invalid → the runtime fails to start with an explicit error naming the variable (no silent PGLite fallback). All other runtimes are hermetic PGLite, even with a local `DATABASE_URL` present (`.env.local` holds prod credentials); `USE_REAL_DB=1` opts a local runtime into the real database deliberately.
+- Keep: `.env.local` local-only and never committed; the `allowedHosts` allowlist (dev Host-header testing of the four domains). The `with-app-env` wrapper and all `VITE_*` flags were removed in Phase 00 (nothing client-inlined remains).
 
 ## Future Extensibility
 

@@ -5,18 +5,18 @@
 ## Topology (verified)
 
 - **Platform:** Vercel project `bidthrone` (`prj_sJF1T6PBZoNkFnXRD9jvjqnr5PUt`), Nitro `vercel` preset, `serverDir: ./server`. No `vercel.json` — platform behavior is default; if a setting must change, create `vercel.json` deliberately.
-- **Database:** Supabase pooler Postgres via `DATABASE_URL` (Vercel env; `.env.local` locally, never committed).
-- **Build chain today:** `with-app-env vite build` → `copy-pglite` → `db:migrate` — i.e. **the build mutates prod DDL**. Phase 00 must replace this with: pure build + separately gated migration step (see `DATABASE_MIGRATIONS.md`).
-- **Known debt:** `.vercel/output` (69 files, ~19 MB) is tracked despite `.gitignore` (committed before the rule); 82 `screenshots/` tooling outputs are tracked with no gitignore coverage (the verdict JSONs double as smoke baselines). Untrack both before further deploys so stale output can't ship.
+- **Database:** Postgres (Neon) via `DATABASE_URL` (Vercel env; `.env.local` locally, never committed). Production requires it — the runtime fails to start without it (`resolveDbConfig`).
+- **Build chain (Phase 00):** `npm run build` = `vite build` only — no DB connection, no DDL, no PGLite assets. Migrations run exclusively through the gated step below. `node scripts/copy-pglite.mjs` stages PGLite wasm **into the local preview loop only** (`.vercel/output` after a local build) — it is not part of `build`, and deployed runtimes never execute PGLite (production: Neon; preview: see env scoping in `ENVIRONMENT.md`).
+- **Host routing:** each of the four domains serves its own product surface from the same app (Host header → product). No cross-domain 302 mapping; legacy board paths 308 → same-host `/` (`server/middleware/seo-host.ts` + dev twin in `scripts/host-seo-plugin.mjs`, shared logic in `scripts/host-seo-shared.mjs`).
 
 ## Expected domains
 
-- `bidthrone.lol` (+ `www.`) — umbrella / portal
-- `foundersbid.lol` (+ `www.`)
-- `culturebid.lol` (+ `www.`)
-- `bidception.lol` (+ `www.`)
+- `bidthrone.lol` (+ `www.`) — reputation & discovery umbrella
+- `foundersbid.lol` (+ `www.`) — startup execution
+- `culturebid.lol` (+ `www.`) — creative bounties
+- `bidception.lol` (+ `www.`) — nested & team bounties
 
-All four are in `vite.config.ts` `allowedHosts`; brand-domain 302s are handled by the `brand-host` middleware (dev: Vite plugin). CNAME/Vercel-domain state is **out of repo** — verify on the Vercel project (audit VERIFY item) before relying on a domain.
+All four are in `vite.config.ts` `allowedHosts` (dev Host-header testing). Each domain serves its own product surface from the same app; unknown hosts get the bidthrone umbrella default. CNAME/Vercel-domain state is **out of repo** — verify on the Vercel project before relying on a domain.
 
 ## Autonomous-safe deployment sequence
 
@@ -24,11 +24,11 @@ Execute in order; any BLOCKING failure (below) stops the run and triggers rollba
 
 1. **Verify clean/understood diff.** `git status` + `git diff`: every changed path maps to the current task; no application-code change unless the task says so; no env files, secrets, local DBs, `.vercel/` output, or temp files in the diff.
 2. **lint / typecheck / test.** `npm run lint` (eslint), `npm run typecheck`, `npm run test` — all green.
-3. **Production build locally.** `npm run build` — must be pure: no DB connection, no DDL, no PGLite bundling (post-Phase-00 target; pre-decoupling, the build step's `db:migrate` is a BLOCKING risk and must be run manually, separately, per `DATABASE_MIGRATIONS.md`).
-4. **Verify migrations.** Apply pending `migrations/*.sql` against prod via the **dedicated, gated step** (`DATABASE_URL=<prod> node scripts/migrate.mjs`); confirm the `_migrations` ledger matches expectations before deploying. No pending migrations allowed at deploy time.
+3. **Production build locally.** `npm run build` — pure `vite build`: no DB connection, no DDL, no PGLite assets. Local preview loop: `npm run build && node scripts/copy-pglite.mjs && npm run preview` (port 8081; PGLite hermetic).
+4. **Verify migrations (gated step).** Pre-deploy ledger check (`DATABASE_URL=<prod> node scripts/migrate.mjs --dry-run` — lists pending, applies nothing), then apply (`DATABASE_URL=<prod> node scripts/migrate.mjs`), then confirm the `_migrations` ledger matches expectations (Phase 00: pre = 0002–0008, post = +0009) and the row-count snapshot is unchanged. No pending migrations allowed at deploy time.
 5. **Preview deploy.** `vercel` (non-prod) with valid deployment credentials (token/OIDC). Missing auth = BLOCK (never manufacture credentials).
-6. **Smoke test preview.** `scripts/browser-smoke.mjs` with `BROWSER_SMOKE_ROOT` pointed at the preview; verdict must match baseline.
-7. **Verify critical APIs / server functions.** On the preview: server-function round-trips exercised by the smoke test; `POST /api/webhooks/cashfree` with a bad/missing signature must get **401/403** (fail-closed — an accepted unsigned webhook is BLOCKING), and a validly-signed sandbox event returns a structured, correct response; `/api/favicon` and all four coming-next pages serve the correct host surface. (Order creation no longer exists after Phase 00 — the webhook is the only money path.)
+6. **Smoke test.** `scripts/browser-smoke.mjs` (with `BROWSER_SMOKE_ROOT="$PWD/screenshots"`) on dev :8080 and the local built preview :8081 (baselines `screenshots/app-builder-preview.json` / `app-builder-built.json`, regenerated with the new surface); verdicts must be green (exit 0, status 200, no console/page errors).
+7. **Verify critical APIs / server functions.** On the local preview and on the Vercel preview: `POST /api/webhooks/cashfree` with a bad/missing signature must get **401** with the `{ code, message, requestId }` envelope (fail-closed — an accepted unsigned webhook is BLOCKING); `/robots.txt` and `/sitemap.xml` answer host-aware; `/terms` etc. serve the correct host surface; `/api/favicon` responds. (Order creation no longer exists after Phase 00 — the webhook is the only money path; in-flight legacy orders settle through it.)
 8. **Production deploy.** `vercel --prod` (or the authorized deployment mechanism).
 9. **Verify all custom domains.** HEAD/GET `https://bidthrone.lol`, `foundersbid.lol`, `culturebid.lol`, `bidception.lol` (+ `www.` where CNAMEs exist): 200, correct per-host coming-next surface (domain-specific `<title>`), host-aware canonical/OG; Vercel logs show the Postgres connection, not PGLite fallback.
 10. **Inspect runtime errors/logs.** Vercel function logs for the new deploy: no unhandled server errors, no 5xx on the routes visited in step 9.

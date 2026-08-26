@@ -1,3 +1,8 @@
+> **DEPRECATED — archived in Phase 00 (2026-08-26).** This is the legacy pay-to-rank
+> product specification and is NOT authoritative. The active product definition is
+> `docs/00_PRODUCT.md`; the removal record is `docs/LEGACY_MIGRATION.md`. The in-app `/spec`
+> route no longer exists.
+
 # bidthrone.lol — Product specification
 
 **Status:** shipped in this workspace (demo-quality, Cashfree sandbox in preview).  
