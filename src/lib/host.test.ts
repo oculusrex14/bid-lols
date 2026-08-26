@@ -62,14 +62,14 @@ test("robots.txt is host-aware with the domain's own sitemap URL", () => {
   assert.match(robotsTextFor("bidthrone"), /User-agent: \*/);
 });
 
-test("sitemap lists exactly the four apex homepages, no www", () => {
-  const xml = sitemapXml();
+test("sitemap is host-aware: own host's home + legal pages, no other origins", () => {
+  // Phase 00.5 (AC-6.2): each domain inventories only itself.
+  const xml = sitemapXml("bidthrone");
   assert.match(xml, /^<\?xml version="1.0" encoding="UTF-8"\?>/);
-  assert.equal((xml.match(/<url>/g) ?? []).length, 4);
+  assert.equal((xml.match(/<url>/g) ?? []).length, 5);
   assert.ok(!/<loc>https:\/\/www\./.test(xml), "no www URLs in the sitemap");
-  for (const key of PRODUCT_KEYS) {
-    assert.ok(xml.includes(`https://${product(key).apex}/`), `sitemap has ${key}`);
-  }
+  assert.ok(xml.includes("https://bidthrone.lol/terms"));
+  assert.ok(!xml.includes("foundersbid.lol"), "no other product origin");
 });
 
 test("legacy board paths 308 to the same-host root; live paths do not", () => {

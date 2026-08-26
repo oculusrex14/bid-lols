@@ -5,12 +5,15 @@
  *
  * For GET requests:
  *  - `/robots.txt`   -> host-aware robots.txt (Sitemap: this domain).
- *  - `/sitemap.xml`  -> the single four-domain sitemap, served identically.
+ *  - `/sitemap.xml`  -> host-aware sitemap: this domain's own public URLs
+ *    only (Phase 00.5, AC-6.2).
  *  - legacy board paths (`/founders*`, `/culture*`, `/bidception*`, `/spec*`)
  *    -> 308 to the same-host root (Phase 00 replaced the boards).
- *  - any other HTML document -> host-aware `<title>`, description, canonical
- *    and Open Graph tags injected at `</head>` (the app routes render the
- *    product-neutral head, so nothing is duplicated).
+ *  - any other HTML document -> status-aware head injected at `</head>`:
+ *    200/3xx get host-aware `<title>`, description, canonical, and Open
+ *    Graph tags; 404 gets the not-found set — branded title, `noindex,follow`,
+ *    and NO canonical for the missing path (AC-6.4). The app routes render
+ *    the product-neutral head, so nothing is duplicated.
  *
  * Everything else passes through untouched. The dev server gets the same
  * behaviour from scripts/host-seo-plugin.mjs; the shared logic lives in
@@ -18,6 +21,7 @@
  */
 import {
   DEFAULT_PRODUCT,
+  injectNotFoundTheme,
   injectSeoHead,
   legacyRedirectFor,
   normalizeHost,
@@ -67,7 +71,8 @@ export default async function seoHostMiddleware(
   }
 
   if (path === "/sitemap.xml") {
-    return new Response(sitemapXml(), {
+    // Host-aware inventory: only this host's own public URLs (AC-6.2).
+    return new Response(sitemapXml(productKey), {
       headers: {
         "content-type": "application/xml; charset=utf-8",
         "cache-control": "public, max-age=3600",
@@ -84,8 +89,13 @@ export default async function seoHostMiddleware(
   if (!looksLikeHtml(result)) return result;
 
   const original = result as Response;
-  const html = await original.text();
-  const transformed = injectSeoHead(html, productKey, path);
+  let html = await original.text();
+  // 404: theme the <html> for the branded not-found page (AC-6.4).
+  if (original.status === 404) html = injectNotFoundTheme(html, productKey);
+  // Status-aware head: 404 gets the not-found set (noindex,follow, no
+  // canonical for the missing path — AC-6.4); everything else gets the
+  // host-aware SEO set.
+  const transformed = injectSeoHead(html, productKey, path, original.status);
   const headers = new Headers(original.headers);
   headers.delete("content-length");
   headers.set("content-type", "text/html; charset=utf-8");

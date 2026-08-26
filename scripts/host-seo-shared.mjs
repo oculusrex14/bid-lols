@@ -139,9 +139,23 @@ export function product(key) {
 const PATH_TITLES = {
   "/terms": "Terms of service",
   "/privacy": "Privacy policy",
-  "/refund": "Refund policy",
+  "/refund": "Refund & payment policy",
   "/contact": "Contact",
 };
+
+/**
+ * Clickable origin for cross-product links. culturebid.lol's apex DNS is
+ * misconfigured (private 10.x A records — see docs/ops/DEPLOYMENT.md, DNS
+ * note), so visitors must go through www.culturebid.lol until the apex is
+ * verified reachable. Declarative URLs (canonical, OG, sitemap) keep using
+ * the apex origin; only <a href> navigation uses this helper (AC-5.2).
+ * @param {string} key
+ * @returns {string}
+ */
+export function linkOrigin(key) {
+  const p = product(key);
+  return key === "culturebid" ? `https://www.${p.apex}` : `https://${p.apex}`;
+}
 
 /**
  * @param {string} productKey
@@ -210,15 +224,19 @@ export function renderSeoHeadTags(productKey, pathname) {
 }
 
 /**
- * Strip any pre-existing title/description/canonical/og: tags, then insert
- * the host-aware set before `</head>`. Returns the input unchanged when it
- * is not an HTML document.
+ * Strip any pre-existing title/description/canonical/og:/robots tags, then
+ * insert before `</head>`:
+ *  - normal statuses: the host-aware SEO set;
+ *  - 404: the not-found set — branded title, `noindex,follow`, and NO
+ *    canonical/OG for the missing path (AC-6.4).
+ * Returns the input unchanged when it is not an HTML document.
  * @param {string} html
  * @param {string} productKey
  * @param {string} pathname
+ * @param {number} [status]
  * @returns {string}
  */
-export function injectSeoHead(html, productKey, pathname) {
+export function injectSeoHead(html, productKey, pathname, status = 200) {
   let out = String(html ?? "");
   if (!out.includes("</head>")) return out;
   const strip = [
@@ -226,9 +244,12 @@ export function injectSeoHead(html, productKey, pathname) {
     /<meta\s+name="description"\s+content="[^"]*"[^>]*\/?>/g,
     /<link\s+rel="canonical"\s+href="[^"]*"[^>]*\/?>/g,
     /<meta\s+property="og:[^"]*"\s+content="[^"]*"[^>]*\/?>/g,
+    /<meta\s+name="robots"\s+content="[^"]*"[^>]*\/?>/g,
   ];
   for (const re of strip) out = out.replace(re, "");
-  return out.replace("</head>", `${renderSeoHeadTags(productKey, pathname)}\n</head>`);
+  const tags =
+    status === 404 ? notFoundHeadTags(productKey) : renderSeoHeadTags(productKey, pathname);
+  return out.replace("</head>", `${tags}\n</head>`);
 }
 
 /**
@@ -240,12 +261,51 @@ export function robotsTextFor(productKey) {
   return `User-agent: *\nAllow: /\nSitemap: https://${p.apex}/sitemap.xml\n`;
 }
 
-/** One sitemap, served identically on all four domains (apex URLs only). */
-export function sitemapXml() {
-  const urls = PRODUCT_KEYS.map(
-    (k) => `  <url>\n    <loc>https://${PRODUCTS[k].apex}/</loc>\n  </url>`,
-  ).join("\n");
+/**
+ * Host-aware sitemap (Phase 00.5, AC-6.2): each domain inventories only its
+ * own public URLs — home plus the four legal pages on THAT host's apex. A
+ * product host does not present another product's canonical origin as its
+ * own sitemap inventory.
+ * @param {string} productKey
+ * @returns {string}
+ */
+export function sitemapXml(productKey) {
+  const p = product(productKey);
+  const paths = ["/", "/terms", "/privacy", "/refund", "/contact"];
+  const urls = paths
+    .map((path) => `  <url>\n    <loc>https://${p.apex}${path}</loc>\n  </url>`)
+    .join("\n");
   return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls}\n</urlset>\n`;
+}
+
+/**
+ * 404 body theming: put the product's data-theme on the <html> tag so the
+ * branded not-found page (which renders outside any themed wrapper) picks up
+ * the right palette. No-op for products without a theme override.
+ * @param {string} html
+ * @param {string} productKey
+ * @returns {string}
+ */
+export function injectNotFoundTheme(html, productKey) {
+  const theme = product(productKey).theme;
+  if (!theme) return String(html ?? "");
+  return String(html ?? "").replace(/<html\b/, `<html data-theme="${theme}"`);
+}
+
+/**
+ * Head tags for unknown routes (Phase 00.5, AC-6.4/6.5): branded title,
+ * `noindex,follow`, and deliberately NO canonical / OG for a path that does
+ * not exist — a canonical for a missing path would mislead crawlers.
+ * @param {string} productKey
+ * @returns {string}
+ */
+export function notFoundHeadTags(productKey) {
+  const p = product(productKey);
+  return [
+    `<title>Page not found — ${esc(p.name)}</title>`,
+    `<meta name="robots" content="noindex,follow">`,
+    `<meta name="description" content="This page does not exist on ${esc(p.apex)}.">`,
+  ].join("\n");
 }
 
 /**

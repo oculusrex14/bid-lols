@@ -2,6 +2,7 @@ import {
   DEFAULT_PRODUCT,
   PRODUCTS,
   PRODUCT_KEYS,
+  linkOrigin,
   normalizeHost,
   pageTitleFor,
   productForHost,
@@ -23,6 +24,7 @@ export {
   normalizeHost,
   productForHost,
   pageTitleFor,
+  linkOrigin,
 };
 
 /** @param {ProductKey} key */

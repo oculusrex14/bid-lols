@@ -54,7 +54,8 @@ export function hostSeoDevPlugin() {
           if (path === "/robots.txt") {
             return send(res, 200, "text/plain; charset=utf-8", robotsTextFor(productKey));
           }
-          return send(res, 200, "application/xml; charset=utf-8", sitemapXml());
+          // Host-aware inventory: this host's own URLs only (Phase 00.5, AC-6.2).
+return send(res, 200, "application/xml; charset=utf-8", sitemapXml(productKey));
         }
         if (legacyRedirectFor(path) !== null) {
           res.statusCode = 308;
