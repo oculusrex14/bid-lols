@@ -78,7 +78,10 @@ test("legacy board paths 308 to the same-host root; live paths do not", () => {
   assert.equal(legacyRedirectFor("/founders"), "/");
   assert.equal(legacyRedirectFor("/founders/bid"), "/");
   assert.equal(legacyRedirectFor("/culture"), "/");
-  assert.equal(legacyRedirectFor("/bidception/listing/x"), "/");
+  // `/bidception` is now a LIVE marketplace route (Phase 03), not legacy:
+  // the list/new/:id paths must resolve, so they are NOT 308-redirected.
+  assert.equal(legacyRedirectFor("/bidception"), null);
+  assert.equal(legacyRedirectFor("/bidception/new"), null);
   assert.equal(legacyRedirectFor("/spec"), "/");
   assert.equal(legacyRedirectFor("/terms"), null);
   assert.equal(legacyRedirectFor("/"), null);

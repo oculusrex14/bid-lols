@@ -422,7 +422,10 @@ export function notFoundHeadTags(productKey) {
  * @returns {string | null}
  */
 export function legacyRedirectFor(pathname) {
-  for (const prefix of ["/founders", "/culture", "/bidception", "/spec"]) {
+  // NOTE: `/bidception` is NO LONGER a legacy board path — it is the Phase 03
+  // nested-marketplace root (list / new / :id). It is deliberately omitted here
+  // so bidception.lol/bidception serves the product instead of 308-ing to /.
+  for (const prefix of ["/founders", "/culture", "/spec"]) {
     if (pathname === prefix || pathname.startsWith(`${prefix}/`)) return "/";
   }
   return null;
