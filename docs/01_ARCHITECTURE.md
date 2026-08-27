@@ -121,6 +121,21 @@ Minimum bar:
 - **Removed in Phase 00:** the legacy App Builder/Grok PWA chrome — `public/__grok/**`, the `grok-pwa` Nitro middleware and Vite plugin, the `?install=1` install-page tutorial, the dynamic `/__grok/manifest.webmanifest`, and the manifest/apple-touch-icon head links. It was generated platform scaffolding, not a product requirement.
 - A PWA (installable/manifest) comes back only if a phase explicitly requires it; nothing depends on it today.
 
+## Known architecture debt (recorded, not yet acted on)
+
+- **AD-1 (Phase 00.6): HTML-buffering middleware defeats streaming SSR.**
+  `server/middleware/seo-host.ts` (head injection + 404 theming) and
+  `server/middleware/00-security-headers.ts` (CSP nonce injection) both read
+  the FULL response body via `Response.text()` before the client receives
+  anything: the document only streams after the entire SSR has finished
+  server-side. This is acceptable at pre-launch scale (small static-ish
+  pages) but should be reconsidered as the marketplace UI grows — e.g. by
+  pushing per-route head into the React head API (no foreign head nodes in
+  dev, per the Phase 00 hydration invariant), per-request nonces via a
+  document-level mechanism, or moving robots/sitemap/redirect handling to
+  the Vercel edge where it does not buffer. Recorded deliberately so the
+  trade-off is not forgotten; **not** a Phase 00.6 change.
+
 ## Deployment
 
 - **Vercel** (Nitro `vercel` preset) + **Postgres** (Neon; `DATABASE_URL`).
