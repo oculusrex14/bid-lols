@@ -45,14 +45,14 @@ sitemaps), favicon.ico. **No production deploy in this phase** — release is
 a clean pushed SHA with green CI + a Vercel preview, then STOP for external
 audit. No marketplace features, no accounts.
 
-Spec: `docs/phases/PHASE_00_6_FOUNDATION_GUARDRAILS.md` — IN PROGRESS.
+Spec: `docs/phases/PHASE_00_6_FOUNDATION_GUARDRAILS.md` — **COMPLETE 2026-08-27, PASSED EXTERNAL AUDIT, PROMOTED TO PRODUCTION** (release SHA `c50cbdb`, production deployment `dpl_E9k1ajtFZzGT6UJ9pFP8zqeiRpDT`, CI run 33038698521; cutover verification in `docs/STATE.md`).
 
 ## Phase 01 — FoundersBid
 
 - **Goal:** Startup bounties/projects on `foundersbid.lol`.
 - **Core capability:** Bounty mode (competing participants, sponsor selects winner) and Project mode (proposals → chosen provider → milestone-based work); sponsor funding, qualification and bounded entry, payout to winner(s), transparent fees.
 - **Dependencies:** Phase 00 foundation; identity/accounts; collect + payout payment rails.
-- **Status:** NOT detailed yet.
+- **Status:** SPECIFYING — `docs/phases/PHASE_01_FOUNDERSBID.md`.
 
 ## Phase 02 — CultureBid
 
