@@ -81,6 +81,17 @@ test("privacy: only data actually collected today (all products)", () => {
   }
 });
 
+test("privacy: transient IP disclosure is technically accurate (Phase 00.6, AC-2.1)", () => {
+  for (const text of PRIVACY) {
+    assert.match(text, /temporarily process your ip address in memory/i);
+    assert.match(text, /rate limit/i);
+    assert.match(text, /not persisted/i);
+    assert.match(text, /not used for advertising or profiling/i);
+    // the unqualified legacy claim is gone
+    assert.doesNotMatch(text, /we do not store ip addresses/i);
+  }
+});
+
 test("refund: no payments accepted; no legacy purchase description (all products)", () => {
   for (const text of REFUND) {
     assert.match(text, /no payment of any kind is accepted/i);

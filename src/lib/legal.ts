@@ -126,16 +126,22 @@ export function legalDoc(productKey: ProductKey, slug: LegalSlug): {
         {
           heading: "What we collect",
           body: [
-            "Page analytics: we count page views, visits, and outbound link clicks per site. These are aggregate counts. We do not store IP addresses, device identifiers, or anything that identifies you personally.",
+            "Page analytics: we count page views, visits, and outbound link clicks per site. These are aggregate counts. We do not store device identifiers or anything that identifies you personally in the analytics.",
             `Founding access: if you submit the form, we store your email address; your role or intention; which site of the network you submitted from (derived from the domain you were on, not from anything you type); when you submitted; and the consent you gave. We use this only to contact you about founding access.`,
             "On your device: your browser may keep your appearance choice (light/dark) and a per-session flag so a visit is counted once. That data stays on your device.",
-            "Hosting: the site runs on Vercel. Vercel may process standard hosting logs and performance data under its own privacy policy.",
+            "Hosting: the site runs on Vercel. Vercel may independently process request information (such as hosting logs and performance data) as hosting infrastructure, under its own privacy policy.",
+          ],
+        },
+        {
+          heading: "Transient IP processing (founding access form)",
+          body: [
+            "When you submit the founding-access form, the app may temporarily process your IP address in memory for abuse prevention and rate limiting. It is not persisted to our application database, and it is not used for advertising or profiling.",
           ],
         },
         {
           heading: "What we do not collect",
           body: [
-            "No names, no phone numbers, no passwords, no payment data, no advertising cookies, no third-party analytics or tracking scripts.",
+            "No names, no phone numbers, no passwords, no payment data, no advertising cookies, no third-party analytics or tracking scripts, and no IP addresses in our database.",
           ],
         },
         {
