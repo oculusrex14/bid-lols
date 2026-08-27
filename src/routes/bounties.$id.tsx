@@ -18,6 +18,7 @@ import {
   withdrawApplicationFn,
 } from "@/lib/marketplace/bounties";
 import { getSession } from "@/lib/authz";
+import { createReviewFn } from "@/lib/marketplace/reviews";
 
 /**
  * /bounties/:id — public bounty detail (Phase 01, FR-3/FR-4). Authority-gated
@@ -367,6 +368,15 @@ function BountyDetailBody({ data }: { data: DetailData }) {
           </div>
         </div>
 
+        {status === "COMPLETED" && viewer && (viewer.isSponsor || viewer.participant) ? (
+          <ReviewBox
+            workType="BOUNTY"
+            workId={String(b.id)}
+            direction={viewer.isSponsor ? "SPONSOR_TO_PROVIDER" : "PROVIDER_TO_SPONSOR"}
+            onDone={(m) => setMessage(m)}
+          />
+        ) : null}
+
         {showSubmit && viewer?.participant ? (
           <SubmitBox
             bountyId={String(b.id)}
@@ -440,6 +450,72 @@ function SubmitBox({ bountyId, onDone }: { bountyId: string; onDone: (m: string)
         className="mt-3 inline-flex h-10 items-center rounded-md bg-accent px-4 text-sm font-semibold text-accent-fg disabled:opacity-60"
       >
         {busy ? "Saving…" : "Save submission"}
+      </button>
+    </form>
+  );
+}
+
+function ReviewBox({
+  workType,
+  workId,
+  direction,
+  onDone,
+}: {
+  workType: "BOUNTY" | "PROJECT";
+  workId: string;
+  direction: "SPONSOR_TO_PROVIDER" | "PROVIDER_TO_SPONSOR";
+  onDone: (m: string) => void;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [done, setDone] = useState(false);
+  if (done) return null;
+  return (
+    <form
+      className="mt-6 rounded-lg border-2 border-fg/20 bg-surface p-5"
+      data-testid="review-form"
+      onSubmit={async (e) => {
+        e.preventDefault();
+        const f = new FormData(e.currentTarget);
+        const num = (k: string) => {
+          const v = Number(f.get(k));
+          return v >= 1 && v <= 5 ? v : undefined;
+        };
+        setBusy(true);
+        const r = await createReviewFn({
+          data: {
+            workType,
+            workId,
+            direction,
+            quality: num("quality"),
+            communication: num("communication"),
+            timeliness: num("timeliness"),
+            clarity: num("clarity"),
+            body: String(f.get("body") ?? ""),
+          },
+        });
+        setBusy(false);
+        if (r.ok) {
+          onDone("Review saved. Thank you.");
+          setDone(true);
+        } else {
+          onDone(r.message);
+        }
+      }}
+    >
+      <h2 className="text-xs font-medium uppercase tracking-kicker text-subtle">
+        {direction === "SPONSOR_TO_PROVIDER" ? "Review the winning builder" : "Review the sponsor"}
+      </h2>
+      <div className="mt-3 grid gap-3 sm:grid-cols-4">
+        {["quality", "communication", "timeliness", "clarity"].map((k) => (
+          <div key={k}>
+            <label htmlFor={`rv-${k}`} className="mb-1 block text-xs font-medium capitalize">{k} (1–5)</label>
+            <input id={`rv-${k}`} name={k} type="number" min={1} max={5} className="h-10 w-full rounded-md border-2 border-fg/20 bg-surface px-2 text-sm outline-none focus:border-fg/60" />
+          </div>
+        ))}
+      </div>
+      <textarea name="body" rows={3} maxLength={4000} placeholder="How did the work go?" className="mt-3 w-full rounded-md border-2 border-fg/20 bg-surface p-3 text-sm outline-none focus:border-fg/60" />
+      <button type="submit" disabled={busy} className="mt-3 inline-flex h-10 items-center rounded-md bg-accent px-4 text-sm font-semibold text-accent-fg disabled:opacity-60">
+        {busy ? "Saving…" : "Submit review"}
       </button>
     </form>
   );

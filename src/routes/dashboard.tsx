@@ -18,12 +18,15 @@ const loadDashboard = createServerFn({ method: "GET" }).handler(async () => {
     getOrCreateProfile(session.user.id),
     getUserEmail(session.user.id),
   ]);
+  const { listNotifications } = await import("@/lib/marketplace/notifications.server");
+  const notifications = await listNotifications(session.user.id, 20);
   return {
     product: await currentProductKey(),
     emailVerified: user?.email_verified ?? false,
     handle: profile.handle,
     displayName: user?.display_name ?? session.user.name,
     isSponsor: profile.is_sponsor,
+    notifications,
   };
 });
 
@@ -84,6 +87,35 @@ function DashboardPage() {
             </p>
           </div>
         </div>
+
+        <section className="mt-8" data-testid="notifications">
+          <h2 className="text-xs font-medium uppercase tracking-kicker text-subtle">Notifications</h2>
+          {d.notifications.length === 0 ? (
+            <p className="mt-2 text-sm text-muted">
+              Nothing yet. Marketplace events (applications, funding, judging,
+              milestones, disputes, reviews) will appear here.
+            </p>
+          ) : (
+            <ul className="mt-3 space-y-2">
+              {d.notifications.map((n) => (
+                <li
+                  key={n.id}
+                  className={
+                    n.read
+                      ? "rounded-md border-2 border-fg/10 bg-surface p-3 text-sm text-muted"
+                      : "rounded-md border-2 border-accent/40 bg-raised/40 p-3 text-sm"
+                  }
+                >
+                  <p className="font-medium">{n.title}</p>
+                  {n.body ? <p className="mt-0.5">{n.body}</p> : null}
+                  {n.link ? (
+                    <a href={n.link} className="mt-1 inline-block text-xs underline underline-offset-2">Open</a>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
       </div>
     </ProductShell>
   );
