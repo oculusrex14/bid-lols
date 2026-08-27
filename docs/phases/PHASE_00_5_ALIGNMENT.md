@@ -1,6 +1,6 @@
 # PHASE 00.5 — Foundation Alignment & Reproducibility
 
-Status: IN PROGRESS
+Status: COMPLETE (deployed + verified 2026-08-27)
 Started: 26 August 2026
 Supersedes: nothing. Phase 00 (`PHASE_00_FOUNDATION.md`) remains COMPLETE for what
 it built; this phase corrects post-deployment review findings: (a) production was
@@ -275,14 +275,132 @@ Legacy forbidden terms in public copy: `pay-to-rank`, `rank`/`ranks`/
 
 ## Completion checklist
 
-- [ ] WS0 … AC-0.1..0.4
-- [ ] WS1 … AC-1.1..1.6
-- [ ] WS2 … AC-2.1..2.8
-- [ ] WS3 … AC-3.1..3.5
-- [ ] WS4 … AC-4.1..4.2
-- [ ] WS5 … AC-5.1..5.3
-- [ ] WS6 … AC-6.1..6.5
-- [ ] WS7 … AC-7.1..7.3
-- [ ] WS8 … AC-8.1..8.4
-- [ ] WS9 … AC-9.1..9.4
-- [ ] WS10 … AC-10.1..10.5
+- [x] WS0 … AC-0.1..0.4
+- [x] WS1 … AC-1.1..1.6
+- [x] WS2 … AC-2.1..2.8
+- [x] WS3 … AC-3.1..3.5
+- [x] WS4 … AC-4.1..4.2
+- [x] WS5 … AC-5.1..5.3
+- [x] WS6 … AC-6.1..6.5
+- [x] WS7 … AC-7.1..7.3
+- [x] WS8 … AC-8.1..8.4
+- [x] WS9 … AC-9.1..9.4
+- [x] WS10 … AC-10.1..10.5
+
+## Completion notes (evidence, 2026-08-27)
+
+**Release SHA / source control (WS0).** Phase 00 chain `8c53a1b..aa06e2d` was
+fast-forward pushed to `origin/main` (github.com/oculusrex14/bid-lols) first;
+Phase 00.5 committed in 8 focused commits and pushed as `aa06e2d..2a8edf7`
+(fast-forward only, no force-push ever). At deploy time local `main` ==
+`origin/main` == `2a8edf7c11f04095134eb42b3a14f05989330805`, working tree
+clean (`git status --porcelain` empty). The old production deployment
+(`dpl_EcGDqQzPf4CqiMZ6iqdpZW3x8kev`, SHA 803139e) carried `gitDirty=1`; the
+new production deployment `dpl_J5L1EUDD82U4RwQC2TrPZnsjmL8X`
+(`bidthrone-4cgj1bqx4`) records `githubCommitSha=2a8edf7…` with **no
+gitDirty flag**. The final docs commit (this note) is post-deploy and
+docs-only — the deployed artifact is exactly the pushed `2a8edf7` tree.
+
+**Legal (WS1).** `src/lib/legal.ts` fully rewritten; `legal.test.ts`
+asserts per product × per slug: zero forbidden legacy terms, marketplace-not
+live + no-payments-today in terms, data-collected inventory in privacy,
+no-legacy-purchase description in refund. Live prod scan of all 16 legal
+pages: CLEAN.
+
+**Surfaces (WS2).** Four distinct homes composed in `src/routes/index.tsx`
+from `src/components/home/*`; `scripts/public-copy.test.mjs` scans all
+public-copy source files for legacy terms + internal status phrases +
+unlabelled monetary amounts (498 mjs tests, 0 fail). Verified in a real
+browser (Playwright, desktop 1280 + mobile 390): bidthrone flow +
+reputation-not-for-sale + network cards; foundersbid BOUNTY/PROJECT modes,
+two EXAMPLE cards, 9 categories, both CTAs presetting the form role;
+culturebid four fairness mechanics + capped-participation rationale +
+EXAMPLE brief + brand/creator CTAs; bidception DEMO nesting
+(₹30k+₹20k+₹25k+₹15k+₹10k = ₹100k reconciliation line) + later-product
+positioning. Screenshots: `phase005-*-desktop.png` /
+`phase005-*-mobile.png` (agent session artifacts, not committed).
+
+**Waitlist (WS3).** `migrations/0010_waitlist.sql` gated-applied to prod
+(dry-run → apply; ledger 0002–0010; pre/post snapshots: orders still 4
+pending, waitlist_entries created with 0 rows). Live round-trip on the local
+built preview (PGLite): valid → `{ok, created:true}`; repeat →
+`{ok, created:false}` (upsert, one row); honeypot → silent fake success, no
+write; no consent → `missing_consent`; bad email → zod validation error, no
+write. In prod, the same validation path probed with an invalid email
+returned the serialized error and `waitlist_entries` count stayed 0.
+In-browser: success state ("You're on the list for CultureBid…") and error
+state ("Please confirm…") both rendered; zero console errors throughout
+(CSP clean).
+
+**UX (WS4).** Header CTA `Founding access` (accent, primary) + 36×36
+icon-only theme toggle (computed styles verified: CTA bg
+rgb(28,24,20) / text rgb(243,239,230); theme button 36px). No new keyframes;
+no animation beyond existing tokens.
+
+**DNS (WS5).** `docs/ops/DEPLOYMENT.md` "DNS note": exact apex correction
+(A `76.76.21.21` or the dashboard-current Vercel anycast; www CNAME
+`cname.vercel-dns.com`) + DoH/curl verification commands. Re-verified
+publicly at release time: `culturebid.lol` still resolves to
+`10.10.0.1`/`10.0.1.3` (external blocker unchanged). `linkOrigin()` routes
+every clickable culturebid link (wordmark, footer, network cards) to
+`www.culturebid.lol`; declarative URLs keep the apex.
+
+**SEO (WS6).** Per-host sitemaps verified in prod (each of the 4 reachable
+hosts inventories only its own 5 URLs; robots Sitemap line = own host).
+Unknown route in prod: HTTP 404, `<html data-theme="founders">` (themed),
+`<title>Page not found — FoundersBid</title>`,
+`<meta name="robots" content="noindex,follow">`, zero canonical tags,
+branded body with all-four-product links + home CTA. JSON-Accept unknown
+route: the framework's 500 quirk is now relabelled to the honest 404
+`not_found` envelope (predicated by `isUnknownRouteJsonQuirk`, unit-tested;
+genuine routes excluded). Dev twin: host-aware robots/sitemap/308 only (no
+HTML transform — hydration invariant preserved).
+
+**Stale serverFn (WS7).** `POST /_serverFn/<unknown-id>` on prod: 404
+`{code,message,requestId}` envelope; server log shows the warn line
+`[serverfn] stale or unknown server function id…` — no unhandled stack
+trace. Unit tests: stale pattern recognition (verbatim framework message),
+genuine errors not classified, 404 JSON shape.
+
+**Security headers (WS8).** Prod response carries the full baseline; CSP
+nonce verified to match the two injected inline `<script nonce=…>` tags;
+external module scripts carry no nonce (covered by `'self'`); HSTS
+(Vercel) present exactly once. Playwright console capture on all four homes:
+0 errors.
+
+**PGLite/env/orders (WS9).** `VERCEL=true vite build` artifact: zero pglite
+chunks/wasm/data files, zero `@electric-sql/pglite` references in reachable
+server code (local build still ships it; local preview boots PGLite). Cloud
+misconfig guard verified in the cloud chunk (`throw … Cloud build without a
+resolvable DATABASE_URL`). 12 dormant env vars removed from the Vercel
+project (`vercel env rm`, both scopes) after grep-verification; remaining
+vars all code-referenced. `docs/ops/LEGACY_ORDERS.md` records the
+webhook-only treatment + record table.
+
+**Verification & release (WS10).** typecheck clean; eslint clean;
+`npm test` = 498 mjs + 102 ts, 0 fail; `vite build` clean. Smoke: dev
+:8080 and built :8081 exit 0 (baselines regenerated on the new surfaces,
+cross-check non-divergent). Vercel preview `bidthrone-t459jdsgj`
+(`dpl` recorded at SHA 2a8edf7, READY, no gitDirty) — team deployment
+protection SSO-gates anonymous preview probes (unchanged from Phase 00;
+artifact verified via local built preview instead). Production verified as
+above. Logs after traffic: only the agent's own probes (4× home, 2× unknown
+route → 404, webhook probe → 401, stale-fn probe → 404 warn); no unhandled
+errors, no app 5xx.
+
+**Interpretation records.**
+- AC-0.3/AC-10.4: "deployed from the pushed SHA" is evidenced by the
+  deployment's `githubCommitSha` metadata (CLI deploys record it) + no
+  `gitDirty` + clean tree at deploy time.
+- AC-10.2: visual inspection = Playwright accessibility snapshots +
+  computed-style probes + zero-console-error capture + saved screenshots
+  (the agent model in this session cannot view pixels; a human pixel review
+  of the saved PNGs is a sensible belt-and-braces before wider rollout).
+- AC-8.1: `style-src 'unsafe-inline'` retained for React inline style
+  attributes (sonner/Toaster) — non-permissive for scripts, which is the
+  injection-relevant surface; no `unsafe-inline`/`unsafe-eval` anywhere in
+  `script-src`.
+- Known framework artifact (bounded, documented): post-hydration the router's
+  root head briefly re-asserts the static umbrella title until the shell /
+  not-found client effects restore the host-aware title (millisecond-scale
+  flash; SSR HTML + deployed runtime title are correct).

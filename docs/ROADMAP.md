@@ -25,7 +25,10 @@ pre-launch product pages + founding-access capture, branded 404 + host-aware
 sitemaps, security-header baseline, graceful stale-serverFn handling, and
 excludes PGLite from cloud build output. No Phase 01 features.
 
-Spec: `docs/phases/PHASE_00_5_ALIGNMENT.md` — IN PROGRESS.
+Spec: `docs/phases/PHASE_00_5_ALIGNMENT.md` — **COMPLETE 2026-08-27**
+(release SHA `2a8edf7`, production deployment `bidthrone-4cgj1bqx4` clean +
+verified; evidence in that file's Completion notes; one external exception:
+the `culturebid.lol` apex DNS, now with an exact correction runbook).
 
 ## Phase 01 — FoundersBid
 
