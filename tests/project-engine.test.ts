@@ -122,6 +122,7 @@ test("FR-5: project flow — publish, propose, sum-checked select, fund, milesto
   const ledger = await q(pg, "select type, amount_minor from money_events order by created_at");
   const reward = ledger.find((e) => e.type === "REWARD");
   const fee = ledger.find((e) => e.type === "PLATFORM_FEE");
+  assert.ok(reward && fee, "REWARD and PLATFORM_FEE events exist");
   assert.equal(Number(reward.amount_minor) + Number(fee.amount_minor), 220_000);
   process.env.MARKETPLACE_MONEY_LIVE = "0";
 });
