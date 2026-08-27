@@ -1,6 +1,8 @@
 # PHASE 00.6 — Foundation Guardrails
 
-Status: IN PROGRESS
+Status: COMPLETE at source level (2026-08-27) — release SHA pushed, CI green,
+Vercel preview live; NO production deploy by directive (STOP for external
+audit of the SHA)
 Started: 27 August 2026
 Follows: PHASE_00_5_ALIGNMENT.md (COMPLETE 2026-08-27)
 
@@ -229,8 +231,13 @@ Hard constraints:
 - **Security headers/CSP re-verified after all middleware changes**: all
   four baseline headers present; CSP nonces still match the two inline
   scripts; HSTS untouched (Vercel's).
-- **Release record**: pushed branch `main` @ oculusrex14/bid-lols; release
-  SHA + CI run id + preview deployment id are recorded in docs/STATE.md
-  "Last release (Phase 00.6)" once the gates pass — **no production
-  deployment in this phase** (explicit directive; STOP for external audit
-  of the SHA).
+- **Release record**: pushed branch `main` @ oculusrex14/bid-lols (8
+  focused commits on top of 36906df; fast-forward only, no force-push;
+  tree clean at deploy). Release SHA
+  `c50cbdbf2342e71eb6be78c61a7ebd05e9e9ce3e` == origin/main. CI run
+  33038698521 = SUCCESS on the release SHA (lint/typecheck/test/build
+  green; 495dedd's run 33038285395 was green before the vercel.json fix).
+  Vercel preview `bidthrone-blm1i9ar8` READY at the release SHA, no
+  gitDirty. **No production deployment in this phase** (explicit
+  directive; STOP for external audit of the SHA). Production remains the
+  Phase 00.5 deployment (2a8edf7) — 0011 is additive, so it is unaffected.
