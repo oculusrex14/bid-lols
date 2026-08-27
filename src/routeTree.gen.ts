@@ -11,10 +11,16 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ContactRouteImport } from './routes/contact'
+import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as RefundRouteImport } from './routes/refund'
+import { Route as SigninRouteImport } from './routes/signin'
+import { Route as SignupRouteImport } from './routes/signup'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as ApiFaviconRouteImport } from './routes/api/favicon'
+import { Route as ProfileHandleRouteImport } from './routes/profile.$handle'
+import { Route as SettingsProfileRouteImport } from './routes/settings.profile'
+import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as ApiWebhooksCashfreeRouteImport } from './routes/api/webhooks/cashfree'
 
 const IndexRoute = IndexRouteImport.update({
@@ -27,6 +33,11 @@ const ContactRoute = ContactRouteImport.update({
   path: '/contact',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DashboardRoute = DashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PrivacyRoute = PrivacyRouteImport.update({
   id: '/privacy',
   path: '/privacy',
@@ -35,6 +46,16 @@ const PrivacyRoute = PrivacyRouteImport.update({
 const RefundRoute = RefundRouteImport.update({
   id: '/refund',
   path: '/refund',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SigninRoute = SigninRouteImport.update({
+  id: '/signin',
+  path: '/signin',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SignupRoute = SignupRouteImport.update({
+  id: '/signup',
+  path: '/signup',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TermsRoute = TermsRouteImport.update({
@@ -47,6 +68,21 @@ const ApiFaviconRoute = ApiFaviconRouteImport.update({
   path: '/api/favicon',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ProfileHandleRoute = ProfileHandleRouteImport.update({
+  id: '/profile/$handle',
+  path: '/profile/$handle',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsProfileRoute = SettingsProfileRouteImport.update({
+  id: '/settings/profile',
+  path: '/settings/profile',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
+  id: '/api/auth/$',
+  path: '/api/auth/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiWebhooksCashfreeRoute = ApiWebhooksCashfreeRouteImport.update({
   id: '/api/webhooks/cashfree',
   path: '/api/webhooks/cashfree',
@@ -56,29 +92,47 @@ const ApiWebhooksCashfreeRoute = ApiWebhooksCashfreeRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/contact': typeof ContactRoute
+  '/dashboard': typeof DashboardRoute
   '/privacy': typeof PrivacyRoute
   '/refund': typeof RefundRoute
+  '/signin': typeof SigninRoute
+  '/signup': typeof SignupRoute
   '/terms': typeof TermsRoute
   '/api/favicon': typeof ApiFaviconRoute
+  '/profile/$handle': typeof ProfileHandleRoute
+  '/settings/profile': typeof SettingsProfileRoute
+  '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/webhooks/cashfree': typeof ApiWebhooksCashfreeRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/contact': typeof ContactRoute
+  '/dashboard': typeof DashboardRoute
   '/privacy': typeof PrivacyRoute
   '/refund': typeof RefundRoute
+  '/signin': typeof SigninRoute
+  '/signup': typeof SignupRoute
   '/terms': typeof TermsRoute
   '/api/favicon': typeof ApiFaviconRoute
+  '/profile/$handle': typeof ProfileHandleRoute
+  '/settings/profile': typeof SettingsProfileRoute
+  '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/webhooks/cashfree': typeof ApiWebhooksCashfreeRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/contact': typeof ContactRoute
+  '/dashboard': typeof DashboardRoute
   '/privacy': typeof PrivacyRoute
   '/refund': typeof RefundRoute
+  '/signin': typeof SigninRoute
+  '/signup': typeof SignupRoute
   '/terms': typeof TermsRoute
   '/api/favicon': typeof ApiFaviconRoute
+  '/profile/$handle': typeof ProfileHandleRoute
+  '/settings/profile': typeof SettingsProfileRoute
+  '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/webhooks/cashfree': typeof ApiWebhooksCashfreeRoute
 }
 export interface FileRouteTypes {
@@ -86,38 +140,62 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/contact'
+    | '/dashboard'
     | '/privacy'
     | '/refund'
+    | '/signin'
+    | '/signup'
     | '/terms'
     | '/api/favicon'
+    | '/profile/$handle'
+    | '/settings/profile'
+    | '/api/auth/$'
     | '/api/webhooks/cashfree'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/contact'
+    | '/dashboard'
     | '/privacy'
     | '/refund'
+    | '/signin'
+    | '/signup'
     | '/terms'
     | '/api/favicon'
+    | '/profile/$handle'
+    | '/settings/profile'
+    | '/api/auth/$'
     | '/api/webhooks/cashfree'
   id:
     | '__root__'
     | '/'
     | '/contact'
+    | '/dashboard'
     | '/privacy'
     | '/refund'
+    | '/signin'
+    | '/signup'
     | '/terms'
     | '/api/favicon'
+    | '/profile/$handle'
+    | '/settings/profile'
+    | '/api/auth/$'
     | '/api/webhooks/cashfree'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ContactRoute: typeof ContactRoute
+  DashboardRoute: typeof DashboardRoute
   PrivacyRoute: typeof PrivacyRoute
   RefundRoute: typeof RefundRoute
+  SigninRoute: typeof SigninRoute
+  SignupRoute: typeof SignupRoute
   TermsRoute: typeof TermsRoute
   ApiFaviconRoute: typeof ApiFaviconRoute
+  ProfileHandleRoute: typeof ProfileHandleRoute
+  SettingsProfileRoute: typeof SettingsProfileRoute
+  ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiWebhooksCashfreeRoute: typeof ApiWebhooksCashfreeRoute
 }
 
@@ -137,6 +215,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ContactRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/dashboard': {
+      id: '/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof DashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/privacy': {
       id: '/privacy'
       path: '/privacy'
@@ -149,6 +234,20 @@ declare module '@tanstack/react-router' {
       path: '/refund'
       fullPath: '/refund'
       preLoaderRoute: typeof RefundRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/signin': {
+      id: '/signin'
+      path: '/signin'
+      fullPath: '/signin'
+      preLoaderRoute: typeof SigninRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/signup': {
+      id: '/signup'
+      path: '/signup'
+      fullPath: '/signup'
+      preLoaderRoute: typeof SignupRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/terms': {
@@ -165,6 +264,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiFaviconRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/profile/$handle': {
+      id: '/profile/$handle'
+      path: '/profile/$handle'
+      fullPath: '/profile/$handle'
+      preLoaderRoute: typeof ProfileHandleRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings/profile': {
+      id: '/settings/profile'
+      path: '/settings/profile'
+      fullPath: '/settings/profile'
+      preLoaderRoute: typeof SettingsProfileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/auth/$': {
+      id: '/api/auth/$'
+      path: '/api/auth/$'
+      fullPath: '/api/auth/$'
+      preLoaderRoute: typeof ApiAuthSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/webhooks/cashfree': {
       id: '/api/webhooks/cashfree'
       path: '/api/webhooks/cashfree'
@@ -178,10 +298,16 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ContactRoute: ContactRoute,
+  DashboardRoute: DashboardRoute,
   PrivacyRoute: PrivacyRoute,
   RefundRoute: RefundRoute,
+  SigninRoute: SigninRoute,
+  SignupRoute: SignupRoute,
   TermsRoute: TermsRoute,
   ApiFaviconRoute: ApiFaviconRoute,
+  ProfileHandleRoute: ProfileHandleRoute,
+  SettingsProfileRoute: SettingsProfileRoute,
+  ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiWebhooksCashfreeRoute: ApiWebhooksCashfreeRoute,
 }
 export const routeTree = rootRouteImport
