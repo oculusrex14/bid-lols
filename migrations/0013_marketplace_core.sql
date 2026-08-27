@@ -63,9 +63,9 @@ create table if not exists bounty_applications (
   decided_by text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  unique (bounty_id, user_id),
-  -- a sponsor can never apply to their own listing
-  check (user_id <> (select sponsor_user_id from bounties b where b.id = bounty_id))
+  unique (bounty_id, user_id)
+  -- self-apply prevention is enforced in the service layer (applyToBounty
+  -- refuses sponsor self-application; Postgres disallows subquery CHECKs).
 );
 create index if not exists bounty_applications_bounty_idx on bounty_applications (bounty_id, status, created_at);
 create index if not exists bounty_applications_user_idx on bounty_applications (user_id, created_at desc);
@@ -181,8 +181,8 @@ create table if not exists project_proposals (
     check (status in ('SUBMITTED','SHORTLISTED','SELECTED','REJECTED','WITHDRAWN')),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  unique (project_id, provider_user_id),
-  check (provider_user_id <> (select sponsor_user_id from projects p where p.id = project_id))
+  unique (project_id, provider_user_id)
+  -- self-proposal prevention enforced in the service layer (no subquery CHECKs).
 );
 create index if not exists project_proposals_project_idx on project_proposals (project_id, status);
 

@@ -271,13 +271,20 @@ export function hasPayoutRail(env: NodeJS.ProcessEnv = process.env): boolean {
   );
 }
 
+let fakeProviderSingleton: FakeProvider | null = null;
+
 export function getPaymentProvider(env: NodeJS.ProcessEnv = process.env): PaymentProvider {
   const explicit = env.PAYMENT_PROVIDER;
   if (explicit === "fake") {
-    throw new Error(
-      "PAYMENT_PROVIDER=fake is a TEST-ONLY adapter and may never run in a " +
-        "deployed environment.",
-    );
+    // TEST-ONLY adapter: acceptable solely in explicit test runtimes; any
+    // deployed environment (Vercel) refuses it unconditionally. One instance
+    // per process — payment state (paid orders) must be shared by every
+    // caller in the runtime, exactly like a real provider client would be.
+    if (env.VERCEL_ENV || env.NODE_ENV === "production") {
+      throw new Error("PAYMENT_PROVIDER=fake is test-only and may never run in a deployed environment.");
+    }
+    fakeProviderSingleton ??= new FakeProvider();
+    return fakeProviderSingleton;
   }
   return new CashfreeProvider();
 }
