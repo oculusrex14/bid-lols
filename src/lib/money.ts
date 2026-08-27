@@ -63,10 +63,6 @@ export function allocateEvenly(
     throw new Error(`allocateEvenly: invalid total ${totalMinor}`);
   }
   if (weights.length === 0) return [];
-  const clean = weights.map((w) => {
-    if (!Number.isInteger(w) || w < 0) throw new Error(`allocateEvenly: invalid weight ${w}`);
-    return w;
-  });
   const sum = weights.reduce((a, b) => a + b, 0);
   if (sum === 0) {
     // Equal split when all weights are zero (explicit caller intent).

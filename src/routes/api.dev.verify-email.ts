@@ -13,7 +13,7 @@ export const Route = createFileRoute("/api/dev/verify-email")({
   component: () => null,
   server: {
     handlers: {
-      POST: async ({ request }: { request: Request }) => {
+      POST: async () => {
         if (process.env.VERCEL_ENV || process.env.NODE_ENV === "production") {
           return Response.json({ code: "forbidden", message: "dev-only route" }, { status: 403 });
         }

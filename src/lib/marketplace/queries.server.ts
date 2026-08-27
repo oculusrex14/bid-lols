@@ -1,4 +1,4 @@
-import { getSql, type Sql } from "@/lib/db.server";
+import type { Sql } from "@/lib/db.server";
 
 /**
  * Marketplace read queries (Phase 01, FR-3/FR-13). Server-side filtering,

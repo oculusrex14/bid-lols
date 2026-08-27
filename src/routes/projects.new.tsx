@@ -1,9 +1,9 @@
-import { useState, type FormEvent } from "react";
+import { useState } from "react";
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { currentProductKey } from "@/lib/host";
 import { ProductShell } from "@/components/product-shell";
-import { createProjectFn, publishProjectFn } from "@/lib/marketplace/projects";
+import { createProjectFn } from "@/lib/marketplace/projects";
 
 /**
  * /projects/new — sponsor project creation (Mode B). Proposals come pre-work;

@@ -1,7 +1,6 @@
-import { getSql, type Sql } from "@/lib/db.server";
+import { getSql } from "@/lib/db.server";
 import { makeId } from "@/lib/ids";
-import { AuthzError } from "@/lib/authz";
-import { PROJECT_TRANSITIONS, assertTransition, type ProjectState } from "@/lib/marketplace/state";
+import { PROJECT_TRANSITIONS, assertTransition } from "@/lib/marketplace/state";
 import { fundingDecomposition } from "@/lib/marketplace/ledger.server";
 import { notify } from "@/lib/marketplace/notifications.server";
 import { moneyMode } from "@/lib/payments/provider";
@@ -410,7 +409,6 @@ export async function fundProject(opts: {
   | { ok: false; code: string; message: string }
 > {
   const sql = await getSql();
-  const mode = moneyMode();
   const project = (
     await sql.query<ProjectRow & { title: string; currency: string }>(
       "select * from projects where id = $1 for update",

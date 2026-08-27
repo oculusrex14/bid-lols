@@ -30,7 +30,6 @@ async function freshDb(): Promise<import("@electric-sql/pglite").PGlite> {
   return pg;
 }
 
-/* eslint-disable @typescript-eslint/no-explicit-any -- test ergonomics */
 async function q(
   pg: import("@electric-sql/pglite").PGlite,
   text: string,

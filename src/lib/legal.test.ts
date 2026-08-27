@@ -60,13 +60,19 @@ const TERMS = PRODUCT_KEYS.map((k) => flatten(legalDoc(k, "terms")));
 const PRIVACY = PRODUCT_KEYS.map((k) => flatten(legalDoc(k, "privacy")));
 const REFUND = PRODUCT_KEYS.map((k) => flatten(legalDoc(k, "refund")));
 
-test("terms: marketplace not live + no payments today (all products)", () => {
+test("terms: accounts exist, payments disabled, marketplace rules drafted (all products)", () => {
   for (const text of TERMS) {
-    assert.match(text, /marketplace is not live/i);
+    // Phase 01 reality: accounts + profiles + drafts exist; payments do not.
+    assert.match(text, /funding is NOT yet enabled/i);
     assert.match(text, /no payment of any kind is accepted/i);
     assert.match(text, /EXAMPLE or DEMO/i);
     assert.match(text, /founding-access/i);
-    assert.doesNotMatch(text, /cashfree|upi|checkout/i);
+    // The marketplace rules are published as the operational draft.
+    assert.match(text, /operational draft/i);
+    assert.match(text, /MODE A — BOUNTIES/i);
+    assert.match(text, /MODE B — PROJECTS/i);
+    // No provider names or payment-flow words in public copy.
+    assert.doesNotMatch(text, /cashfree|upi/i);
   }
 });
 
@@ -92,12 +98,15 @@ test("privacy: transient IP disclosure is technically accurate (Phase 00.6, AC-2
   }
 });
 
-test("refund: no payments accepted; no legacy purchase description (all products)", () => {
+test("refund: payments disabled; funding refund terms drafted (all products)", () => {
   for (const text of REFUND) {
     assert.match(text, /no payment of any kind is accepted/i);
-    assert.match(text, /future payments/i);
+    assert.match(text, /no payment method can be entered/i);
+    assert.match(text, /operational draft/i);
     assert.match(text, /earlier version of the service/i);
     // Must NOT describe legacy mechanics that do not exist today:
     assert.doesNotMatch(text, /final once paid|charge is non-refundable/i);
+    // No provider names in public copy.
+    assert.doesNotMatch(text, /cashfree|upi/i);
   }
 });

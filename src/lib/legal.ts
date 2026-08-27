@@ -68,7 +68,7 @@ export function legalDoc(productKey: ProductKey, slug: LegalSlug): {
           body: [
             `${cfg.name} is part of the Bid Network — an internet bounty network. Today the site offers: public marketplace pages (bounties and projects), member accounts, public profiles, the founding-access request form, and internal page analytics.`,
             productIntent(productKey),
-            "Members can create accounts, build profiles, and prepare bounty or project listings. Listing a bounty or project in DRAFT is free. Publishing a listing to the open marketplace requires funding, and funding is NOT yet enabled: no payment of any kind is accepted on this site today, and no bounty or project can become publicly open while payments are disabled.",
+            "Members can create accounts, build profiles, and prepare a bounty or project in draft. Drafting is free. Publishing a draft to the open marketplace requires funding, and funding is NOT yet enabled: no payment of any kind is accepted on this site today, and no bounty or project can become publicly open while payments are disabled.",
             "Content marked EXAMPLE or DEMO is illustrative. It is not an offer, not a real transaction, and not evidence of any activity.",
           ],
         },
@@ -213,7 +213,7 @@ export function legalDoc(productKey: ProductKey, slug: LegalSlug): {
         {
           heading: "No payments today",
           body: [
-            "Payments are not yet enabled: there is no checkout and no payment method can be entered. Funding a listing is impossible until the platform enables payments — at which point these terms, finalized, will govern it.",
+            "Payments are not yet enabled: no payment method can be entered. Funding a listing is impossible until the platform enables payments — at which point these terms, finalized, will govern it.",
           ],
         },
         {

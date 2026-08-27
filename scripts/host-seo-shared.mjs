@@ -195,9 +195,6 @@ const PRIVATE_PATHS = new Set([
   "/admin",
 ]);
 
-/** Path classifiers for dynamic marketplace routes. */
-const PRIVATE_PATH_PREFIXES = ["/settings/", "/admin/"];
-
 /**
  * @param {string} pathname
  * @returns {boolean}
@@ -308,7 +305,7 @@ function robotsMetaFor(productKey, pathname) {
     return "noindex,follow";
   }
   // Marketplace listing/detail pages are product content (index,follow) —
-  // but only meaningful when real listings exist; empty ones are honest.
+  // real marketplace content is what appears here; an empty page is honest.
   return "index,follow";
 }
 export { robotsMetaFor };

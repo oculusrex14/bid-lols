@@ -1,9 +1,7 @@
 import { getSql, type Sql } from "@/lib/db.server";
 import { makeId } from "@/lib/ids";
-import { splitSponsorCharge, platformFeeBps } from "@/lib/money";
-import { getTestPaymentProvider, getPaymentProvider, moneyMode } from "@/lib/payments/provider";
+import { moneyMode } from "@/lib/payments/provider";
 import {
-  BOUNTY_TRANSITIONS,
   PARTICIPANT_TRANSITIONS,
   assertTransition,
   sponsorMaySelfCancel,

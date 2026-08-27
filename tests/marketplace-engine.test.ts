@@ -15,7 +15,7 @@ const { getPaymentProvider } = await import("../src/lib/payments/provider");
 const { splitSponsorCharge, computeFee } = await import("../src/lib/money");
 
 
-type PgRow = Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any -- test ergonomics
+type PgRow = Record<string, any>;
 async function q(pg: import("@electric-sql/pglite").PGlite, text: string, params: unknown[] = []): Promise<PgRow[]> {
   const res = await pg.query<Record<string, unknown>>(text, params as unknown[]);
   return res.rows as PgRow[];

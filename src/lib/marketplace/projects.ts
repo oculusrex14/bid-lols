@@ -9,7 +9,6 @@ import {
 } from "@/lib/marketplace/projects.server";
 import { requireUser, toErrorResponse, requireVerifiedEmail } from "@/lib/authz";
 import { moneyMode } from "@/lib/payments/provider";
-import { publishBountyForFunding } from "@/lib/marketplace/bounties.server";
 
 /**
  * Client-safe project serverFns (Phase 01, FR-5). Same envelope and

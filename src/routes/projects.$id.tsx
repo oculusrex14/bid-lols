@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { createFileRoute, Link, redirect } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { currentProductKey } from "@/lib/host";
@@ -9,9 +9,6 @@ import {
   publishProjectFn,
   submitProposalFn,
   selectProposalFn,
-  decideMilestoneFn,
-  submitMilestoneFn,
-  projectFundingPlanFn,
   fundProjectFn,
 } from "@/lib/marketplace/projects";
 import { formatMinor } from "@/lib/money";
@@ -307,7 +304,7 @@ function ProposalBox({ projectId, onDone }: { projectId: string; onDone: (m: str
       <input name="quotedRupees" type="number" required min={1} placeholder="Quote (₹)" className="mt-3 w-full rounded-md border-2 border-fg/20 bg-surface px-3 py-2.5 text-sm outline-none focus:border-fg/60" />
       <input name="timelineWeeks" type="number" min={1} max={52} placeholder="Timeline (weeks)" className="mt-3 w-full rounded-md border-2 border-fg/20 bg-surface px-3 py-2.5 text-sm outline-none focus:border-fg/60" />
       <textarea name="experience" rows={2} maxLength={4000} placeholder="Relevant experience" className="mt-3 w-full rounded-md border-2 border-fg/20 bg-surface p-3 text-sm outline-none focus:border-fg/60" />
-      <textarea name="milestones" rows={4} placeholder={"Milestones, one per line:\nDesign system + screens ₹15000\nFrontend build ₹25000\nQA handoff ₹5000"} className="mt-3 w-full rounded-md border-2 border-fg/20 bg-surface p-3 text-sm outline-none focus:border-fg/60" />
+      <textarea name="milestones" rows={4} placeholder={"Milestones, one per line (EXAMPLE format, not real numbers):\nDesign system + screens ₹15000\nFrontend build ₹25000\nQA handoff ₹5000"} className="mt-3 w-full rounded-md border-2 border-fg/20 bg-surface p-3 text-sm outline-none focus:border-fg/60" />
       <button type="submit" disabled={busy} className="mt-3 inline-flex h-10 items-center rounded-md bg-accent px-4 text-sm font-semibold text-accent-fg disabled:opacity-60">
         {busy ? "Sending…" : "Send proposal"}
       </button>

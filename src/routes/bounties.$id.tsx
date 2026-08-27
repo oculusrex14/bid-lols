@@ -9,12 +9,10 @@ import { getBountyDetail, listApplicationsForSponsor } from "@/lib/marketplace/q
 import { formatMinor } from "@/lib/money";
 import {
   applyToBountyFn,
-  decideApplicationFn,
   startWorkFn,
   submitWorkFn,
   publishBountyFn,
   cancelBountyFn,
-  judgeBountyFn,
   withdrawApplicationFn,
 } from "@/lib/marketplace/bounties";
 import { getSession } from "@/lib/authz";
@@ -83,7 +81,6 @@ function BountyDetailBody({ data }: { data: DetailData }) {
   const viewer = detail.viewer;
 
   const status = String(b.status);
-  const isFundable = viewer?.isSponsor && status === "DRAFT";
 
   async function run(fn: () => Promise<{ ok: boolean; message?: string; code?: string }>, okNote: string) {
     if (busy) return;
