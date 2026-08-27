@@ -23,8 +23,23 @@ export function BidthroneHome() {
           The Bid Network is an internet bounty network. Sponsors fund real
           work with a real budget; qualified participants do it; the sponsor
           verifies the outcome; the solver earns a reputation that is
-          recorded — never bought.
+          recorded — never bought. The marketplaces are live; reputation
+          builds from verified outcomes.
         </p>
+        <div className="mt-8 flex flex-wrap gap-3">
+          <a
+            href="/leaderboards"
+            className="inline-flex h-12 items-center rounded-md bg-accent px-5 text-sm font-semibold text-accent-fg"
+          >
+            View live leaderboards
+          </a>
+          <a
+            href="/bid-index"
+            className="inline-flex h-12 items-center rounded-md border-2 border-fg/30 px-5 text-sm font-semibold hover:border-fg/60"
+          >
+            The Bid Index
+          </a>
+        </div>
       </section>
 
       <section className="mx-auto w-full max-w-5xl px-4 py-14 sm:px-5">

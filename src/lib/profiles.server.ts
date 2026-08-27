@@ -254,6 +254,7 @@ export async function saveProfile(
 }
 
 export type PublicProfile = {
+  userId: string;
   handle: string;
   displayName: string;
   avatarUrl: string | null;
@@ -281,6 +282,7 @@ export async function getPublicProfile(
 ): Promise<PublicProfile | null> {
   const sql = await getSql();
   const rows = await sql.query<{
+    user_id: string;
     handle: string;
     display_name: string | null;
     avatar_url: string | null;
@@ -301,7 +303,7 @@ export async function getPublicProfile(
     joined_at: string;
     email_verified: boolean;
   }>(
-    `select p.handle, u.display_name, p.avatar_url, p.bio, p.location, p.timezone,
+    `select p.user_id, p.handle, u.display_name, p.avatar_url, p.bio, p.location, p.timezone,
             p.skills, p.categories, p.portfolio_links, p.github_url, p.linkedin_url,
             p.website_url, p.availability, p.company_name, p.company_website,
             p.company_about, p.is_sponsor, u.created_at as joined_at, u.email_verified
@@ -312,6 +314,7 @@ export async function getPublicProfile(
   const r = rows[0];
   if (!r) return null;
   return {
+    userId: r.user_id,
     handle: r.handle ?? handle,
     displayName: r.display_name ?? "Member",
     avatarUrl: r.avatar_url,

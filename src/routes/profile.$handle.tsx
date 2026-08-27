@@ -17,11 +17,16 @@ const loadProfile = createServerFn({ method: "GET" })
   )
   .handler(async ({ data }) => {
     const { getPublicProfile } = await import("@/lib/profiles.server");
+    const { reputationFor } = await import("@/lib/marketplace/reputation.server");
     const [profile, product] = await Promise.all([
       getPublicProfile(data.handle),
       currentProductKey(),
     ]);
-    return { profile, product, handle: data.handle };
+    let reputation = null;
+    if (profile) {
+      reputation = await reputationFor(profile.userId).catch(() => null);
+    }
+    return { profile, product, handle: data.handle, reputation };
   });
 
 export const Route = createFileRoute("/profile/$handle")({
@@ -125,10 +130,38 @@ function ProfilePage() {
           </div>
         ) : null}
 
-        <p className="mt-8 text-xs text-subtle">
-          Marketplace history (completed bounties, projects, reviews) appears
-          here as verified outcomes happen — never padded.
-        </p>
+        {d.reputation ? (
+          <div className="mt-8 rounded-lg border-2 border-fg/15 bg-surface p-5" data-testid="reputation">
+            <h2 className="text-xs font-medium uppercase tracking-kicker text-subtle">Verified outcomes</h2>
+            {d.reputation.experience === 0 ? (
+              <p className="mt-2 text-sm text-muted">
+                No verified marketplace outcomes yet. This profile will fill in
+                with real wins, completions and reviews — nothing is padded.
+              </p>
+            ) : (
+              <>
+                <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                  {[
+                    ["Experience", d.reputation.experience],
+                    ["Reliability", `${Math.round(d.reputation.reliability * 100)}%`],
+                    ["Quality", d.reputation.quality ? d.reputation.quality.toFixed(1) : "—"],
+                    ["Reviews", d.reputation.reviewsReceived],
+                  ].map(([label, value]) => (
+                    <div key={String(label)}>
+                      <p className="text-xs uppercase tracking-kicker text-subtle">{String(label)}</p>
+                      <p className="mt-1 font-display-site text-lg tracking-tight">{String(value)}</p>
+                    </div>
+                  ))}
+                </div>
+                <p className="mt-3 text-xs text-muted">
+                  {d.reputation.bountyWins} bounty win{d.reputation.bountyWins === 1 ? "" : "s"} ·{" "}
+                  {d.reputation.projectCompletions} project completion{d.reputation.projectCompletions === 1 ? "" : "s"} ·{" "}
+                  {d.reputation.captainedCompletions} captained unit{d.reputation.captainedCompletions === 1 ? "" : "s"}
+                </p>
+              </>
+            )}
+          </div>
+        ) : null}
       </div>
     </ProductShell>
   );

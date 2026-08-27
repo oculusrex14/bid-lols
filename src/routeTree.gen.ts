@@ -11,8 +11,10 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminRouteImport } from './routes/admin'
+import { Route as BidIndexRouteImport } from './routes/bid-index'
 import { Route as ContactRouteImport } from './routes/contact'
 import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as LeaderboardsRouteImport } from './routes/leaderboards'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as RefundRouteImport } from './routes/refund'
 import { Route as SigninRouteImport } from './routes/signin'
@@ -49,6 +51,11 @@ const AdminRoute = AdminRouteImport.update({
   path: '/admin',
   getParentRoute: () => rootRouteImport,
 } as any)
+const BidIndexRoute = BidIndexRouteImport.update({
+  id: '/bid-index',
+  path: '/bid-index',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ContactRoute = ContactRouteImport.update({
   id: '/contact',
   path: '/contact',
@@ -57,6 +64,11 @@ const ContactRoute = ContactRouteImport.update({
 const DashboardRoute = DashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LeaderboardsRoute = LeaderboardsRouteImport.update({
+  id: '/leaderboards',
+  path: '/leaderboards',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PrivacyRoute = PrivacyRouteImport.update({
@@ -188,8 +200,10 @@ const TestCheckoutPaymentIdRoute = TestCheckoutPaymentIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
+  '/bid-index': typeof BidIndexRoute
   '/contact': typeof ContactRoute
   '/dashboard': typeof DashboardRoute
+  '/leaderboards': typeof LeaderboardsRoute
   '/privacy': typeof PrivacyRoute
   '/refund': typeof RefundRoute
   '/signin': typeof SigninRoute
@@ -219,8 +233,10 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
+  '/bid-index': typeof BidIndexRoute
   '/contact': typeof ContactRoute
   '/dashboard': typeof DashboardRoute
+  '/leaderboards': typeof LeaderboardsRoute
   '/privacy': typeof PrivacyRoute
   '/refund': typeof RefundRoute
   '/signin': typeof SigninRoute
@@ -251,8 +267,10 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
+  '/bid-index': typeof BidIndexRoute
   '/contact': typeof ContactRoute
   '/dashboard': typeof DashboardRoute
+  '/leaderboards': typeof LeaderboardsRoute
   '/privacy': typeof PrivacyRoute
   '/refund': typeof RefundRoute
   '/signin': typeof SigninRoute
@@ -284,8 +302,10 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/admin'
+    | '/bid-index'
     | '/contact'
     | '/dashboard'
+    | '/leaderboards'
     | '/privacy'
     | '/refund'
     | '/signin'
@@ -315,8 +335,10 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/admin'
+    | '/bid-index'
     | '/contact'
     | '/dashboard'
+    | '/leaderboards'
     | '/privacy'
     | '/refund'
     | '/signin'
@@ -346,8 +368,10 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/admin'
+    | '/bid-index'
     | '/contact'
     | '/dashboard'
+    | '/leaderboards'
     | '/privacy'
     | '/refund'
     | '/signin'
@@ -378,8 +402,10 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRoute
+  BidIndexRoute: typeof BidIndexRoute
   ContactRoute: typeof ContactRoute
   DashboardRoute: typeof DashboardRoute
+  LeaderboardsRoute: typeof LeaderboardsRoute
   PrivacyRoute: typeof PrivacyRoute
   RefundRoute: typeof RefundRoute
   SigninRoute: typeof SigninRoute
@@ -423,6 +449,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/bid-index': {
+      id: '/bid-index'
+      path: '/bid-index'
+      fullPath: '/bid-index'
+      preLoaderRoute: typeof BidIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/contact': {
       id: '/contact'
       path: '/contact'
@@ -435,6 +468,13 @@ declare module '@tanstack/react-router' {
       path: '/dashboard'
       fullPath: '/dashboard'
       preLoaderRoute: typeof DashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/leaderboards': {
+      id: '/leaderboards'
+      path: '/leaderboards'
+      fullPath: '/leaderboards'
+      preLoaderRoute: typeof LeaderboardsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/privacy': {
@@ -618,8 +658,10 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRoute,
+  BidIndexRoute: BidIndexRoute,
   ContactRoute: ContactRoute,
   DashboardRoute: DashboardRoute,
+  LeaderboardsRoute: LeaderboardsRoute,
   PrivacyRoute: PrivacyRoute,
   RefundRoute: RefundRoute,
   SigninRoute: SigninRoute,
