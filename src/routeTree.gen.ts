@@ -22,6 +22,9 @@ import { Route as ApiFaviconRouteImport } from './routes/api/favicon'
 import { Route as BountiesIndexRouteImport } from './routes/bounties.index'
 import { Route as BountiesIdRouteImport } from './routes/bounties.$id'
 import { Route as BountiesNewRouteImport } from './routes/bounties.new'
+import { Route as GraveyardIndexRouteImport } from './routes/graveyard.index'
+import { Route as GraveyardIdRouteImport } from './routes/graveyard.$id'
+import { Route as GraveyardNewRouteImport } from './routes/graveyard.new'
 import { Route as ProfileHandleRouteImport } from './routes/profile.$handle'
 import { Route as ProjectsIndexRouteImport } from './routes/projects.index'
 import { Route as ProjectsIdRouteImport } from './routes/projects.$id'
@@ -98,6 +101,21 @@ const BountiesNewRoute = BountiesNewRouteImport.update({
   path: '/bounties/new',
   getParentRoute: () => rootRouteImport,
 } as any)
+const GraveyardIndexRoute = GraveyardIndexRouteImport.update({
+  id: '/graveyard/',
+  path: '/graveyard/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GraveyardIdRoute = GraveyardIdRouteImport.update({
+  id: '/graveyard/$id',
+  path: '/graveyard/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GraveyardNewRoute = GraveyardNewRouteImport.update({
+  id: '/graveyard/new',
+  path: '/graveyard/new',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ProfileHandleRoute = ProfileHandleRouteImport.update({
   id: '/profile/$handle',
   path: '/profile/$handle',
@@ -162,11 +180,14 @@ export interface FileRoutesByFullPath {
   '/api/favicon': typeof ApiFaviconRoute
   '/bounties/$id': typeof BountiesIdRoute
   '/bounties/new': typeof BountiesNewRoute
+  '/graveyard/$id': typeof GraveyardIdRoute
+  '/graveyard/new': typeof GraveyardNewRoute
   '/profile/$handle': typeof ProfileHandleRoute
   '/projects/$id': typeof ProjectsIdRoute
   '/projects/new': typeof ProjectsNewRoute
   '/settings/profile': typeof SettingsProfileRoute
   '/bounties/': typeof BountiesIndexRoute
+  '/graveyard/': typeof GraveyardIndexRoute
   '/projects/': typeof ProjectsIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/dev/state': typeof ApiDevStateRoute
@@ -187,11 +208,14 @@ export interface FileRoutesByTo {
   '/api/favicon': typeof ApiFaviconRoute
   '/bounties/$id': typeof BountiesIdRoute
   '/bounties/new': typeof BountiesNewRoute
+  '/graveyard/$id': typeof GraveyardIdRoute
+  '/graveyard/new': typeof GraveyardNewRoute
   '/profile/$handle': typeof ProfileHandleRoute
   '/projects/$id': typeof ProjectsIdRoute
   '/projects/new': typeof ProjectsNewRoute
   '/settings/profile': typeof SettingsProfileRoute
   '/bounties': typeof BountiesIndexRoute
+  '/graveyard': typeof GraveyardIndexRoute
   '/projects': typeof ProjectsIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/dev/state': typeof ApiDevStateRoute
@@ -213,11 +237,14 @@ export interface FileRoutesById {
   '/api/favicon': typeof ApiFaviconRoute
   '/bounties/$id': typeof BountiesIdRoute
   '/bounties/new': typeof BountiesNewRoute
+  '/graveyard/$id': typeof GraveyardIdRoute
+  '/graveyard/new': typeof GraveyardNewRoute
   '/profile/$handle': typeof ProfileHandleRoute
   '/projects/$id': typeof ProjectsIdRoute
   '/projects/new': typeof ProjectsNewRoute
   '/settings/profile': typeof SettingsProfileRoute
   '/bounties/': typeof BountiesIndexRoute
+  '/graveyard/': typeof GraveyardIndexRoute
   '/projects/': typeof ProjectsIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/dev/state': typeof ApiDevStateRoute
@@ -240,11 +267,14 @@ export interface FileRouteTypes {
     | '/api/favicon'
     | '/bounties/$id'
     | '/bounties/new'
+    | '/graveyard/$id'
+    | '/graveyard/new'
     | '/profile/$handle'
     | '/projects/$id'
     | '/projects/new'
     | '/settings/profile'
     | '/bounties/'
+    | '/graveyard/'
     | '/projects/'
     | '/api/auth/$'
     | '/api/dev/state'
@@ -265,11 +295,14 @@ export interface FileRouteTypes {
     | '/api/favicon'
     | '/bounties/$id'
     | '/bounties/new'
+    | '/graveyard/$id'
+    | '/graveyard/new'
     | '/profile/$handle'
     | '/projects/$id'
     | '/projects/new'
     | '/settings/profile'
     | '/bounties'
+    | '/graveyard'
     | '/projects'
     | '/api/auth/$'
     | '/api/dev/state'
@@ -290,11 +323,14 @@ export interface FileRouteTypes {
     | '/api/favicon'
     | '/bounties/$id'
     | '/bounties/new'
+    | '/graveyard/$id'
+    | '/graveyard/new'
     | '/profile/$handle'
     | '/projects/$id'
     | '/projects/new'
     | '/settings/profile'
     | '/bounties/'
+    | '/graveyard/'
     | '/projects/'
     | '/api/auth/$'
     | '/api/dev/state'
@@ -316,11 +352,14 @@ export interface RootRouteChildren {
   ApiFaviconRoute: typeof ApiFaviconRoute
   BountiesIdRoute: typeof BountiesIdRoute
   BountiesNewRoute: typeof BountiesNewRoute
+  GraveyardIdRoute: typeof GraveyardIdRoute
+  GraveyardNewRoute: typeof GraveyardNewRoute
   ProfileHandleRoute: typeof ProfileHandleRoute
   ProjectsIdRoute: typeof ProjectsIdRoute
   ProjectsNewRoute: typeof ProjectsNewRoute
   SettingsProfileRoute: typeof SettingsProfileRoute
   BountiesIndexRoute: typeof BountiesIndexRoute
+  GraveyardIndexRoute: typeof GraveyardIndexRoute
   ProjectsIndexRoute: typeof ProjectsIndexRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiDevStateRoute: typeof ApiDevStateRoute
@@ -422,6 +461,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BountiesNewRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/graveyard/': {
+      id: '/graveyard/'
+      path: '/graveyard'
+      fullPath: '/graveyard/'
+      preLoaderRoute: typeof GraveyardIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/graveyard/$id': {
+      id: '/graveyard/$id'
+      path: '/graveyard/$id'
+      fullPath: '/graveyard/$id'
+      preLoaderRoute: typeof GraveyardIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/graveyard/new': {
+      id: '/graveyard/new'
+      path: '/graveyard/new'
+      fullPath: '/graveyard/new'
+      preLoaderRoute: typeof GraveyardNewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/profile/$handle': {
       id: '/profile/$handle'
       path: '/profile/$handle'
@@ -508,11 +568,14 @@ const rootRouteChildren: RootRouteChildren = {
   ApiFaviconRoute: ApiFaviconRoute,
   BountiesIdRoute: BountiesIdRoute,
   BountiesNewRoute: BountiesNewRoute,
+  GraveyardIdRoute: GraveyardIdRoute,
+  GraveyardNewRoute: GraveyardNewRoute,
   ProfileHandleRoute: ProfileHandleRoute,
   ProjectsIdRoute: ProjectsIdRoute,
   ProjectsNewRoute: ProjectsNewRoute,
   SettingsProfileRoute: SettingsProfileRoute,
   BountiesIndexRoute: BountiesIndexRoute,
+  GraveyardIndexRoute: GraveyardIndexRoute,
   ProjectsIndexRoute: ProjectsIndexRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiDevStateRoute: ApiDevStateRoute,
