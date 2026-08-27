@@ -1,7 +1,8 @@
 # State
 
-Current phase: ROADMAP COMPLETE (all core phases released 2026-08-27)
-Status: Phase 00.6 promoted; Phases 01 (FoundersBid), 01B (Graveyard), 02 (CultureBid), 03 (Bidception), 04 (Bidthrone) all live in production. Final report: docs/FINAL_BUILD_REPORT.md. No further phase begins.
+Current phase: RC1 PRODUCT COMPLETION (copy pass released)
+Status: RC1 copy rewrite deployed to production. All four domains show plain, warm, operational marketplace copy. Runtime SHA: 0408bea. No aggressive marketing, no "throne", no "coming next". Funding remains OFF.
+Durable memory: docs/handoffs/PHASE_01_HANDOFF.md
 Phase 00 foundation: COMPLETE (2026-08-26).
 Phase 00.5 alignment: COMPLETE (release SHA 2a8edf7, 2026-08-27).
 Phase 00.6 guardrails: COMPLETE (release SHA c50cbdb, 2026-08-27).
