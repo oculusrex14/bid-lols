@@ -179,7 +179,53 @@ const PATH_TITLES = {
   "/privacy": "Privacy policy",
   "/refund": "Refund & payment policy",
   "/contact": "Contact",
+  "/signin": "Sign in",
+  "/signup": "Create an account",
+  "/dashboard": "Dashboard",
+  "/settings/profile": "Profile settings",
+  "/admin": "Admin",
+  "/bounties": "Open bounties",
+  "/projects": "Open projects",
 };
+
+/** Private surfaces: never indexed (authenticated or operational). */
+const PRIVATE_PATHS = new Set([
+  "/dashboard",
+  "/settings/profile",
+  "/admin",
+]);
+
+/** Path classifiers for dynamic marketplace routes. */
+const PRIVATE_PATH_PREFIXES = ["/settings/", "/admin/"];
+
+/**
+ * @param {string} pathname
+ * @returns {boolean}
+ */
+function isPrivatePath(pathname) {
+  if (PRIVATE_PATHS.has(pathname)) return true;
+  if (pathname.startsWith("/settings/")) return true;
+  if (pathname.startsWith("/admin")) return true;
+  if (pathname.startsWith("/test/")) return true;
+  if (pathname.startsWith("/api/")) return true;
+  if (pathname.startsWith("/signin") || pathname.startsWith("/signup")) return true;
+  return false;
+}
+
+/**
+ * Public marketplace detail pages (bounty/project) are product content and
+ * indexable; titles are generic at the middleware layer (the DB-backed exact
+ * title is a Phase-04-grade refinement, recorded in the phase notes).
+ * @param {string} pathname
+ * @returns {null | { suffix: string }}
+ */
+function marketplacePathMeta(pathname) {
+  if (pathname === "/bounties" || pathname.startsWith("/bounties/")) return { suffix: "Open bounties" };
+  if (pathname === "/projects" || pathname.startsWith("/projects/")) return { suffix: "Open projects" };
+  if (pathname.startsWith("/profile/")) return { suffix: "Member profile" };
+  if (pathname.startsWith("/test/")) return { suffix: "Test" };
+  return null;
+}
 
 /**
  * Clickable origin for cross-product links. culturebid.lol's apex DNS is
@@ -200,11 +246,12 @@ export function linkOrigin(key) {
  * @param {string} pathname
  * @returns {string}
  */
-export function pageTitleFor(productKey, pathname) {
+function pageTitleFor(productKey, pathname) {
   const p = product(productKey);
-  const suffix = PATH_TITLES[pathname];
+  const suffix = PATH_TITLES[pathname] ?? marketplacePathMeta(pathname)?.suffix;
   return suffix ? `${suffix} — ${p.name}` : p.title;
 }
+export { pageTitleFor };
 
 /**
  * Host-aware SEO meta for one (product, path) pair.
@@ -252,11 +299,19 @@ function esc(s) {
  * @param {string} pathname
  * @returns {string}
  */
-export function robotsMetaFor(productKey, pathname) {
+function robotsMetaFor(productKey, pathname) {
   void productKey; // policy is uniform across products today; keep the shape
-  if (pathname in PATH_TITLES) return "noindex,follow";
+  // Private/operational surfaces are never indexed.
+  if (isPrivatePath(pathname)) return "noindex,follow";
+  // Legal pages keep the 00.6 noindex,follow policy.
+  if (pathname in PATH_TITLES && ["/terms", "/privacy", "/refund", "/contact"].includes(pathname)) {
+    return "noindex,follow";
+  }
+  // Marketplace listing/detail pages are product content (index,follow) —
+  // but only meaningful when real listings exist; empty ones are honest.
   return "index,follow";
 }
+export { robotsMetaFor };
 
 /**
  * The host-aware head tag set for one (product, path) pair.
