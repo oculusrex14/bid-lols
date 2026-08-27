@@ -1,8 +1,9 @@
 # State
 
-Current phase: PHASE_00_5_ALIGNMENT
-Status: COMPLETE (deployed + verified 2026-08-27)
+Current phase: PHASE_00_6_FOUNDATION_GUARDRAILS
+Status: implementation complete — awaiting CI green + preview (NO production deploy)
 Phase 00 foundation: COMPLETE (2026-08-26).
+Phase 00.5 alignment: COMPLETE (deployed + verified 2026-08-27, release SHA 2a8edf7).
 
 Completed:
 - Phase 00 (W1–W11): legacy product removed; host-aware surfaces; fail-closed webhook + atomic settlement; truthful analytics; pure build; request-id + JSON envelope; 0009 gated-applied to prod.
@@ -16,7 +17,9 @@ Last release:
 - Prod verified: 3/4 apex + all 4 www serve the new surfaces; legal pages CLEAN; unknown route → 404 branded/noindex/no-canonical; per-host sitemaps; security headers + CSP nonces; stale serverFn → 404 (warn, no unhandled); unsigned webhook → 401; waitlist validates with 0 prod rows written; logs clean. Evidence: docs/phases/PHASE_00_5_ALIGNMENT.md "Completion notes".
 
 Next:
-- specify PHASE_01_FOUNDERSBID (docs/phases/PHASE_01_FOUNDERSBID.md). Do NOT start Phase 01 until specified + authorized.
+- finish PHASE_00_6_FOUNDATION_GUARDRAILS (docs/phases/PHASE_00_6_FOUNDATION_GUARDRAILS.md): CI green on the release SHA + Vercel PREVIEW from that SHA; **no production deploy** — STOP for external audit of the SHA.
+- after the audit passes and the production cutover is authorized: deploy Phase 00.6 to production from the clean SHA (0011 already applied to the shared DB; the running 00.5 production is unaffected — 0011 is additive).
+- then: specify PHASE_01_FOUNDERSBID (docs/phases/PHASE_01_FOUNDERSBID.md). Do NOT start Phase 01 until specified + authorized.
 
 Blocked / external (non-repo):
 - culturebid.lol APEX DNS: public A records still resolve to private IPs (10.10.0.1 / 10.0.1.3) → apex unreachable from the internet; www.culturebid.lol works. Exact correction + verification: docs/ops/DEPLOYMENT.md ("DNS note"). Re-check after the registrar change; then optionally normalize linkOrigin() back to apex-only.

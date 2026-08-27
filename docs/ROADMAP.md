@@ -30,6 +30,23 @@ Spec: `docs/phases/PHASE_00_5_ALIGNMENT.md` — **COMPLETE 2026-08-27**
 verified; evidence in that file's Completion notes; one external exception:
 the `culturebid.lol` apex DNS, now with an exact correction runbook).
 
+## Phase 00.6 — Foundation guardrails
+
+Small corrective phase after the 00.5 post-release audit: normalized
+founding-access data model (one email, many interests — migration 0011,
+additive + backfilled), technically-accurate privacy disclosure (transient
+IP processing), server-derived analytics product origin + deliberate
+visit-dedup semantics + www→apex 301 normalization (three healthy apexes),
+middleware composition fixes (stale-serverFn id-consistent 404 after the
+full chain, boundary-aware unknown-route classification, webhook
+request-id consistency), independent GitHub Actions CI gate, deliberate
+indexing policy (home indexable / legal noindex,follow / home-only
+sitemaps), favicon.ico. **No production deploy in this phase** — release is
+a clean pushed SHA with green CI + a Vercel preview, then STOP for external
+audit. No marketplace features, no accounts.
+
+Spec: `docs/phases/PHASE_00_6_FOUNDATION_GUARDRAILS.md` — IN PROGRESS.
+
 ## Phase 01 — FoundersBid
 
 - **Goal:** Startup bounties/projects on `foundersbid.lol`.
