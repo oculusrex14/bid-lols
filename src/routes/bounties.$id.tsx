@@ -83,7 +83,9 @@ type DetailData = {
 
 function BountyDetailBody({ data }: { data: DetailData }) {
   const { detail, product, me } = data;
-  const b = detail.bounty as Record<string, unknown>;
+  const b = detail.bounty as Record<string, unknown> & {
+    creative?: { formats?: string[]; targetPlatform?: string; publicPostingRequired?: boolean; performanceMeasured?: boolean; usageNotes?: string } | null;
+  };
   const navigate = useNavigate();
   const [message, setMessage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -201,6 +203,18 @@ function BountyDetailBody({ data }: { data: DetailData }) {
                 <>
                   <h2 className="mt-5 text-xs font-medium uppercase tracking-kicker text-subtle">Deliverables</h2>
                   <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed">{String(b.deliverables)}</p>
+                </>
+              ) : null}
+              {b.creative && (b.creative.formats?.length || b.creative.targetPlatform || b.creative.publicPostingRequired != null) ? (
+                <>
+                  <h2 className="mt-5 text-xs font-medium uppercase tracking-kicker text-subtle">Creative brief</h2>
+                  <ul className="mt-2 space-y-1 text-sm">
+                    {b.creative.formats && b.creative.formats.length > 0 ? <li>• Formats: {b.creative.formats.join(", ")}</li> : null}
+                    {b.creative.targetPlatform ? <li>• Platform/channel: {b.creative.targetPlatform}</li> : null}
+                    {b.creative.publicPostingRequired != null ? <li>• Public posting required: {b.creative.publicPostingRequired ? "yes" : "no"}</li> : null}
+                    {b.creative.performanceMeasured != null ? <li>• Performance measured: {b.creative.performanceMeasured ? "yes (self-reported unless an API integration exists)" : "no"}</li> : null}
+                    {b.creative.usageNotes ? <li>• Usage/licensing: {b.creative.usageNotes}</li> : null}
+                  </ul>
                 </>
               ) : null}
               {b.acceptance_criteria ? (

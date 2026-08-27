@@ -22,3 +22,7 @@ create index if not exists bounties_parent_idx on bounties (parent_work_id);
 alter table projects add column if not exists parent_work_id text
   references parent_works(id) on delete set null;
 create index if not exists projects_parent_idx on projects (parent_work_id);
+
+-- RC1 (R7): structured creative-brief fields for CultureBid (product-scoped
+-- semantics live in a jsonb payload, not scattered columns).
+alter table bounties add column if not exists creative jsonb;

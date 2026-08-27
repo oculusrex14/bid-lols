@@ -58,6 +58,19 @@ function slugFor(title: string, seed: string): string {
   return `${base || "bounty"}-${seed.slice(-6)}`;
 }
 
+export type CreativeBrief = {
+  /** Creative formats (e.g. short-form video, photography). */
+  formats?: string[];
+  /** Target platform/channel (e.g. Instagram Reels, YouTube Shorts). */
+  targetPlatform?: string;
+  /** Whether the creator must post publicly. */
+  publicPostingRequired?: boolean;
+  /** Whether reach/performance metrics matter for judging. */
+  performanceMeasured?: boolean;
+  /** Usage / licensing notes for the winning deliverable. */
+  usageNotes?: string;
+};
+
 export type CreateBountyInput = {
   sponsorUserId: string;
   product: string;
@@ -76,6 +89,8 @@ export type CreateBountyInput = {
   participantCap?: number;
   qualificationMode?: string;
   ipAndConfidentiality?: string;
+  /** Structured creative-brief fields (CultureBid). */
+  creative?: CreativeBrief;
 };
 
 /** Create a bounty in DRAFT. Pure validation + one insert. */
@@ -101,8 +116,8 @@ export async function createBounty(input: CreateBountyInput): Promise<{ id: stri
       (id, product, sponsor_user_id, title, slug, description, category, skills,
        deliverables, acceptance_criteria, reward_total_minor, currency,
        reward_structure, reward_allocations, application_deadline, submission_deadline,
-       participant_cap, qualification_mode, ip_and_confidentiality)
-     values ($1,$2,$3,$4,$5,$6,$7,$8::jsonb,$9,$10,$11,$12,$13,$14::jsonb,$15,$16,$17,$18,$19)`,
+       participant_cap, qualification_mode, ip_and_confidentiality, creative)
+     values ($1,$2,$3,$4,$5,$6,$7,$8::jsonb,$9,$10,$11,$12,$13,$14::jsonb,$15,$16,$17,$18,$19,$20::jsonb)`,
     [
       id,
       input.product,
@@ -123,6 +138,7 @@ export async function createBounty(input: CreateBountyInput): Promise<{ id: stri
       input.participantCap ?? 10,
       input.qualificationMode ?? "SPONSOR_APPROVAL",
       input.ipAndConfidentiality ?? "",
+      input.creative ? JSON.stringify(input.creative) : null,
     ],
   );
   return { id, slug };

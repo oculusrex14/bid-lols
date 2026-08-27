@@ -58,6 +58,16 @@ const createBountyInput = z
       .enum(["APPLICATION_ONLY", "SPONSOR_APPROVAL"])
       .default("SPONSOR_APPROVAL"),
     ipAndConfidentiality: z.string().trim().max(4000).default(""),
+    creative: z
+      .object({
+        formats: z.array(z.string().trim().min(1).max(60)).max(10).optional(),
+        targetPlatform: z.string().trim().max(120).optional(),
+        publicPostingRequired: z.boolean().optional(),
+        performanceMeasured: z.boolean().optional(),
+        usageNotes: z.string().trim().max(2000).optional(),
+      })
+      .strict()
+      .optional(),
   })
   .strict();
 
@@ -98,6 +108,7 @@ export const createBountyFn = createServerFn({ method: "POST" })
           participantCap: data.participantCap,
           qualificationMode: data.qualificationMode,
           ipAndConfidentiality: data.ipAndConfidentiality,
+          creative: data.creative,
         });
         return { ok: true, ...result };
       } catch (err) {
