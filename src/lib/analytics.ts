@@ -1,14 +1,32 @@
 import { createServerFn } from "@tanstack/react-start";
-import { z } from "zod";
-import { PRODUCT_KEYS } from "@/lib/host";
 
 /**
  * Client-safe wrappers around the server-only analytics primitives
- * (analytics.server.ts). The `.server` module is imported dynamically inside
- * an SSR guard so the DB module (and PGLite) never enters the client bundle.
+ * (analytics.server.ts).
+ *
+ * Phase 00.6 (WS3): the server functions take NO product key from the
+ * client. The browser can no longer choose which product receives a metric —
+ * the server determines the origin product from the request Host header
+ * (serverProductKey()) inside the handler. The client payload therefore
+ * carries nothing: there is no data here that "genuinely must come from
+ * the client".
+ *
+ * Metric semantics (documented precisely, AC-3.3):
+ *  - views   = page impressions: one increment per server-rendered page load
+ *              and per client-side route impression (TrackProductView fires
+ *              once on mount).
+ *  - visits  = per-browser-session, per-product deduped count: at most one
+ *              increment while session storage works; when sessionStorage is
+ *              UNAVAILABLE the call deliberately degrades to one increment
+ *              per impression (documented, tested — NOT a "unique visitor"
+ *              metric, and never labelled as one).
+ *  - clicks  = outbound link clicks: one increment per click on a link that
+ *              leaves the network.
+ *
+ * None of these are exposed publicly as bidder/sponsor statistics; that
+ * would require an explicit fraud/dedup semantics specification first
+ * (AC-3.4).
  */
-
-const siteSchema = z.enum([...PRODUCT_KEYS]);
 
 async function runServer<T>(
   run: (mod: typeof import("@/lib/analytics.server")) => Promise<T>,
@@ -19,23 +37,17 @@ async function runServer<T>(
   return run(await import("@/lib/analytics.server"));
 }
 
-export const trackPageView = createServerFn({ method: "POST" })
-  .validator(z.object({ site: siteSchema }).parse)
-  .handler(async ({ data }) => {
-    await runServer((m) => m.recordPageView(data.site));
-  });
+export const trackPageView = createServerFn({ method: "POST" }).handler(async () => {
+  await runServer((m) => m.recordPageView());
+});
 
-export const trackVisit = createServerFn({ method: "POST" })
-  .validator(z.object({ site: siteSchema }).parse)
-  .handler(async ({ data }) => {
-    await runServer((m) => m.recordVisit(data.site));
-  });
+export const trackVisit = createServerFn({ method: "POST" }).handler(async () => {
+  await runServer((m) => m.recordVisit());
+});
 
-/** No Phase 00 UI calls this yet — the server-side primitive exists and is
- *  covered by the W2 tests, so outbound clicks are represented independently
- *  the moment Phase 01 ships outbound links. */
-export const trackOutboundClick = createServerFn({ method: "POST" })
-  .validator(z.object({ site: siteSchema }).parse)
-  .handler(async ({ data }) => {
-    await runServer((m) => m.recordOutboundClick(data.site));
-  });
+/** No pre-launch UI calls this yet — the server-side primitive exists and is
+ *  covered by tests, so outbound clicks are represented independently the
+ *  moment Phase 01 ships outbound links. */
+export const trackOutboundClick = createServerFn({ method: "POST" }).handler(async () => {
+  await runServer((m) => m.recordOutboundClick());
+});

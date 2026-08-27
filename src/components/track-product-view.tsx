@@ -1,28 +1,32 @@
 import { useEffect } from "react";
 import { trackPageView, trackVisit } from "@/lib/analytics";
+import { VISIT_KEY, visitDecision } from "@/lib/visit-dedup";
 import type { ProductKey } from "@/lib/host";
 
-const VISIT_KEY = "bidnet.visit";
-
 /**
- * Honest analytics on mount (W2): one view increment per page impression;
- * at most one visit increment per browser session per product (deduped in
- * sessionStorage). No scaling, no double-count.
+ * Honest analytics on mount. One view per page impression; at most one visit
+ * per browser session per product (sessionStorage `bidnet.visit` array), with
+ * the DELIBERATE per-impression degradation when storage is unavailable
+ * (src/lib/visit-dedup.ts — the decision is unit-tested).
+ *
+ * Phase 00.6: the server functions carry no client data — the product they
+ * attribute the metric to is determined server-side from the request Host
+ * header. `site` here is used ONLY as the session-dedup key (it is the
+ * loader-resolved product, not browser-chosen analytics data).
  */
 export function TrackProductView({ site }: { site: ProductKey }) {
   useEffect(() => {
-    void trackPageView({ data: { site } });
+    void trackPageView({});
+    let storage: Storage | null = null;
     try {
-      const raw = sessionStorage.getItem(VISIT_KEY);
-      const seen: string[] = raw ? (JSON.parse(raw) as string[]) : [];
-      if (!seen.includes(site)) {
-        seen.push(site);
-        sessionStorage.setItem(VISIT_KEY, JSON.stringify(seen));
-        void trackVisit({ data: { site } });
-      }
+      storage = window.sessionStorage;
+      // Touch the storage to surface SecurityError (blocked/private mode).
+      window.sessionStorage.getItem(VISIT_KEY);
     } catch {
-      // sessionStorage unavailable (private mode / blocked): views still
-      // record; the visit dedup degrades to per-page.
+      storage = null;
+    }
+    if (visitDecision(site, storage) === "record") {
+      void trackVisit({});
     }
   }, [site]);
   return null;

@@ -61,6 +61,20 @@ test("W2: the umbrella domain records into its own new-key row", async () => {
   assert.ok(row.views >= 1);
 });
 
+test("Phase 00.6 AC-3.1: no explicit key -> server derives the origin product", async () => {
+  // Outside a request scope the derivation falls back to the umbrella
+  // default (serverProductKey) — the point under test is that the primitive
+  // requires NO client-supplied key at all.
+  const before = await stats("bidthrone");
+  await recordPageView();
+  await recordVisit();
+  await recordOutboundClick();
+  const after = await stats("bidthrone");
+  assert.equal(after.views, before.views + 1);
+  assert.equal(after.visits, before.visits + 1);
+  assert.equal(after.clicks, before.clicks + 1);
+});
+
 test("AC-15(c): no hype scaling anywhere in the counter path", async () => {
   const sql = await getSql();
   // The legacy hype_factor/hype_locked columns stay (historical data) but no
