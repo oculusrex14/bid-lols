@@ -22,6 +22,9 @@ import { Route as BountiesIndexRouteImport } from './routes/bounties.index'
 import { Route as BountiesIdRouteImport } from './routes/bounties.$id'
 import { Route as BountiesNewRouteImport } from './routes/bounties.new'
 import { Route as ProfileHandleRouteImport } from './routes/profile.$handle'
+import { Route as ProjectsIndexRouteImport } from './routes/projects.index'
+import { Route as ProjectsIdRouteImport } from './routes/projects.$id'
+import { Route as ProjectsNewRouteImport } from './routes/projects.new'
 import { Route as SettingsProfileRouteImport } from './routes/settings.profile'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as ApiDevStateRouteImport } from './routes/api.dev.state'
@@ -94,6 +97,21 @@ const ProfileHandleRoute = ProfileHandleRouteImport.update({
   path: '/profile/$handle',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ProjectsIndexRoute = ProjectsIndexRouteImport.update({
+  id: '/projects/',
+  path: '/projects/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProjectsIdRoute = ProjectsIdRouteImport.update({
+  id: '/projects/$id',
+  path: '/projects/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProjectsNewRoute = ProjectsNewRouteImport.update({
+  id: '/projects/new',
+  path: '/projects/new',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SettingsProfileRoute = SettingsProfileRouteImport.update({
   id: '/settings/profile',
   path: '/settings/profile',
@@ -138,8 +156,11 @@ export interface FileRoutesByFullPath {
   '/bounties/$id': typeof BountiesIdRoute
   '/bounties/new': typeof BountiesNewRoute
   '/profile/$handle': typeof ProfileHandleRoute
+  '/projects/$id': typeof ProjectsIdRoute
+  '/projects/new': typeof ProjectsNewRoute
   '/settings/profile': typeof SettingsProfileRoute
   '/bounties/': typeof BountiesIndexRoute
+  '/projects/': typeof ProjectsIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/dev/state': typeof ApiDevStateRoute
   '/api/dev/verify-email': typeof ApiDevVerifyEmailRoute
@@ -159,8 +180,11 @@ export interface FileRoutesByTo {
   '/bounties/$id': typeof BountiesIdRoute
   '/bounties/new': typeof BountiesNewRoute
   '/profile/$handle': typeof ProfileHandleRoute
+  '/projects/$id': typeof ProjectsIdRoute
+  '/projects/new': typeof ProjectsNewRoute
   '/settings/profile': typeof SettingsProfileRoute
   '/bounties': typeof BountiesIndexRoute
+  '/projects': typeof ProjectsIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/dev/state': typeof ApiDevStateRoute
   '/api/dev/verify-email': typeof ApiDevVerifyEmailRoute
@@ -181,8 +205,11 @@ export interface FileRoutesById {
   '/bounties/$id': typeof BountiesIdRoute
   '/bounties/new': typeof BountiesNewRoute
   '/profile/$handle': typeof ProfileHandleRoute
+  '/projects/$id': typeof ProjectsIdRoute
+  '/projects/new': typeof ProjectsNewRoute
   '/settings/profile': typeof SettingsProfileRoute
   '/bounties/': typeof BountiesIndexRoute
+  '/projects/': typeof ProjectsIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/dev/state': typeof ApiDevStateRoute
   '/api/dev/verify-email': typeof ApiDevVerifyEmailRoute
@@ -204,8 +231,11 @@ export interface FileRouteTypes {
     | '/bounties/$id'
     | '/bounties/new'
     | '/profile/$handle'
+    | '/projects/$id'
+    | '/projects/new'
     | '/settings/profile'
     | '/bounties/'
+    | '/projects/'
     | '/api/auth/$'
     | '/api/dev/state'
     | '/api/dev/verify-email'
@@ -225,8 +255,11 @@ export interface FileRouteTypes {
     | '/bounties/$id'
     | '/bounties/new'
     | '/profile/$handle'
+    | '/projects/$id'
+    | '/projects/new'
     | '/settings/profile'
     | '/bounties'
+    | '/projects'
     | '/api/auth/$'
     | '/api/dev/state'
     | '/api/dev/verify-email'
@@ -246,8 +279,11 @@ export interface FileRouteTypes {
     | '/bounties/$id'
     | '/bounties/new'
     | '/profile/$handle'
+    | '/projects/$id'
+    | '/projects/new'
     | '/settings/profile'
     | '/bounties/'
+    | '/projects/'
     | '/api/auth/$'
     | '/api/dev/state'
     | '/api/dev/verify-email'
@@ -268,8 +304,11 @@ export interface RootRouteChildren {
   BountiesIdRoute: typeof BountiesIdRoute
   BountiesNewRoute: typeof BountiesNewRoute
   ProfileHandleRoute: typeof ProfileHandleRoute
+  ProjectsIdRoute: typeof ProjectsIdRoute
+  ProjectsNewRoute: typeof ProjectsNewRoute
   SettingsProfileRoute: typeof SettingsProfileRoute
   BountiesIndexRoute: typeof BountiesIndexRoute
+  ProjectsIndexRoute: typeof ProjectsIndexRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiDevStateRoute: typeof ApiDevStateRoute
   ApiDevVerifyEmailRoute: typeof ApiDevVerifyEmailRoute
@@ -370,6 +409,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProfileHandleRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/projects/': {
+      id: '/projects/'
+      path: '/projects'
+      fullPath: '/projects/'
+      preLoaderRoute: typeof ProjectsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/projects/$id': {
+      id: '/projects/$id'
+      path: '/projects/$id'
+      fullPath: '/projects/$id'
+      preLoaderRoute: typeof ProjectsIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/projects/new': {
+      id: '/projects/new'
+      path: '/projects/new'
+      fullPath: '/projects/new'
+      preLoaderRoute: typeof ProjectsNewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/settings/profile': {
       id: '/settings/profile'
       path: '/settings/profile'
@@ -428,8 +488,11 @@ const rootRouteChildren: RootRouteChildren = {
   BountiesIdRoute: BountiesIdRoute,
   BountiesNewRoute: BountiesNewRoute,
   ProfileHandleRoute: ProfileHandleRoute,
+  ProjectsIdRoute: ProjectsIdRoute,
+  ProjectsNewRoute: ProjectsNewRoute,
   SettingsProfileRoute: SettingsProfileRoute,
   BountiesIndexRoute: BountiesIndexRoute,
+  ProjectsIndexRoute: ProjectsIndexRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiDevStateRoute: ApiDevStateRoute,
   ApiDevVerifyEmailRoute: ApiDevVerifyEmailRoute,

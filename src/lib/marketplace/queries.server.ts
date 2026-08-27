@@ -86,12 +86,18 @@ export async function listOpenBounties(
   };
 }
 
+export type ProjectListItem = {
+  id: string; slug: string; title: string; category: string;
+  budget_min_minor: number | null; budget_max_minor: number | null;
+  currency: string; status: string; proposal_deadline: string | null; created_at: string;
+};
+
 /** Public OPEN projects (list). */
 export async function listOpenProjects(
   sql: Sql,
   product: string,
   filters: BountyFilters = {},
-): Promise<{ items: Array<Record<string, unknown>>; nextCursor: string | null }> {
+): Promise<{ items: ProjectListItem[]; nextCursor: string | null }> {
   const limit = Math.min(Math.max(filters.limit ?? 20, 1), 50);
   const conditions: string[] = ["product = $1", "status in ('OPEN_FOR_PROPOSALS','ACTIVE')"];
   const params: unknown[] = [product];
@@ -106,7 +112,7 @@ export async function listOpenProjects(
     pi += 2;
   }
   const orderBy = filters.sort === "reward" ? "created_at desc" : "created_at desc";
-  const items = await sql.query<Record<string, unknown>>(
+  const items = await sql.query<ProjectListItem>(
     `select id, slug, title, category, budget_min_minor, budget_max_minor, currency,
             status, proposal_deadline, created_at
      from projects
