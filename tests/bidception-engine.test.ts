@@ -3,6 +3,13 @@ import assert from "node:assert/strict";
 import { getPglite } from "../src/lib/db.server";
 
 const {
+  applyToBounty,
+  startWork,
+  upsertSubmission,
+  judgeBounty,
+} = await import("../src/lib/marketplace/bounties.server");
+const { submitProposal, selectProposal } = await import("../src/lib/marketplace/projects.server");
+const {
   createParentWork,
   allocateChildWork,
   setCaptainCompensation,
@@ -50,6 +57,7 @@ test("AC-1 + invariant: allocate until the balance runs out", async () => {
     actorUserId: CAPTAIN,
     title: "Landing page",
     allocatedMinor: 300_000,
+    kind: "BOUNTY" as const,
   });
   assert.ok(a.ok, JSON.stringify(a));
   const b = await allocateChildWork({
@@ -57,6 +65,7 @@ test("AC-1 + invariant: allocate until the balance runs out", async () => {
     actorUserId: CAPTAIN,
     title: "Demo video",
     allocatedMinor: 200_000,
+    kind: "BOUNTY" as const,
   });
   assert.ok(b.ok, JSON.stringify(b));
   const c = await allocateChildWork({
@@ -64,6 +73,7 @@ test("AC-1 + invariant: allocate until the balance runs out", async () => {
     actorUserId: CAPTAIN,
     title: "Outreach",
     allocatedMinor: 250_000,
+    kind: "BOUNTY" as const,
   });
   assert.ok(c.ok, JSON.stringify(c));
   // balance now 1_000_000 - 750_000 = 250_000; a 250_001 allocation refuses
@@ -72,6 +82,7 @@ test("AC-1 + invariant: allocate until the balance runs out", async () => {
     actorUserId: CAPTAIN,
     title: "Analytics",
     allocatedMinor: 250_001,
+    kind: "BOUNTY" as const,
   });
   assert.equal(tooMuch.ok, false);
   if (!tooMuch.ok) assert.equal(tooMuch.code, "insufficient_balance");
@@ -80,6 +91,7 @@ test("AC-1 + invariant: allocate until the balance runs out", async () => {
     actorUserId: CAPTAIN,
     title: "Analytics",
     allocatedMinor: 250_000,
+    kind: "BOUNTY" as const,
   });
   assert.ok(exact.ok, JSON.stringify(exact));
   const beyond = await allocateChildWork({
@@ -87,6 +99,7 @@ test("AC-1 + invariant: allocate until the balance runs out", async () => {
     actorUserId: CAPTAIN,
     title: "One rupee more",
     allocatedMinor: 1,
+    kind: "BOUNTY" as const,
   });
   assert.equal(beyond.ok, false);
   if (!beyond.ok) assert.equal(beyond.code, "insufficient_balance");
@@ -106,6 +119,7 @@ test("AC-2: five concurrent 600k allocations on a 1M budget — exactly one wins
         actorUserId: CAPTAIN,
         title: `Parallel child ${i}`,
         allocatedMinor: 600_000,
+        kind: "BOUNTY" as const,
       }),
     ),
   );
@@ -122,6 +136,27 @@ test("AC-2: five concurrent 600k allocations on a 1M budget — exactly one wins
   assert.equal(Number(rows.rows[0].total), 600_000, "money was never created by nesting");
 });
 
+
+const BUILDER = "usr_bcn_builder";
+const LATER = new Date(Date.now() + 14 * 86400_000).toISOString();
+
+/** Drive a LINKED child bounty through the real engine to AWARDED. */
+async function awardLinkedBounty(bountyId: string, builder: string): Promise<void> {
+  const app = await applyToBounty({ bountyId, userId: builder, message: "I can build this unit." });
+  assert.ok(app.ok, JSON.stringify(app));
+  assert.ok((await startWork({ bountyId, userId: builder })).ok);
+  assert.ok(
+    (await upsertSubmission({ bountyId, userId: builder, title: "Delivered unit work", body: "Complete and verified." })).ok,
+  );
+  const judged = await judgeBounty({
+    bountyId,
+    sponsorUserId: SPONSOR,
+    placements: [{ userId: builder, place: 1 }],
+  });
+  assert.ok(judged.ok, JSON.stringify(judged));
+}
+
+
 test("AC-3: dependency gating — BLOCKED becomes READY only when deps COMPLETE", async () => {
   const { id } = await seedParentId();
   const a = await allocateChildWork({
@@ -129,6 +164,7 @@ test("AC-3: dependency gating — BLOCKED becomes READY only when deps COMPLETE"
     actorUserId: CAPTAIN,
     title: "Stage one (foundation)",
     allocatedMinor: 200_000,
+    kind: "BOUNTY" as const,
   });
   assert.ok(a.ok);
   const aId = a.ok ? a.childWorkId : "";
@@ -137,6 +173,7 @@ test("AC-3: dependency gating — BLOCKED becomes READY only when deps COMPLETE"
     actorUserId: CAPTAIN,
     title: "Stage two (build)",
     allocatedMinor: 200_000,
+    kind: "BOUNTY" as const,
     dependsOn: [aId],
   });
   assert.ok(b.ok);
@@ -147,8 +184,25 @@ test("AC-3: dependency gating — BLOCKED becomes READY only when deps COMPLETE"
   assert.equal(tooEarly.ok, false);
   if (!tooEarly.ok) assert.equal(tooEarly.code, "dependencies_incomplete");
 
-  assert.ok((await markChildReady({ childWorkId: childA, actorUserId: CAPTAIN })).ok);
+  // childA has no dependencies: allocated READY (RC1 initial state)
   assert.ok((await activateChild({ childWorkId: childA, actorUserId: CAPTAIN })).ok);
+
+  // RC1: the linked bounty must reach AWARDED through the real engine before
+  // the child unit can complete — no click-through completion.
+  const aLinked = a.ok ? a.linkedId : "";
+  try {
+    const early = await completeChild({ childWorkId: childA, actorUserId: CAPTAIN });
+    assert.equal(early.ok, false, "completing before the linked bounty is judged is refused");
+    if (!early.ok) assert.equal(early.code, "underlying_work_incomplete");
+  } catch (err) {
+    assert.match(String((err as Error).message ?? err), /underlying|linked bounty|judged/i);
+  }
+  await (await getPglite()).query(
+    "insert into users (id, email, email_verified) values ($1,'bc@t',true) on conflict (id) do nothing",
+    [BUILDER],
+  );
+  await awardLinkedBounty(aLinked, BUILDER);
+
   assert.ok((await completeChild({ childWorkId: childA, actorUserId: CAPTAIN })).ok);
 
   const nowReady = await markChildReady({ childWorkId: childB, actorUserId: CAPTAIN });
@@ -162,6 +216,7 @@ test("AC-4: authorization — non-captain/non-sponsor cannot allocate; captain f
     actorUserId: OTHER,
     title: "Not my budget",
     allocatedMinor: 100_000,
+    kind: "BOUNTY" as const,
   });
   assert.equal(outsider.ok, false);
   if (!outsider.ok) assert.equal(outsider.code, "forbidden");
@@ -187,6 +242,7 @@ test("AC-4: authorization — non-captain/non-sponsor cannot allocate; captain f
     actorUserId: CAPTAIN,
     title: "Too big now",
     allocatedMinor: 900_001,
+    kind: "BOUNTY" as const,
   });
   assert.equal(overAfterFee.ok, false);
 });
@@ -196,26 +252,32 @@ test("AC-5: settlement — reserve math, REFUND event negative, idempotent", asy
   const c1 = await allocateChildWork({
     parentWorkId: id,
     actorUserId: CAPTAIN,
-    title: "Page",
+    title: "Page build unit",
     allocatedMinor: 400_000,
+    kind: "BOUNTY" as const,
   });
   const c2 = await allocateChildWork({
     parentWorkId: id,
     actorUserId: CAPTAIN,
-    title: "Video",
+    title: "Video build unit",
     allocatedMinor: 300_000,
+    kind: "BOUNTY" as const,
   });
   assert.ok(c1.ok && c2.ok, "allocations succeeded");
   const pg = await getPglite();
+  await pg.query(
+    "insert into users (id, email, email_verified) values ($1,'bc@t',true) on conflict (id) do nothing",
+    [BUILDER],
+  );
   const children = (await pg.query(
-    "select id, title from child_works where parent_work_id=$1 order by seq",
+    "select id, title, bounty_id from child_works where parent_work_id=$1 order by seq",
     [id],
-  )).rows as Array<{ id: string; title: string }>;
+  )).rows as Array<{ id: string; title: string; bounty_id: string | null }>;
   const [childPage, childVideo] = children;
-  await markChildReady({ childWorkId: childPage.id, actorUserId: CAPTAIN });
   await activateChild({ childWorkId: childPage.id, actorUserId: CAPTAIN });
-  await completeChild({ childWorkId: childPage.id, actorUserId: CAPTAIN });
-  await markChildReady({ childWorkId: childVideo.id, actorUserId: CAPTAIN });
+  // the linked bounty must be AWARDED through the real engine first (RC1 gate)
+  await awardLinkedBounty(String(childPage.bounty_id), BUILDER);
+  assert.ok((await completeChild({ childWorkId: childPage.id, actorUserId: CAPTAIN })).ok);
   await activateChild({ childWorkId: childVideo.id, actorUserId: CAPTAIN });
   await failChild({ childWorkId: childVideo.id, actorUserId: CAPTAIN, reason: "scope changed" });
 
@@ -258,15 +320,23 @@ test("captain reputation seed + parent tree read", async () => {
     actorUserId: CAPTAIN,
     title: "Reputation seed child",
     allocatedMinor: 100_000,
+    kind: "BOUNTY" as const,
   });
   assert.ok(c.ok);
   const pg = await getPglite();
-  const childId = (
-    await pg.query<{ id: string }>("select id from child_works where parent_work_id=$1 limit 1", [id])
-  ).rows[0].id;
-  await markChildReady({ childWorkId: childId, actorUserId: CAPTAIN });
-  await activateChild({ childWorkId: childId, actorUserId: CAPTAIN });
-  await completeChild({ childWorkId: childId, actorUserId: CAPTAIN });
+  await pg.query(
+    "insert into users (id, email, email_verified) values ($1,'bc@t',true) on conflict (id) do nothing",
+    [BUILDER],
+  );
+  const child = (
+    await pg.query<{ id: string; bounty_id: string | null }>(
+      "select id, bounty_id from child_works where parent_work_id=$1 limit 1",
+      [id],
+    )
+  ).rows[0];
+  await activateChild({ childWorkId: child.id, actorUserId: CAPTAIN });
+  await awardLinkedBounty(String(child.bounty_id), BUILDER);
+  await completeChild({ childWorkId: child.id, actorUserId: CAPTAIN });
 
   const rep = (
     await pg.query<{ n: number }>(
@@ -282,4 +352,81 @@ test("captain reputation seed + parent tree read", async () => {
   assert.equal(tree.children.length, 1);
   assert.equal(tree.children[0].state, "COMPLETE");
   assert.equal(tree.children[0].allocated_minor, 100_000);
+});
+
+async function q2(pg: import("@electric-sql/pglite").PGlite, text: string, params: unknown[] = []): Promise<Record<string, any>[]> {
+  const res = await pg.query<Record<string, unknown>>(text, params as unknown[]);
+  return res.rows as Record<string, any>[]; // eslint-disable-line @typescript-eslint/no-explicit-any
+}
+
+test("RC1 R6: linked child PROJECT — quote capped at allocation, ACTIVE on selection, completes", async () => {
+  const pg = await getPglite();
+  await pg.query(
+    "truncate parent_works, child_works, projects, project_proposals, project_milestones, money_events, payments, users, notifications restart identity cascade",
+  );
+  await pg.query(
+    "insert into users (id, email, email_verified) values ($1,'sp@t',true), ($2,'cp@t',true), ($3,'pv@t',true), ($4,'pv2@t',true)",
+    [SPONSOR, CAPTAIN, "usr_bcn_provider", "usr_bcn_provider2"],
+  );
+  const PROVIDER2 = "usr_bcn_provider";
+  const { id } = await createParentWork({
+    sponsorUserId: SPONSOR,
+    product: "bidception",
+    title: "Linked project parent case",
+    objective: "A parent whose child is a real PROJECT engine row.",
+  });
+  await pg.query(
+    "update parent_works set status='ACTIVE', funded_budget_minor=$2, captain_user_id=$3 where id=$1",
+    [id, BUDGET, CAPTAIN],
+  );
+  const alloc = await allocateChildWork({
+    parentWorkId: id,
+    actorUserId: CAPTAIN,
+    title: "Marketing site project child",
+    allocatedMinor: 400_000,
+    kind: "PROJECT",
+    projectSpec: { category: "development" },
+  });
+  assert.ok(alloc.ok, JSON.stringify(alloc));
+  const linkedProjectId = alloc.ok ? alloc.linkedId : "";
+  // the linked project is a REAL projects row, OPEN_FOR_PROPOSALS, capped
+  assert.equal(
+    String((await q2(pg, "select status, budget_max_minor, parent_work_id from projects where id=$1", [linkedProjectId]))[0].status),
+    "OPEN_FOR_PROPOSALS",
+  );
+  // provider proposes ABOVE the allocation -> refused
+  // submit succeeds (the cap applies at selection, not at submission)
+  const over = await submitProposal({
+    projectId: linkedProjectId,
+    providerUserId: "usr_bcn_provider2",
+    approach: "A real approach proposal with real substance and detail.",
+    quotedMinor: 450_000,
+    milestonesProposed: [{ title: "All work", amountMinor: 450_000 }],
+  });
+  assert.ok(over.ok, JSON.stringify(over));
+  // selection refuses: the quote exceeds the child's allocated budget
+  const overSel = await selectProposal({ projectId: linkedProjectId, proposalId: over.ok ? over.proposalId : "", sponsorUserId: SPONSOR });
+  assert.equal(overSel.ok, false);
+  if (!overSel.ok) assert.equal(overSel.code, "quote_exceeds_allocation");
+  // proposal within the cap -> selectable
+  const proposal = await submitProposal({
+    projectId: linkedProjectId,
+    providerUserId: "usr_bcn_provider",
+    approach: "Two phases: design then build, with QA handoff at the end.",
+    quotedMinor: 350_000,
+    milestonesProposed: [
+      { title: "Design phase", amountMinor: 150_000 },
+      { title: "Build phase", amountMinor: 200_000 },
+    ],
+  });
+  assert.ok(proposal.ok, JSON.stringify(proposal));
+  const sel = await selectProposal({ projectId: linkedProjectId, proposalId: proposal.ok ? proposal.proposalId : "", sponsorUserId: SPONSOR });
+  assert.ok(sel.ok, JSON.stringify(sel));
+  // child project is ACTIVE immediately (funded from the parent allocation)
+  assert.equal(String((await q2(pg, "select status from projects where id=$1", [linkedProjectId]))[0].status), "ACTIVE");
+  assert.equal(String((await q2(pg, "select status from project_milestones where project_id=$1 order by seq", [linkedProjectId]))[0].status), "ACTIVE");
+  // child_works row is linked both ways
+  const child = (await q2(pg, "select kind, project_id, state from child_works where project_id=$1", [linkedProjectId]))[0];
+  assert.equal(String(child.kind), "PROJECT");
+  assert.equal(String(child.project_id), linkedProjectId);
 });

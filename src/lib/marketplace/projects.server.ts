@@ -193,8 +193,11 @@ export async function selectProposal(opts: {
   const sql = await getSql();
   return sql.transaction(async (tx) => {
     const project = (
-      await tx.query<{ id: string; status: string; sponsor_user_id: string; title: string; currency: string }>(
-        "select id, status, sponsor_user_id, title, currency from projects where id = $1 for update",
+      await tx.query<{
+        id: string; status: string; sponsor_user_id: string; title: string; currency: string;
+        parent_work_id: string | null; budget_max_minor: number | null;
+      }>(
+        "select id, status, sponsor_user_id, title, currency, parent_work_id, budget_max_minor from projects where id = $1 for update",
         [opts.projectId],
       )
     )[0];
@@ -221,6 +224,26 @@ export async function selectProposal(opts: {
         message: `Proposal milestones sum ${msSum} != quoted ${proposal.quoted_minor}.`,
       };
     }
+    // Child project (RC1, R6): the parent allocation caps the funding
+    // obligation — a quote above the child's allocated amount is refused
+    // (the parent fee is already charged; no second sponsor charge happens).
+    if (project.parent_work_id) {
+      const child = await tx.query<{ allocated_minor: number }>(
+        "select allocated_minor from child_works where parent_work_id = $1 and project_id = $2",
+        [project.parent_work_id, opts.projectId],
+      );
+      const cap = Number(child[0]?.allocated_minor ?? 0);
+      if (child.length === 0) {
+        return { ok: false, code: "not_child_of_parent", message: "Project is not a linked child of its parent work." };
+      }
+      if (Number(proposal.quoted_minor) > cap) {
+        return {
+          ok: false,
+          code: "quote_exceeds_allocation",
+          message: `Quote ₹${(Number(proposal.quoted_minor) / 100).toFixed(2)} exceeds the child's allocated budget ₹${(cap / 100).toFixed(2)}.`,
+        };
+      }
+    }
     const claimed = await tx.query<{ id: string }>(
       "update projects set status='PROPOSAL_SELECTED', selected_proposal_id=$2, selected_quoted_minor=$3, updated_at=now() where id=$1 and status='OPEN_FOR_PROPOSALS' returning id",
       [opts.projectId, opts.proposalId, Number(proposal.quoted_minor)],
@@ -246,6 +269,19 @@ export async function selectProposal(opts: {
         [makeId("mst_"), opts.projectId, seq, String(m.title), m.description ?? "", Number(m.amountMinor), project.currency],
       );
       seq += 1;
+    }
+    // Parent-linked project (RC1, R6): funding flows from the parent
+    // allocation (already collected) — selection activates the project and
+    // its first milestone immediately, no AWAITING_FUNDING step.
+    if (project.parent_work_id) {
+      await tx.query(
+        "update projects set status='ACTIVE', updated_at=now() where id=$1",
+        [opts.projectId],
+      );
+      await tx.query(
+        "update project_milestones set status='ACTIVE', updated_at=now() where project_id=$1 and seq=1",
+        [opts.projectId],
+      );
     }
     await notify(tx, {
       userId: proposal.provider_user_id,
@@ -275,6 +311,16 @@ export async function verifyProjectFunding(opts: {
   });
   if (result === "decompositionMismatch") return "mismatch";
   if (result !== "settled" && result !== "alreadyPaid") return "not_settled";
+  // Parent-linked projects (RC1, R6) are funded from the parent allocation —
+  // no separate sponsor charge, so the AWAITING_FUNDING step is skipped and
+  // selection went straight to ACTIVE.
+  const parentLinked = await sql.query<{ parent_work_id: string | null }>(
+    "select parent_work_id from projects where id = $1",
+    [opts.projectId],
+  );
+  if (parentLinked[0]?.parent_work_id) {
+    return "alreadyActive";
+  }
   const claimed = await sql.query<{ id: string }>(
     "update projects set status='ACTIVE', updated_at=now() where id=$1 and status='AWAITING_FUNDING' returning id",
     [opts.projectId],

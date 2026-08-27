@@ -182,7 +182,27 @@ export const allocateChildWorkFn = createServerFn({ method: "POST" })
         parentWorkId: z.string().trim().min(4).max(64),
         title: z.string().trim().min(3).max(140),
         allocatedRupees: z.number().int().min(1),
+        kind: z.enum(["BOUNTY", "PROJECT"]),
         dependsOnIds: z.array(z.string().trim().min(4).max(64)).max(20).default([]),
+        bountySpec: z
+          .object({
+            category: z.string().trim().min(2).max(40),
+            submissionDeadline: z.string().datetime(),
+            participantCap: z.number().int().min(1).max(200).optional(),
+            qualificationMode: z.enum(["APPLICATION_ONLY", "SPONSOR_APPROVAL"]).optional(),
+            ipAndConfidentiality: z.string().trim().max(4000).optional(),
+            rewardStructure: z.enum(["WINNER_TAKES_ALL", "PODIUM", "FINALIST_POOL"]).optional(),
+          })
+          .strict()
+          .optional(),
+        projectSpec: z
+          .object({
+            category: z.string().trim().min(2).max(40),
+            proposalDeadline: z.string().datetime().nullable().optional(),
+            ipAndConfidentiality: z.string().trim().max(4000).optional(),
+          })
+          .strict()
+          .optional(),
       })
       .strict()
       .parse,
@@ -196,7 +216,10 @@ export const allocateChildWorkFn = createServerFn({ method: "POST" })
         actorUserId: session.user.id,
         title: data.title,
         allocatedMinor: data.allocatedRupees * 100,
+        kind: data.kind,
         dependsOn: data.dependsOnIds,
+        bountySpec: data.bountySpec,
+        projectSpec: data.projectSpec,
       });
     } catch (err) {
       const mapped = toErrorResponse(err);

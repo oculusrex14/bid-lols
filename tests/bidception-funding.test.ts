@@ -94,6 +94,7 @@ test("RC1 R2: parent funding through the real production path (no status shortcu
     actorUserId: CAPTAIN,
     title: "Landing page",
     allocatedMinor: 20_000,
+    kind: "BOUNTY" as const,
   });
   assert.ok(alloc.ok, JSON.stringify(alloc));
   const over = await allocateChildWork({
@@ -101,6 +102,7 @@ test("RC1 R2: parent funding through the real production path (no status shortcu
     actorUserId: CAPTAIN,
     title: "Too much",
     allocatedMinor: 30_001,
+    kind: "BOUNTY" as const,
   });
   assert.equal(over.ok, false, "allocation exceeding the remaining balance (50,000-20,000=30,000) is refused");
   if (!over.ok) assert.equal(over.code, "insufficient_balance");
