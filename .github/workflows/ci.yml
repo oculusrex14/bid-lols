@@ -1,0 +1,56 @@
+# Phase 00.6, WS5 — independent release gate.
+#
+# Runs on every pull request and on pushes to main. No secrets are required
+# or used: the build and the whole test suite are hermetic (PGLite local
+# database, fake provider credentials in tests). A red run blocks the
+# release: the deployment protocol in docs/ops/DEPLOYMENT.md requires a
+# green CI status on the release SHA.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# One concurrent run per ref — stale runs from superseded commits cancel.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gates:
+    name: lint · typecheck · test · build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install (npm ci — lockfile-exact)
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test (mjs + ts, hermetic PGLite)
+        run: npm test
+
+      - name: Build (vite build — no DB, no DDL)
+        run: npm run build
+
+      - name: Sanity — PGLite present in the LOCAL artifact (expected here;
+          cloud builds exclude it via the __VERCEL_BUILD__ define)
+        run: |
+          test -d .vercel/output/functions/__server.func/_libs || {
+            echo "server function output missing — build shape changed?"; exit 1;
+          }
+          echo "build artifact shape OK"

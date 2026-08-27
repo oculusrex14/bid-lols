@@ -32,6 +32,26 @@ Production must be reproducible from GitHub. The release protocol:
 
 External follow-up (not in repo scope): install the Vercel GitHub App for the account (browser: github.com/settings/apps), then `vercel git connect https://github.com/oculusrex14/bid-lols.git` so pushes to `main` auto-deploy production from the SHA.
 
+### Independent CI gate (Phase 00.6, WS5)
+
+`CI` (`.github/workflows/ci.yml`) runs on every `pull_request` and on pushes
+to `main` under Node 24 with `npm ci` + lockfile caching: **lint →
+typecheck → test → build**, all hermetic (PGLite local DB; fake provider
+credentials inside tests; no production secrets in CI). A release SHA with a
+red CI run must not be deployed.
+
+Recommended `main` branch protection (GitHub: repo → Settings → Branches →
+Add branch protection rule for `main`):
+
+- **Require status checks to pass before allowing merges** — select `CI` (the
+  workflow name);
+- **Restrict force pushes** — untick "Allow force pushes";
+- (optional) require reviews for PRs to `main`.
+
+If the automation/account lacks API permission to change these settings,
+apply them in the browser as above and record it in the phase notes — the
+workflow itself does not need to modify GitHub settings.
+
 ## DNS note — culturebid.lol apex (Phase 00.5, WS5)
 
 `culturebid.lol`'s **apex** A records publicly resolve to private `10.x` addresses (verified via Cloudflare DoH), so the apex is unreachable from the internet while `www.culturebid.lol` works. The other three apex domains are healthy.
