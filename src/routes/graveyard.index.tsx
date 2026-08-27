@@ -56,7 +56,7 @@ function GraveyardPage() {
             <h2 className="font-display-site text-xl tracking-tight">No assets in the graveyard yet.</h2>
             <p className="mx-auto mt-2 max-w-md text-sm text-muted">
               When founders list abandoned projects, they appear here. This page
-              shows only real listings — an empty graveyard is an honest one.
+              shows only real assets — an empty graveyard is an honest one.
             </p>
           </div>
         ) : (
