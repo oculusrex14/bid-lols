@@ -78,8 +78,9 @@
   - Legacy `/bidception` 308 removed (now the live marketplace root); other 3 legacy prefixes kept.
   - **SECURITY (all phases):** `settleFundingPayment` now ALWAYS re-verifies at the provider by default — a client path cannot flip a pending payment to paid.
   - Sitemap is now host-aware + live-inventory (middleware queries this product's public bounties/projects/graveyard/parent works, capped, swallows DB errors → home-only fallback).
-- Next: PHASE_04_BIDTHRONE (reputation/discovery layer) → FINAL_BUILD_REPORT.
-- Follow-ups logged: preview BETTER_AUTH_SECRET env; Cashfree webhook wiring for marketplace funding settlement (required BEFORE flag-ON); professional legal review of the marketplace drafts; live-sitemap DB query is a per-request cost (cheap, capped) — revisit if it ever shows up in perf.
+- **Phase 04 (Bidthrone): RELEASED.** Release SHAs `cc12001` + `a4ef783` (tip == origin/main == production), prod `dpl_6oZbNFQaooRgY6rRVYARqEX6XxnH`, CI 33078390219. reputation.server.ts (reputationFor/leaderboard/bidIndexFor — all ledger-derived, no stored scores; leaderboards suppress below sample threshold, never seed; bid index requires ≥10 verified samples), /leaderboards (indexable, honest new-network state), /bid-index (noindex gated), public profile shows verified outcomes, bidthrone home discovery links. Request-id known-route set + robots/title policies updated for the new surfaces.
+- **ROADMAP COMPLETE** — full record in docs/FINAL_BUILD_REPORT.md (release SHAs, deployment ids, migrations 0012–0016, 1117 tests, external blockers, items for later legal/provider/human review). No further phase begins.
+- Follow-ups logged: preview BETTER_AUTH_SECRET env; Cashfree webhook wiring for marketplace funding settlement (required BEFORE flag-ON); professional legal review of the marketplace drafts; Bidception captain-picker UI polish.
 
 ## Known gotchas for the next round
 
