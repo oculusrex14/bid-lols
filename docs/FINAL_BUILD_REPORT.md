@@ -22,7 +22,7 @@
 
 ## 3. Production deployment IDs
 
-- **Current:** `dpl_6oZbNFQaooRgY6rRVYARqEX6XxnH` (READY, sha `a4ef783`, no gitDirty) — aliased to bidthrone/foundersbid/bidception + www + culturebid www.
+- **Current:** `dpl_4E2d9nWmQL5Fjg7Egsta2L7B1N6M` (READY, sha `3ea74d2` = origin/main tip, no gitDirty) — aliased to bidthrone/foundersbid/bidception + www + culturebid www. Runtime source == `a4ef783` (3ea74d2 is docs-only).
 - Prior (superseded): `dpl_7NzHpkWwcZdfDskspA6SgB3D6fBK` (03), `dpl_4bnYj56LFvr7oAD9dUGbEyGVnMy1` (02), `dpl_CNrVXvhUK93gPazkQexmFHooKXyK` (01B), `dpl_5G1qgBZCeufijzissc1RYWZ6viDs` (01 second rollout), `dpl_91lotrdjf…`→`dpl_E9k1ajtFZzGT6UJ9pFP8zqeiRpDT` (00.6).
 
 ## 4. Migration list (ledger 0002–0016, all gated-applied to shared Neon; all additive)
