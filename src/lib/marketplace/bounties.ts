@@ -75,7 +75,9 @@ export const createBountyFn = createServerFn({ method: "POST" })
     > => {
       try {
         const session = await requireUser();
-        requireVerifiedEmail(session);
+        // NOTE: drafts are free and need no email verification — only the
+        // FUNDING action does (publishBountyFn). Keeping drafts open lets
+        // sponsors prepare work before verification (honest degraded path).
         const result = await createBounty({
           sponsorUserId: session.user.id,
           product: await requestProductKey(),
@@ -132,7 +134,7 @@ export const publishBountyFn = createServerFn({ method: "POST" })
     async ({
       data,
     }): Promise<
-      | { ok: true; checkout: { paymentSessionId: string; providerOrderId: string }; mode: string }
+      | { ok: true; checkout: { paymentSessionId: string; providerOrderId: string; checkoutUrl?: string }; mode: string }
       | { ok: false; code: string; message: string }
     > => {
       try {

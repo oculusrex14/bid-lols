@@ -75,7 +75,7 @@ export type CreateBountyInput = {
   rewardAllocations: Array<{ place: number; amountMinor: number; label?: string }>;
   applicationDeadline?: string | null;
   submissionDeadline: string;
-  participantCap: number;
+  participantCap?: number;
   qualificationMode?: string;
   ipAndConfidentiality?: string;
 };
@@ -155,7 +155,7 @@ export async function publishBountyForFunding(opts: {
   email?: string;
   returnUrl?: string;
 }): Promise<
-  | { ok: true; mode: "sandbox"; checkout: { paymentSessionId: string; providerOrderId: string } }
+  | { ok: true; mode: string; checkout: { paymentSessionId: string; providerOrderId: string; checkoutUrl?: string } }
   | { ok: false; code: "funding_disabled" | "not_found" | "forbidden" | "invalid_state" | "provider_error"; message: string }
 > {
   const sql = await getSql();
@@ -245,6 +245,7 @@ export async function publishBountyForFunding(opts: {
       checkout: {
         paymentSessionId: order.paymentSessionId ?? "",
         providerOrderId: order.providerOrderId,
+        checkoutUrl: order.checkoutUrl,
       },
     };
   } catch (err) {

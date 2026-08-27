@@ -102,7 +102,10 @@ export function sumAllocations(parts: number[]): number {
 /** INR-first formatter; explicit currency code required (FR: currency-explicit). */
 export function formatMinor(minor: number, currency: string = "INR"): string {
   if (!Number.isInteger(minor)) throw new Error(`formatMinor: not an integer: ${minor}`);
-  const zeroDecimals = new Set(["INR", "JPY", "KRW"]); // 0-decimal-currency carve-outs as needed
+  // ISO-4217 minor-unit exponent: INR/USD/EUR have TWO (paise/cents); JPY/KRW
+  // have zero. Getting this wrong misstates money by 100x — caught live in
+  // Phase 01 browser verification (a ₹10,000 reward rendered as ₹10,00,000).
+  const zeroDecimals = new Set(["JPY", "KRW"]);
   const decimals = zeroDecimals.has(currency) ? 0 : 2;
   const value = minor / 10 ** decimals;
   const formatted = value.toLocaleString("en-IN", {

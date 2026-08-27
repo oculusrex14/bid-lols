@@ -1,15 +1,10 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import {
-  profileInputSchema,
-  getOrCreateProfile,
-  getUserEmail,
-  saveProfile,
-  getPublicProfile,
-  suggestHandle,
-  type ProfileRow,
-  type PublicProfile,
-} from "@/lib/profiles.server";
+import { profileInputSchema } from "@/lib/profiles.server";
+// NOTE: client-graph module — every touch of the .server module is a
+// RUNTIME dynamic import inside a serverFn handler (never a static import;
+// the import-protection gate denies server modules in the client graph).
+import type { ProfileRow, PublicProfile } from "@/lib/profiles.server";
 import { requireUser, toErrorResponse } from "@/lib/authz";
 
 /**
@@ -33,6 +28,7 @@ export const getMyProfile = createServerFn({ method: "GET" }).handler(
   > => {
     try {
       const session = await requireUser();
+      const { getOrCreateProfile, getUserEmail } = await import("@/lib/profiles.server");
       const row = await getOrCreateProfile(session.user.id);
       const u = await getUserEmail(session.user.id);
       return {
@@ -65,6 +61,7 @@ export const saveMyProfile = createServerFn({ method: "POST" })
     > => {
       try {
         const session = await requireUser();
+        const { saveProfile } = await import("@/lib/profiles.server");
         const result = await saveProfile(session.user.id, data);
         return { ok: true, handle: result.handle };
       } catch (err) {
@@ -83,10 +80,12 @@ export const getProfileByHandle = createServerFn({ method: "GET" })
   .validator((input: { handle: string }) =>
     z.object({ handle: z.string().trim().min(1).max(64) }).parse(input),
   )
-  .handler(async ({ data }): Promise<{ ok: true; profile: PublicProfile | null }> => {
-    // Public read — no session required. Returns null when absent/suspended.
-    return { ok: true, profile: await getPublicProfile(data.handle) };
-  });
-
-/** Used by /profile/:handle's loader (SSR) to also fetch by exact handle. */
-export { suggestHandle, getOrCreateProfile, getUserEmail };
+  .handler(
+    async ({
+      data,
+    }): Promise<{ ok: true; profile: PublicProfile | null }> => {
+      // Public read — no session required. Returns null when absent/suspended.
+      const { getPublicProfile } = await import("@/lib/profiles.server");
+      return { ok: true, profile: await getPublicProfile(data.handle) };
+    },
+  );

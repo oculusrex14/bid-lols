@@ -3,7 +3,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { currentProductKey } from "@/lib/host";
 import { ProductShell } from "@/components/product-shell";
-import { getPublicProfile, type PublicProfile } from "@/lib/profiles.server";
+import type { PublicProfile } from "@/lib/profiles.server";
 
 /**
  * Public profile (Phase 01, FR-2): /profile/:handle. SSR-fetched; shows only
@@ -16,6 +16,7 @@ const loadProfile = createServerFn({ method: "GET" })
     z.object({ handle: z.string().trim().min(1).max(64) }).parse(input),
   )
   .handler(async ({ data }) => {
+    const { getPublicProfile } = await import("@/lib/profiles.server");
     const [profile, product] = await Promise.all([
       getPublicProfile(data.handle),
       currentProductKey(),

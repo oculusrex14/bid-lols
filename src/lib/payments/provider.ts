@@ -253,8 +253,13 @@ export type MoneyMode = "off" | "sandbox" | "live";
 export function moneyMode(env: NodeJS.ProcessEnv = process.env): MoneyMode {
   const flagOn = env.MARKETPLACE_MONEY_LIVE === "1";
   const payoutRail = hasPayoutRail(env);
-  if (flagOn && payoutRail && env.CASHFREE_MODE === "production") return "live";
-  if (flagOn && cashfreeMode() === "sandbox") return "sandbox";
+  const deployed = Boolean(env.VERCEL_ENV) || env.NODE_ENV === "production";
+  if (flagOn && payoutRail && cashfreeMode() === "production") return "live";
+  // The fake provider charges nobody, ever — it is the E2E vehicle for the
+  // funding machinery and is unreachable in deployed runtimes, so it may
+  // enable the sandbox path regardless of Cashfree's configured mode.
+  if (flagOn && env.PAYMENT_PROVIDER === "fake" && !deployed) return "sandbox";
+  if (flagOn && cashfreeMode() === "sandbox" && !deployed) return "sandbox";
   return "off";
 }
 

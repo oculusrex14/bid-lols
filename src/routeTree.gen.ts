@@ -18,10 +18,16 @@ import { Route as SigninRouteImport } from './routes/signin'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as ApiFaviconRouteImport } from './routes/api/favicon'
+import { Route as BountiesIndexRouteImport } from './routes/bounties.index'
+import { Route as BountiesIdRouteImport } from './routes/bounties.$id'
+import { Route as BountiesNewRouteImport } from './routes/bounties.new'
 import { Route as ProfileHandleRouteImport } from './routes/profile.$handle'
 import { Route as SettingsProfileRouteImport } from './routes/settings.profile'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as ApiDevStateRouteImport } from './routes/api.dev.state'
+import { Route as ApiDevVerifyEmailRouteImport } from './routes/api.dev.verify-email'
 import { Route as ApiWebhooksCashfreeRouteImport } from './routes/api/webhooks/cashfree'
+import { Route as TestCheckoutPaymentIdRouteImport } from './routes/test.checkout.$paymentId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -68,6 +74,21 @@ const ApiFaviconRoute = ApiFaviconRouteImport.update({
   path: '/api/favicon',
   getParentRoute: () => rootRouteImport,
 } as any)
+const BountiesIndexRoute = BountiesIndexRouteImport.update({
+  id: '/bounties/',
+  path: '/bounties/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BountiesIdRoute = BountiesIdRouteImport.update({
+  id: '/bounties/$id',
+  path: '/bounties/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BountiesNewRoute = BountiesNewRouteImport.update({
+  id: '/bounties/new',
+  path: '/bounties/new',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ProfileHandleRoute = ProfileHandleRouteImport.update({
   id: '/profile/$handle',
   path: '/profile/$handle',
@@ -83,9 +104,24 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiDevStateRoute = ApiDevStateRouteImport.update({
+  id: '/api/dev/state',
+  path: '/api/dev/state',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiDevVerifyEmailRoute = ApiDevVerifyEmailRouteImport.update({
+  id: '/api/dev/verify-email',
+  path: '/api/dev/verify-email',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiWebhooksCashfreeRoute = ApiWebhooksCashfreeRouteImport.update({
   id: '/api/webhooks/cashfree',
   path: '/api/webhooks/cashfree',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TestCheckoutPaymentIdRoute = TestCheckoutPaymentIdRouteImport.update({
+  id: '/test/checkout/$paymentId',
+  path: '/test/checkout/$paymentId',
   getParentRoute: () => rootRouteImport,
 } as any)
 
@@ -99,10 +135,16 @@ export interface FileRoutesByFullPath {
   '/signup': typeof SignupRoute
   '/terms': typeof TermsRoute
   '/api/favicon': typeof ApiFaviconRoute
+  '/bounties/$id': typeof BountiesIdRoute
+  '/bounties/new': typeof BountiesNewRoute
   '/profile/$handle': typeof ProfileHandleRoute
   '/settings/profile': typeof SettingsProfileRoute
+  '/bounties/': typeof BountiesIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/dev/state': typeof ApiDevStateRoute
+  '/api/dev/verify-email': typeof ApiDevVerifyEmailRoute
   '/api/webhooks/cashfree': typeof ApiWebhooksCashfreeRoute
+  '/test/checkout/$paymentId': typeof TestCheckoutPaymentIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -114,10 +156,16 @@ export interface FileRoutesByTo {
   '/signup': typeof SignupRoute
   '/terms': typeof TermsRoute
   '/api/favicon': typeof ApiFaviconRoute
+  '/bounties/$id': typeof BountiesIdRoute
+  '/bounties/new': typeof BountiesNewRoute
   '/profile/$handle': typeof ProfileHandleRoute
   '/settings/profile': typeof SettingsProfileRoute
+  '/bounties': typeof BountiesIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/dev/state': typeof ApiDevStateRoute
+  '/api/dev/verify-email': typeof ApiDevVerifyEmailRoute
   '/api/webhooks/cashfree': typeof ApiWebhooksCashfreeRoute
+  '/test/checkout/$paymentId': typeof TestCheckoutPaymentIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -130,10 +178,16 @@ export interface FileRoutesById {
   '/signup': typeof SignupRoute
   '/terms': typeof TermsRoute
   '/api/favicon': typeof ApiFaviconRoute
+  '/bounties/$id': typeof BountiesIdRoute
+  '/bounties/new': typeof BountiesNewRoute
   '/profile/$handle': typeof ProfileHandleRoute
   '/settings/profile': typeof SettingsProfileRoute
+  '/bounties/': typeof BountiesIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/dev/state': typeof ApiDevStateRoute
+  '/api/dev/verify-email': typeof ApiDevVerifyEmailRoute
   '/api/webhooks/cashfree': typeof ApiWebhooksCashfreeRoute
+  '/test/checkout/$paymentId': typeof TestCheckoutPaymentIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -147,10 +201,16 @@ export interface FileRouteTypes {
     | '/signup'
     | '/terms'
     | '/api/favicon'
+    | '/bounties/$id'
+    | '/bounties/new'
     | '/profile/$handle'
     | '/settings/profile'
+    | '/bounties/'
     | '/api/auth/$'
+    | '/api/dev/state'
+    | '/api/dev/verify-email'
     | '/api/webhooks/cashfree'
+    | '/test/checkout/$paymentId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -162,10 +222,16 @@ export interface FileRouteTypes {
     | '/signup'
     | '/terms'
     | '/api/favicon'
+    | '/bounties/$id'
+    | '/bounties/new'
     | '/profile/$handle'
     | '/settings/profile'
+    | '/bounties'
     | '/api/auth/$'
+    | '/api/dev/state'
+    | '/api/dev/verify-email'
     | '/api/webhooks/cashfree'
+    | '/test/checkout/$paymentId'
   id:
     | '__root__'
     | '/'
@@ -177,10 +243,16 @@ export interface FileRouteTypes {
     | '/signup'
     | '/terms'
     | '/api/favicon'
+    | '/bounties/$id'
+    | '/bounties/new'
     | '/profile/$handle'
     | '/settings/profile'
+    | '/bounties/'
     | '/api/auth/$'
+    | '/api/dev/state'
+    | '/api/dev/verify-email'
     | '/api/webhooks/cashfree'
+    | '/test/checkout/$paymentId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -193,10 +265,16 @@ export interface RootRouteChildren {
   SignupRoute: typeof SignupRoute
   TermsRoute: typeof TermsRoute
   ApiFaviconRoute: typeof ApiFaviconRoute
+  BountiesIdRoute: typeof BountiesIdRoute
+  BountiesNewRoute: typeof BountiesNewRoute
   ProfileHandleRoute: typeof ProfileHandleRoute
   SettingsProfileRoute: typeof SettingsProfileRoute
+  BountiesIndexRoute: typeof BountiesIndexRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
+  ApiDevStateRoute: typeof ApiDevStateRoute
+  ApiDevVerifyEmailRoute: typeof ApiDevVerifyEmailRoute
   ApiWebhooksCashfreeRoute: typeof ApiWebhooksCashfreeRoute
+  TestCheckoutPaymentIdRoute: typeof TestCheckoutPaymentIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -264,6 +342,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiFaviconRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/bounties/': {
+      id: '/bounties/'
+      path: '/bounties'
+      fullPath: '/bounties/'
+      preLoaderRoute: typeof BountiesIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/bounties/$id': {
+      id: '/bounties/$id'
+      path: '/bounties/$id'
+      fullPath: '/bounties/$id'
+      preLoaderRoute: typeof BountiesIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/bounties/new': {
+      id: '/bounties/new'
+      path: '/bounties/new'
+      fullPath: '/bounties/new'
+      preLoaderRoute: typeof BountiesNewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/profile/$handle': {
       id: '/profile/$handle'
       path: '/profile/$handle'
@@ -285,11 +384,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/dev/state': {
+      id: '/api/dev/state'
+      path: '/api/dev/state'
+      fullPath: '/api/dev/state'
+      preLoaderRoute: typeof ApiDevStateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/dev/verify-email': {
+      id: '/api/dev/verify-email'
+      path: '/api/dev/verify-email'
+      fullPath: '/api/dev/verify-email'
+      preLoaderRoute: typeof ApiDevVerifyEmailRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/webhooks/cashfree': {
       id: '/api/webhooks/cashfree'
       path: '/api/webhooks/cashfree'
       fullPath: '/api/webhooks/cashfree'
       preLoaderRoute: typeof ApiWebhooksCashfreeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/test/checkout/$paymentId': {
+      id: '/test/checkout/$paymentId'
+      path: '/test/checkout/$paymentId'
+      fullPath: '/test/checkout/$paymentId'
+      preLoaderRoute: typeof TestCheckoutPaymentIdRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -305,10 +425,16 @@ const rootRouteChildren: RootRouteChildren = {
   SignupRoute: SignupRoute,
   TermsRoute: TermsRoute,
   ApiFaviconRoute: ApiFaviconRoute,
+  BountiesIdRoute: BountiesIdRoute,
+  BountiesNewRoute: BountiesNewRoute,
   ProfileHandleRoute: ProfileHandleRoute,
   SettingsProfileRoute: SettingsProfileRoute,
+  BountiesIndexRoute: BountiesIndexRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
+  ApiDevStateRoute: ApiDevStateRoute,
+  ApiDevVerifyEmailRoute: ApiDevVerifyEmailRoute,
   ApiWebhooksCashfreeRoute: ApiWebhooksCashfreeRoute,
+  TestCheckoutPaymentIdRoute: TestCheckoutPaymentIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

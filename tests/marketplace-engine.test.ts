@@ -1,44 +1,34 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { getPglite } from "../src/lib/db.server.ts";
+import { getPglite } from "../src/lib/db.server";
 
 process.env.PAYMENT_PROVIDER = "fake";
 process.env.MARKETPLACE_MONEY_LIVE = "1";
 
 // NOTE: imports are AFTER env vars so module-level moneyMode() reads see them.
 const { createBounty, publishBountyForFunding, verifyFundingAndOpen, applyToBounty, decideApplication, startWork, upsertSubmission, judgeBounty, sponsorCancelBounty, expireIfDue } =
-  await import("../src/lib/marketplace/bounties.server.ts");
+  await import("../src/lib/marketplace/bounties.server");
 const { moneyEventsFor, createAwardObligations, fundingDecomposition } = await import(
-  "../src/lib/marketplace/ledger.server.ts"
+  "../src/lib/marketplace/ledger.server"
 );
-const { getPaymentProvider } = await import("../src/lib/payments/provider.ts");
-const { splitSponsorCharge, computeFee } = await import("../src/lib/money.ts");
+const { getPaymentProvider } = await import("../src/lib/payments/provider");
+const { splitSponsorCharge, computeFee } = await import("../src/lib/money");
+
+
+type PgRow = Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any -- test ergonomics
+async function q(pg: import("@electric-sql/pglite").PGlite, text: string, params: unknown[] = []): Promise<PgRow[]> {
+  const res = await pg.query<Record<string, unknown>>(text, params as unknown[]);
+  return res.rows as PgRow[];
+}
 
 const SPONSOR = "usr_sponsor_0001";
 const B1 = "usr_builder_0001";
 const B2 = "usr_builder_0002";
 const B3 = "usr_builder_0003";
 
-async function freshDb(): Promise<unknown> {
+async function freshDb(): Promise<import("@electric-sql/pglite").PGlite> {
   const pg = await getPglite();
-  await pg.query(
-    "truncate bounties, bounty_applications, bounty_participants, bounty_submissions, bounty_awards, projects, project_proposals, project_milestones, money_events, payout_obligations, payments, users, notifications restart identity cascade",
-  );
-  await pg.query(
-    `insert into users (id, email, display_name, email_verified, role, status)
-     values ($1,'sponsor@test','Sponsor',true,'user','active'),
-            ($2,'b1@test',null,true,'user','active'),
-            ($3,'b2@test',null,true,'user','active'),
-            ($4,'b3@test',null,true,'user','active')`,
-    [SPONSOR, B1, B2, B3],
-  );
-  return pg;
-}
-
-async function statusOf(bountyId: string): Promise<string> {
-  const pg = await getPglite();
-  const r = await pg.query("select status from bounties where id = $1", [bountyId]);
-  return r.rows[0]?.status;
+  await q(pg, "truncate bounties, bounty_applications, bounty_participants, bounty_submissions, bounty_awards, projects, project_proposals, project_milestones, money_events, payout_obligations, payments, users, notifications restart identity cascade",   );   await pg.query(     `insert into users (id, email, display_name, email_verified, role, status)      values ($1,'sponsor@test','Sponsor',true,'user','active'),             ($2,'b1@test',null,true,'user','active'),             ($3,'b2@test',null,true,'user','active'),             ($4,'b3@test',null,true,'user','active')`,     [SPONSOR, B1, B2, B3],   );   return pg; }  async function statusOf(bountyId: string): Promise<string> {   const pg = await getPglite();   const rows = await q(pg, "select status from bounties where id = $1", [bountyId]);   return String(rows[0]?.status ?? "MISSING");
 }
 
 const REWARD = 1_000_000; // ₹10,000.00 in paise
@@ -97,10 +87,9 @@ test("AC-6: money flag off -> honest funding_disabled, no partial state", async 
   } else {
     assert.fail(`expected funding_disabled, got ${JSON.stringify(result)}`);
   }
-  const s = await pg.query("select status from bounties where id = $1", [id]);
-  assert.equal(s.rows[0].status, "DRAFT"); // nothing half-published
-  const payments = await pg.query("select count(*)::int as n from payments");
-  assert.equal(payments.rows[0].n, 0, "no payment row is created while funding is off");
+  const s = await q(pg, "select status from bounties where id = $1", [id]);   assert.equal(s[0].status, "DRAFT"); // nothing half-published
+  const payments = await q(pg, "select count(*)::int as n from payments");
+  assert.equal(payments[0].n, 0, "no payment row is created while funding is off");
   process.env.MARKETPLACE_MONEY_LIVE = "1";
 });
 
@@ -124,8 +113,8 @@ test("AC-4: sandbox funding -> settle -> OPEN, ledger sums exactly, idempotent",
 
   // sponsor subtotal == reward + fee (₹10,000 -> ₹1,000 -> ₹11,000)
   const payment = (
-    await pg.query("select id, amount_cents, meta from payments where kind='funding'")
-  ).rows[0];
+    await q(pg, "select id, amount_cents, meta from payments where kind='funding'")
+  )[0] as { id: string; amount_cents: number; meta: Record<string, unknown> };
   const plan = splitSponsorCharge(REWARD);
   assert.equal(payment.amount_cents, plan.sponsorSubtotal);
   assert.equal(payment.meta.reward_minor, plan.reward);
@@ -135,21 +124,21 @@ test("AC-4: sandbox funding -> settle -> OPEN, ledger sums exactly, idempotent",
     markPaid(id: string): void;
     isOrderPaid(id: string): Promise<boolean>;
   };
-  provider.markPaid(payment.id); // what a verified webhook proves
+  provider.markPaid(String(payment.id)); // what a verified webhook proves
 
   const first = await verifyFundingAndOpen({
     bountyId: id,
-    paymentId: payment.id,
+    paymentId: String(payment.id),
     providerRef: "webhook-test-1",
   });
   assert.equal(first, "opened");
   const second = await verifyFundingAndOpen({
     bountyId: id,
-    paymentId: payment.id,
+    paymentId: String(payment.id),
   });
   assert.equal(second, "alreadyOpen");
 
-  const bounty = (await pg.query("select status, published_at from bounties where id=$1", [id])).rows[0];
+  const bounty = (await q(pg, "select status, published_at from bounties where id=$1", [id]))[0];
   assert.equal(bounty.status, "OPEN");
   assert.ok(bounty.published_at);
 
@@ -164,7 +153,7 @@ test("AC-4: sandbox funding -> settle -> OPEN, ledger sums exactly, idempotent",
   assert.equal(reward[0].amount_minor + fee[0].amount_minor, payment.amount_cents);
 
   // Payment row flipped once.
-  const pmt = (await pg.query("select status, paid_at from payments")).rows[0];
+  const pmt = (await q(pg, "select status, paid_at from payments"))[0];
   assert.equal(pmt.status, "paid");
   assert.ok(pmt.paid_at);
   process.env.MARKETPLACE_MONEY_LIVE = "0";
@@ -190,7 +179,7 @@ test("AC-5: apply -> approve -> start -> submit -> judge -> awards == advertised
   });
   const published = await publishBountyForFunding({ bountyId: id, sponsorUserId: SPONSOR });
   assert.equal(published.ok, true);
-  const payment = (await pg.query("select id from payments where kind='funding'")).rows[0];
+  const payment = (await q(pg, "select id from payments where kind='funding'"))[0];
   const provider = getPaymentProvider() as unknown as { markPaid(id: string): void };
   provider.markPaid(payment.id);
   await verifyFundingAndOpen({ bountyId: id, paymentId: payment.id });
@@ -206,15 +195,12 @@ test("AC-5: apply -> approve -> start -> submit -> judge -> awards == advertised
     assert.ok(d.ok, JSON.stringify(d));
   }
   // cap enforcement: a 4th applicant (new user) hits the cap
-  await pg.query(
-    "insert into users (id, email, email_verified) values ($1,'b4@test',true)",
-    ["usr_builder_0004"],
-  );
+  await q(pg, "insert into users (id, email, email_verified) values ($1,'b4@test',true)", ["usr_builder_0004"]);
   const a4 = await applyToBounty({ bountyId: id, userId: "usr_builder_0004" });
   assert.equal(a4.ok, false);
   if (!a4.ok) assert.match(a4.message, /cap/i);
 
-  // self-apply is impossible (constraint + service check)
+  // self-apply is impossible (service check)
   const selfApply = await applyToBounty({ bountyId: id, userId: SPONSOR });
   assert.equal(selfApply.ok, false);
 
@@ -243,46 +229,42 @@ test("AC-5: apply -> approve -> start -> submit -> judge -> awards == advertised
   });
   assert.ok(judged.ok, JSON.stringify(judged));
 
-  const awards = (await pg.query(
-    "select user_id, place, amount_minor from bounty_awards order by place",
-  )).rows;
+  const awards = await q(pg, "select user_id, place, amount_minor from bounty_awards order by place");
   assert.equal(awards.length, 2);
   assert.equal(awards[0].user_id, B2);
   assert.equal(awards[0].amount_minor, 700_000);
   assert.equal(awards[1].amount_minor, 300_000);
-  const sum = awards.reduce((t, a) => t + a.amount_minor, 0);
+  const sum = awards.reduce((t, a) => t + Number(a.amount_minor), 0);
   assert.equal(sum, REWARD, "awarded amounts sum EXACTLY to the advertised reward");
 
-  const bounty = (await pg.query("select status from bounties where id=$1", [id])).rows[0];
+  const bounty = (await q(pg, "select status from bounties where id=$1", [id]))[0];
   assert.equal(bounty.status, "AWARDED");
 
   // payout obligations: one per award, idempotent
-  const awardIds = (
-    await pg.query("select id, user_id, place from bounty_awards order by place")
-  ).rows;
+  const awardIds = await q(pg, "select id, user_id, place from bounty_awards order by place");
   const obligations = await createAwardObligations({
     awards: awards.map((a) => ({
-      awardId: awardIds.find((r) => r.user_id === a.user_id).id,
-      payeeUserId: a.user_id,
-      amountMinor: a.amount_minor,
+      awardId: String(awardIds.find((r) => r.user_id === a.user_id)?.id),
+      payeeUserId: String(a.user_id),
+      amountMinor: Number(a.amount_minor),
       currency: "INR",
     })),
   });
   assert.equal(obligations.length, 2);
   const obligationsAgain = await createAwardObligations({
     awards: awards.map((a) => ({
-      awardId: awardIds.find((r) => r.user_id === a.user_id).id,
-      payeeUserId: a.user_id,
-      amountMinor: a.amount_minor,
+      awardId: String(awardIds.find((r) => r.user_id === a.user_id)?.id),
+      payeeUserId: String(a.user_id),
+      amountMinor: Number(a.amount_minor),
       currency: "INR",
     })),
   });
   assert.equal(obligationsAgain.length, 0, "obligations are idempotent");
-  const pending = (await pg.query("select count(*)::int as n from payout_obligations where status='PENDING'")).rows[0];
+  const pending = (await q(pg, "select count(*)::int as n from payout_obligations where status='PENDING'"))[0];
   assert.equal(pending.n, 2);
 
   // notifications flowed: winner + sponsor + applicants
-  const ntf = (await pg.query("select count(*)::int as n from notifications")).rows[0].n;
+  const ntf = (await q(pg, "select count(*)::int as n from notifications"))[0].n;
   assert.ok(ntf >= 6, `expected notifications, got ${ntf}`);
   process.env.MARKETPLACE_MONEY_LIVE = "0";
 });
@@ -303,7 +285,7 @@ test("AC-4b: cancellation policy — self-serve before work, dispute path after"
   });
   const published = await publishBountyForFunding({ bountyId: id, sponsorUserId: SPONSOR });
   assert.equal(published.ok, true);
-  const payment = (await pg.query("select id from payments where kind='funding'")).rows[0];
+  const payment = (await q(pg, "select id from payments where kind='funding'"))[0];
   const provider = getPaymentProvider() as unknown as { markPaid(id: string): void };
   provider.markPaid(payment.id);
   await verifyFundingAndOpen({ bountyId: id, paymentId: payment.id });
@@ -312,8 +294,7 @@ test("AC-4b: cancellation policy — self-serve before work, dispute path after"
   const early = await sponsorCancelBounty({ bountyId: id, sponsorUserId: SPONSOR, reason: "changed priorities" });
   assert.ok(early.ok);
   if (early.ok) assert.equal(early.outcome, "cancelled_refund_due");
-  const s = (await pg.query("select status from bounties where id=$1", [id])).rows[0];
-  assert.equal(s.status, "CANCELLED");
+  const s = (await q(pg, "select status from bounties where id=$1", [id]))[0];   assert.equal(s.status, "CANCELLED");
   process.env.MARKETPLACE_MONEY_LIVE = "0";
 });
 
@@ -335,10 +316,7 @@ test("AC-4c: expiry — past deadline with zero submissions", async () => {
   assert.equal(await expireIfDue(id), false);
   process.env.MARKETPLACE_MONEY_LIVE = "1";
   // force to OPEN (skip funding) to test the lazy transition itself
-  await pg.query("update bounties set status='OPEN' where id=$1", [id]);
-  assert.equal(await expireIfDue(id), true);
-  const s = (await pg.query("select status from bounties where id=$1", [id])).rows[0];
-  assert.equal(s.status, "EXPIRED");
+  await q(pg, "update bounties set status='OPEN' where id=$1", [id]);   assert.equal(await expireIfDue(id), true);   const s = (await q(pg, "select status from bounties where id=$1", [id]))[0];   assert.equal(s.status, "EXPIRED");
   process.env.MARKETPLACE_MONEY_LIVE = "0";
 });
 
