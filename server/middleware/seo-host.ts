@@ -55,6 +55,44 @@ function looksLikeHtml(result: unknown): boolean {
   return contentType.includes("text/html") && !encoded;
 }
 
+/**
+ * Live public marketplace paths for this product, for the sitemap. Each query
+ * is product-scoped so a host only ever lists its own content. Failures are
+ * swallowed to [] — the sitemap must still serve (home URL) and never 500 a
+ * crawler because a DB blip hit the listing queries.
+ * @param {string} productKey
+ */
+async function liveSitemapPaths(productKey: string): Promise<string[]> {
+  try {
+    const { getSql } = await import("@/lib/db.server");
+    const sql = await getSql();
+    const paths: string[] = [];
+    const bounties = await sql.query<{ id: string }>(
+      `select id from bounties where product = $1 and status in ('OPEN','APPLICATION_CLOSED','SUBMISSION','JUDGING','AWARDED') order by created_at desc limit 200`,
+      [productKey],
+    );
+    for (const b of bounties) paths.push(`/bounties/${b.id}`);
+    const projects = await sql.query<{ id: string }>(
+      `select id from projects where product = $1 and status in ('OPEN_FOR_PROPOSALS','ACTIVE','MILESTONE_REVIEW') order by created_at desc limit 200`,
+      [productKey],
+    );
+    for (const p of projects) paths.push(`/projects/${p.id}`);
+    const graveyard = await sql.query<{ id: string }>(
+      `select id from graveyard_listings where product = $1 and status in ('LISTED','UNDER_OFFER') order by created_at desc limit 200`,
+      [productKey],
+    );
+    for (const g of graveyard) paths.push(`/graveyard/${g.id}`);
+    const parents = await sql.query<{ id: string }>(
+      `select id from parent_works where product = $1 and status in ('FUNDED','ACTIVE','COMPLETING','COMPLETED') order by created_at desc limit 200`,
+      [productKey],
+    );
+    for (const pw of parents) paths.push(`/bidception/${pw.id}`);
+    return paths;
+  } catch {
+    return [];
+  }
+}
+
 export default async function seoHostMiddleware(
   event: SeoHostEvent,
   next: () => unknown | Promise<unknown>,
@@ -91,8 +129,10 @@ export default async function seoHostMiddleware(
   }
 
   if (path === "/sitemap.xml") {
-    // Host-aware inventory: only this host's own public URLs (AC-6.2).
-    return new Response(sitemapXml(productKey), {
+    // Host-aware inventory: this host's own public URLs (AC-6.2) — home plus
+    // the live marketplace listings scoped to this product.
+    const extraPaths = await liveSitemapPaths(productKey);
+    return new Response(sitemapXml(productKey, extraPaths), {
       headers: {
         "content-type": "application/xml; charset=utf-8",
         "cache-control": "public, max-age=3600",

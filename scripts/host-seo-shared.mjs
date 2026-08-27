@@ -219,6 +219,8 @@ function isPrivatePath(pathname) {
 function marketplacePathMeta(pathname) {
   if (pathname === "/bounties" || pathname.startsWith("/bounties/")) return { suffix: "Open bounties" };
   if (pathname === "/projects" || pathname.startsWith("/projects/")) return { suffix: "Open projects" };
+  if (pathname === "/graveyard" || pathname.startsWith("/graveyard/")) return { suffix: "The Graveyard" };
+  if (pathname === "/bidception" || pathname.startsWith("/bidception/")) return { suffix: "Funded parent work" };
   if (pathname.startsWith("/profile/")) return { suffix: "Member profile" };
   if (pathname.startsWith("/test/")) return { suffix: "Test" };
   return null;
@@ -379,10 +381,20 @@ export function robotsTextFor(productKey) {
  * @param {string} productKey
  * @returns {string}
  */
-export function sitemapXml(productKey) {
+/**
+ * Host-aware sitemap. `extraPaths` are same-origin public paths (live bounties,
+ * projects, graveyard assets, bidception parent works) to include alongside the
+ * home URL. Only this host's own URLs are ever listed (AC-6.2).
+ * @param {string} productKey
+ * @param {string[]} extraPaths
+ */
+export function sitemapXml(productKey, extraPaths = []) {
   const p = product(productKey);
-  const urls = `  <url>\n    <loc>https://${p.apex}/</loc>\n  </url>`;
-  return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls}\n</urlset>\n`;
+  const urls = [`  <url>\n    <loc>https://${p.apex}/</loc>\n  </url>`];
+  for (const path of extraPaths) {
+    urls.push(`  <url>\n    <loc>https://${p.apex}${path}</loc>\n  </url>`);
+  }
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.join("\n")}\n</urlset>\n`;
 }
 
 /**

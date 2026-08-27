@@ -39,6 +39,17 @@ for (const key of PRODUCT_KEYS) {
     }
   });
 
+  test(`${key}: sitemap lists live marketplace paths when provided (Phase 03)`, () => {
+    const xml = sitemapXml(key, ["/bounties/bnt_x", "/bidception/pwr_y"]);
+    assert.match(xml, new RegExp(`<loc>https://${apex}/bounties/bnt_x</loc>`));
+    assert.match(xml, new RegExp(`<loc>https://${apex}/bidception/pwr_y</loc>`));
+    assert.equal((xml.match(/<url>/g) ?? []).length, 3, "home + the provided paths");
+    for (const other of PRODUCT_KEYS) {
+      if (other === key) continue;
+      assert.ok(!xml.includes(product(other).apex), `${key} sitemap leaked ${other}'s origin`);
+    }
+  });
+
   test(`${key}: deliberate indexing policy (AC-6.1)`, () => {
     assert.equal(robotsMetaFor(key, "/"), "index,follow");
     for (const path of ["/terms", "/privacy", "/refund", "/contact"]) {
