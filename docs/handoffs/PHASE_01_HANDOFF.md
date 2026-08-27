@@ -72,9 +72,14 @@
 ## RELEASED (2026-08-27, this session)
 
 - **Phase 01 (FoundersBid marketplace)**: live — release runtime SHA `d7f289f`, docs tip `2ba63cc`.
-- **Phase 01B (Startup Graveyard)**: live — release SHA `4a6971406d1387e0a05c2fc75bb0038a02adfa3b`, production deployment `dpl_CNrVXvhUK93gPazkQexmFHooKXyK`; migration 0015 gated-applied (ledger 0002–0015); /graveyard live with honest empty state; all four domains + auth 200; CI SUCCESS.
-- Next: PHASE_02_CULTUREBID (spec first — reuses the shared bounty engine with creative categories + brand/creator roles), then PHASE_03_BIDCEPTION, PHASE_04_BIDTHRONE.
-- Follow-ups logged: preview BETTER_AUTH_SECRET env; Cashfree webhook wiring for marketplace funding settlement (required BEFORE flag-ON); professional legal review of the marketplace drafts.
+- **Phase 01B (Startup Graveyard)**: live — release SHA `4a69714`, prod `dpl_CNrVXvhUK93gPazkQexmFHooKXyK`; migration 0015 gated-applied; /graveyard live.
+- **Phase 02 (CultureBid)**: live — release SHA `5c1631e`, prod `dpl_4bnYj56LFvr7oAD9dUGbEyGVnMy1`; product-scoped marketplace routes (no schema change); creative category constants.
+- **Phase 03 (Bidception)**: live — release SHA `21ddf0e` (tip `7b9a80e` legacy-redirect fix + `21ddf0e` live sitemaps), prod `dpl_7NzHpkWwcZdfDskspA6SgB3D6fBK`; migration 0016 gated-applied (ledger 0002–0016); parent_works + child_works; concurrency-safe budget invariant (row lock + in-tx balance recompute, exactly-1-of-5 parallel allocations wins); dependency gating; settlement refunds reserve (negative REFUND money_event, idempotent, audited).
+  - Legacy `/bidception` 308 removed (now the live marketplace root); other 3 legacy prefixes kept.
+  - **SECURITY (all phases):** `settleFundingPayment` now ALWAYS re-verifies at the provider by default — a client path cannot flip a pending payment to paid.
+  - Sitemap is now host-aware + live-inventory (middleware queries this product's public bounties/projects/graveyard/parent works, capped, swallows DB errors → home-only fallback).
+- Next: PHASE_04_BIDTHRONE (reputation/discovery layer) → FINAL_BUILD_REPORT.
+- Follow-ups logged: preview BETTER_AUTH_SECRET env; Cashfree webhook wiring for marketplace funding settlement (required BEFORE flag-ON); professional legal review of the marketplace drafts; live-sitemap DB query is a per-request cost (cheap, capped) — revisit if it ever shows up in perf.
 
 ## Known gotchas for the next round
 

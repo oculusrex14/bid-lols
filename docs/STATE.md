@@ -1,7 +1,7 @@
 # State
 
-Current phase: PHASE_02_CULTUREBID (Phases 01 + 01B RELEASED)
-Status: Phase 01 FOUNDERSBID + Phase 01B GRAVEYARD released to production (2026-08-27); Phase 02 specifying next. Durable memory: docs/handoffs/PHASE_01_HANDOFF.md.
+Current phase: PHASE_04_BIDTHRONE (Phases 01/01B/02/03 RELEASED)
+Status: FoundersBid, Graveyard, CultureBid, Bidception all live in production (2026-08-27). Phase 04 Bidthrone is the final core phase. Durable memory: docs/handoffs/PHASE_01_HANDOFF.md.
 Phase 00 foundation: COMPLETE (2026-08-26).
 Phase 00.5 alignment: COMPLETE (release SHA 2a8edf7, 2026-08-27).
 Phase 00.6 guardrails: COMPLETE (release SHA c50cbdb, 2026-08-27).
