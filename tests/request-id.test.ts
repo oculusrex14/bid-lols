@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { isUnknownRouteJsonQuirk } from "./request-id";
+import { isUnknownRouteJsonQuirk } from "../server/middleware/request-id";
 
 /**
  * Phase 00.5, AC-6.5 regression: the unknown-route + JSON-Accept quirk
