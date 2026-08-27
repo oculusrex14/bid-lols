@@ -19,7 +19,7 @@ const SPONSOR = "usr_bcn2_sponsor";
 const CAPTAIN = "usr_bcn2_captain";
 const BUDGET = 500; // ₹500.00 in rupees
 
-type AnyRow = Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
+type AnyRow = Record<string, any>;
 async function q(pg: import("@electric-sql/pglite").PGlite, text: string, params: unknown[] = []): Promise<AnyRow[]> {
   const res = await pg.query<Record<string, unknown>>(text, params as unknown[]);
   return res.rows as AnyRow[];

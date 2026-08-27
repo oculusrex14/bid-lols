@@ -1,7 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  productCapabilities,
   hasCapability,
   canonicalProductForCapability,
   capabilityForPath,
@@ -17,8 +16,6 @@ import { AuthzError } from "../src/lib/authz-shared";
  * is the single source: these assertions pin it so a change anywhere is a
  * test failure.
  */
-
-const ALL_CAPS = ["bounties", "projects", "graveyard", "bidception", "reputation"] as const;
 
 test("R4: capability matrix (the authoritative matrix)", () => {
   // foundersbid: bounties, projects, graveyard

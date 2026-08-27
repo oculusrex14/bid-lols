@@ -24,7 +24,7 @@ const PROVIDER = "usr_prj_lifecycle_provider";
 const WRONG = "usr_prj_lifecycle_wrong";
 const QUOTE = 200_000; // ₹2,000.00
 
-type AnyRow = Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
+type AnyRow = Record<string, any>;
 
 async function q(pg: import("@electric-sql/pglite").PGlite, text: string, params: unknown[] = []): Promise<AnyRow[]> {
   const res = await pg.query<Record<string, unknown>>(text, params as unknown[]);

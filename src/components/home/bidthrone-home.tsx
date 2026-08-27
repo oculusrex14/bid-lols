@@ -27,7 +27,7 @@ export function BidthroneHome({ me }: { me?: ShellMe | null }) {
           recorded — never bought. The marketplaces are live; reputation
           builds from verified outcomes.
         </p>
-        <div className="mt-8 flex flex-wrap gap-3">
+        <div className="mt-8 flex flex-wrap items-center gap-3">
           <a
             href="/leaderboards"
             className="inline-flex h-12 items-center rounded-md bg-accent px-5 text-sm font-semibold text-accent-fg"
@@ -40,6 +40,11 @@ export function BidthroneHome({ me }: { me?: ShellMe | null }) {
           >
             The Bid Index
           </a>
+          {me ? (
+            <a href="/dashboard" className="text-sm font-medium underline underline-offset-4">
+              Your dashboard
+            </a>
+          ) : null}
         </div>
       </section>
 
