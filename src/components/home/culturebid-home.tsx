@@ -72,6 +72,12 @@ export function CulturebidHome() {
           >
             I'm a creator
           </button>
+          <a
+            href="/bounties"
+            className="inline-flex h-12 items-center rounded-md border-2 border-fg/30 px-5 text-sm font-semibold hover:border-fg/60"
+          >
+            Browse creative briefs
+          </a>
         </div>
       </section>
 

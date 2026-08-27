@@ -5,6 +5,7 @@ import { currentProductKey } from "@/lib/host";
 import { ProductShell } from "@/components/product-shell";
 import { createBountyFn, fundingPlanFn } from "@/lib/marketplace/bounties";
 import { formatMinor } from "@/lib/money";
+import { categoriesFor } from "@/lib/marketplace/categories";
 
 /**
  * /bounties/new — sponsor bounty creation (Phase 01, FR-4). The full spec is
@@ -16,7 +17,8 @@ const loadCreate = createServerFn({ method: "GET" }).handler(async () => {
   const { getSession } = await import("@/lib/authz");
   const session = await getSession();
   if (!session) throw redirect({ to: "/signin" });
-  return { product: await currentProductKey(), emailVerified: session.user.emailVerified };
+  const product = await currentProductKey();
+  return { product, emailVerified: session.user.emailVerified, categories: categoriesFor(product) };
 });
 
 export const Route = createFileRoute("/bounties/new")({
@@ -156,11 +158,9 @@ function NewBountyPage() {
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
                   <label htmlFor="bn-cat" className={label}>Category</label>
-                  <input id="bn-cat" name="category" required maxLength={40} list="bn-cat-list" placeholder="design" className={field} />
+                  <input id="bn-cat" name="category" required maxLength={40} list="bn-cat-list" placeholder={d.categories[0] ?? "design"} className={field} />
                   <datalist id="bn-cat-list">
-                    <option value="design" /><option value="development" /><option value="research" />
-                    <option value="copy" /><option value="automation" /><option value="data" />
-                    <option value="marketing" /><option value="debugging" /><option value="audit" />
+                    {(d.categories ?? []).map((c) => <option key={c} value={c} />)}
                   </datalist>
                 </div>
                 <div>
