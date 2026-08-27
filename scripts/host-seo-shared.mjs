@@ -45,12 +45,11 @@ export const PRODUCTS = {
     theme: null,
     name: "Bidthrone",
     wordmark: "bidthrone",
-    kicker: "The reputation & discovery layer of the Bid Network",
-    title: "bidthrone.lol — Bidthrone, the Bid Network",
+    kicker: "Public profiles and reputation for the Bid Network",
+    title: "bidthrone.lol — Public profiles and reputation",
     description:
-      "Bidthrone is the reputation and discovery layer of the Bid Network — an internet bounty network where sponsors put money on a problem and qualified builders, creators, and captains compete to solve it. Coming next.",
-    oneLine:
-      "An internet bounty network. Put money on a problem. See who takes the throne.",
+      "Public profiles and honest leaderboards for people who do real work on the Bid Network. Reputation comes from completed projects — not from paying for placement.",
+    oneLine: "Public profiles and leaderboards for people who do real work.",
     contactEmail: "contact@bidthrone.lol",
   },
   foundersbid: {
@@ -59,11 +58,11 @@ export const PRODUCTS = {
     theme: "founders",
     name: "FoundersBid",
     wordmark: "foundersbid",
-    kicker: "The startup execution marketplace",
-    title: "foundersbid.lol — FoundersBid, the startup execution marketplace",
+    kicker: "Where founders find people to build with",
+    title: "foundersbid.lol — Post work, find builders",
     description:
-      "FoundersBid is coming next: a startup execution marketplace where sponsors put money on real problems — development, AI automation, design, product, research, marketing — and qualified builders compete to solve them.",
-    oneLine: "Put money on a startup problem. Qualified builders compete to solve it.",
+      "FoundersBid connects founders with people who can build. Post a bounty or a project, review applications, and pay for completed work. Development, design, research, marketing, and more.",
+    oneLine: "Post work you need done. Review proposals. Pay for results.",
     contactEmail: "contact@foundersbid.lol",
   },
   culturebid: {
@@ -72,11 +71,11 @@ export const PRODUCTS = {
     theme: "culture",
     name: "CultureBid",
     wordmark: "culturebid",
-    kicker: "The creative bounty marketplace",
-    title: "culturebid.lol — CultureBid, the creative bounty marketplace",
+    kicker: "Creative briefs for photographers, writers, designers and more",
+    title: "culturebid.lol — Creative work, fairly run",
     description:
-      "CultureBid is coming next: a marketplace for creative bounties — UGC, video, photography, design, writing, memes, naming, and brand challenges. Sponsors fund; creators compete; the sponsor picks.",
-    oneLine: "Fund a creative brief. Creators compete. The sponsor picks the winner.",
+      "CultureBid is a place where brands post creative briefs — video, photography, design, writing, naming — and creators respond with real work. Clear rules, capped entries, and the brand picks the winner.",
+    oneLine: "Post a creative brief. Creators submit. You pick the winner.",
     contactEmail: "contact@culturebid.lol",
   },
   bidception: {
@@ -85,11 +84,11 @@ export const PRODUCTS = {
     theme: "bidception",
     name: "Bidception",
     wordmark: "bidception",
-    kicker: "Nested & team bounties",
+    kicker: "Break big projects into funded pieces a team can build",
     title: "bidception.lol — Bidception, nested & team bounties",
     description:
       "Bidception is coming next: nested and team bounties, where a funded problem is decomposed into smaller funded sub-bounties and teams captain their way to the win.",
-    oneLine: "Funded problems, decomposed into funded sub-bounties.",
+    oneLine: "Fund one project. A captain breaks it up. A team builds it together.",
     contactEmail: "contact@bidception.lol",
   },
 };

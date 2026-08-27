@@ -3,45 +3,45 @@ import type { ShellMe } from "@/components/product-shell";
 import { ExampleCard, Kicker, SectionLabel } from "@/components/home/shared";
 
 const CHILDREN = [
-  { name: "Landing page build", amount: "₹30,000" },
+  { name: "Landing page", amount: "₹30,000" },
   { name: "Demo video", amount: "₹20,000" },
   { name: "Launch outreach", amount: "₹25,000" },
   { name: "Post-launch analytics", amount: "₹15,000" },
 ];
 
 /**
- * Bidception — operational home (RC1, R5). Nested & team work: one funded
- * parent problem, a captain decomposes it into funded child units. The
- * labelled demo tree stays (it explains the shape honestly), but the hero and
- * CTAs are the live product: browse parent work, create parent work.
+ * Bidception home — plain, warm copy (RC1 copy pass). For bigger projects:
+ * fund one thing, a captain breaks it into funded pieces, and a team works
+ * on them together. Every rupee is accounted for up front.
  */
 export function BidceptionHome({ me }: { me?: ShellMe | null }) {
   return (
     <>
       <section className="mx-auto w-full max-w-4xl px-4 pt-16 sm:px-5 sm:pt-24">
-        <Kicker>Bidception · Nested &amp; team bounties</Kicker>
+        <Kicker>Bidception</Kicker>
         <h1 className="mt-4 font-display-site text-5xl leading-none tracking-tight sm:text-6xl">
-          One problem.
-          <span className="block text-subtle">A team forms around the money.</span>
+          One big project.
+          <span className="block text-subtle">A team to build it.</span>
         </h1>
         <p className="mt-6 max-w-2xl text-lg leading-relaxed text-muted">
-          A sponsor funds one parent problem. A captain is chosen to decompose
-          it into funded child units, and the budget invariant holds: allocated
-          + reserved + captain compensation can never exceed the funded
-          budget. A team works to get them all done.
+          Some projects are too big for one person. Here's how it works: you
+          fund the whole project. Someone you choose — the captain — breaks it
+          into smaller pieces. Each piece gets its own budget from the parent.
+          A team builds them together, and you see exactly where every rupee
+          goes.
         </p>
         <div className="mt-8 flex flex-wrap items-center gap-3">
           <a
             href="/bidception"
             className="inline-flex h-12 items-center rounded-md bg-accent px-5 text-sm font-semibold text-accent-fg"
           >
-            Browse parent work
+            See what's open
           </a>
           <a
             href="/bidception/new"
             className="inline-flex h-12 items-center rounded-md border-2 border-fg/30 px-5 text-sm font-semibold hover:border-fg/60"
           >
-            Create parent work
+            Start a project
           </a>
           {me ? (
             <a href="/dashboard" className="text-sm font-medium underline underline-offset-4">
@@ -54,34 +54,35 @@ export function BidceptionHome({ me }: { me?: ShellMe | null }) {
           )}
         </div>
         <p className="mt-5 max-w-2xl rounded-md border-2 border-fg/15 bg-raised/40 p-3 text-sm text-muted" data-testid="funding-note">
-          The nested marketplace preview is open. Funding parent work opens when
-          the payout rail is enabled; until then parent drafts stay drafts and no
-          payment can be made on this site.
+          You can create an account and draft a project right now. Payments
+          aren't active yet — we'll turn that on once our payout provider is
+          ready.
         </p>
       </section>
 
       <section className="mx-auto w-full max-w-4xl px-4 py-14 sm:px-5">
-        <SectionLabel>How the nesting works</SectionLabel>
+        <SectionLabel>How it works</SectionLabel>
         <div className="mt-4 space-y-0">
           <div className="rounded-lg border-2 border-fg bg-surface p-5">
             <p className="text-xs font-semibold uppercase tracking-kicker text-subtle">
-              Parent project · funded
+              Step 1 · Fund the project
             </p>
             <p className="mt-1 font-display-site text-2xl tracking-tight">
               Launch a new product site — ₹100,000
             </p>
             <p className="mt-2 text-sm text-muted">
-              The sponsor funds the whole problem. A captain is chosen to
-              decompose it — and is compensated from the parent budget for doing so.
+              You put up the full budget for everything the project needs.
             </p>
           </div>
 
           <div className="ml-6 space-y-3 border-l-2 border-dashed border-fg/30 pl-5 pt-4">
             <div className="rounded-md border-2 border-fg/20 bg-raised/50 p-4">
               <p className="text-xs font-semibold uppercase tracking-kicker text-subtle">
-                Captain · compensated from the parent budget
+                Step 2 · Choose a captain
               </p>
-              <p className="mt-1 text-sm font-medium">Chooses the structure — ₹10,000</p>
+              <p className="mt-1 text-sm font-medium">
+                They manage the team and get paid for it — ₹10,000
+              </p>
             </div>
             {CHILDREN.map((child) => (
               <div
@@ -89,7 +90,7 @@ export function BidceptionHome({ me }: { me?: ShellMe | null }) {
                 className="rounded-md border-2 border-fg/20 bg-surface p-4"
               >
                 <p className="text-xs font-semibold uppercase tracking-kicker text-subtle">
-                  Child unit · funded
+                  Step 3 · Each piece gets its own budget
                 </p>
                 <p className="mt-1 text-sm font-medium">
                   {child.name} — {child.amount}
@@ -97,21 +98,21 @@ export function BidceptionHome({ me }: { me?: ShellMe | null }) {
               </div>
             ))}
             <p className="text-xs text-subtle">
-              ₹30,000 + ₹20,000 + ₹25,000 + ₹15,000 + ₹10,000 = ₹100,000. Every
-              rupee of the parent budget is spoken for, up front.
+              ₹30,000 + ₹20,000 + ₹25,000 + ₹15,000 + ₹10,000 = ₹100,000.
+              Every piece is funded from the original budget — no hidden costs.
             </p>
           </div>
         </div>
 
         <div className="mt-10">
           <ExampleCard
-            label="Demo"
-            caption="This whole tree is a demonstration. Nothing here is a live project, and no captain has been chosen."
+            label="Example"
+            caption="This is an example. It is not a real project."
           >
             <p className="text-sm text-muted">
-              The point of the shape: a team assembles around funded, bounded
-              pieces of one problem — instead of one person taking a whole
-              problem on faith.
+              The idea: instead of hiring one person for everything, the work
+              is broken into pieces that different people can do — each with
+              its own budget and its own deadline.
             </p>
           </ExampleCard>
         </div>
@@ -121,9 +122,9 @@ export function BidceptionHome({ me }: { me?: ShellMe | null }) {
         <FoundingAccess
           site="bidception"
           defaultRole="captain"
-          heading="Captain & team launches"
-          intro="We email people on this list when parent-work funding opens and when captain seats become available. One email per update — no payment, no spam."
-          ctaLabel="Get notified"
+          heading="Want to captain a project?"
+          intro="Captains lead teams on funded projects. Leave your email and we'll let you know when the first projects open up."
+          ctaLabel="Notify me"
         />
       </section>
     </>
