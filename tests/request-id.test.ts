@@ -1,16 +1,50 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { isUnknownRouteJsonQuirk } from "../server/middleware/request-id";
+import { isKnownRoute, isUnknownRouteJsonQuirk } from "../server/middleware/request-id";
 
 /**
- * Phase 00.5, AC-6.5 regression: the unknown-route + JSON-Accept quirk
+ * Phase 00.5 AC-6.5 + Phase 00.6 WS4-B: the unknown-route + JSON-Accept quirk
  * relabel must fire ONLY for missing pages — never mask a genuine 500 on a
- * route that has a real handler.
+ * route that has a real handler — and the classification must be
+ * BOUNDARY-AWARE (the Phase 00.5 prefix regex matched /termsXYZ etc.).
  */
 
 test("unknown routes with JSON accept are the deterministic 500->404 quirk", () => {
   assert.equal(isUnknownRouteJsonQuirk("/no/such/page", 500, true), true);
   assert.equal(isUnknownRouteJsonQuirk("/anything/else/at/all", 500, true), true);
+});
+
+test("route classification is boundary-aware (WS4-B cases)", () => {
+  // known: exact routes
+  assert.equal(isKnownRoute("/terms"), true, "/terms known");
+  assert.equal(isKnownRoute("/privacy"), true);
+  assert.equal(isKnownRoute("/"), true);
+  // unknown: no boundary after the segment
+  assert.equal(isKnownRoute("/termsXYZ"), false, "/termsXYZ must be unknown");
+  assert.equal(isKnownRoute("/privacy123"), false, "/privacy123 must be unknown");
+  // trailing slash: the router does NOT match /terms/ (verified empirically
+  // on the built preview) — so a JSON 500 there is the quirk, not a genuine
+  // handler failure
+  // Deliberate behavior: the router answers /terms/ with a 307 -> /terms
+  // (verified on the built preview), so a 500 can never originate from it —
+  // classifying it "unknown" is the safe, honest choice either way.
+  assert.equal(isKnownRoute("/terms/"), false, "/terms/ is the 307 redirect, not a content route");
+  // api: only the real API routes are known
+  assert.equal(isKnownRoute("/api/webhooks/cashfree"), true);
+  assert.equal(isKnownRoute("/api/favicon"), true);
+  assert.equal(isKnownRoute("/api/whatever"), false, "/api/whatever is not a route");
+  assert.equal(isKnownRoute("/api"), false, "/api bare is not a route");
+  // serverFn namespace
+  assert.equal(isKnownRoute("/_serverFn/abc123"), true);
+  assert.equal(isKnownRoute("/_serverFn"), false, "/_serverFn bare is not a dispatch path");
+  // arbitrary
+  assert.equal(isKnownRoute("/random"), false);
+  assert.equal(isKnownRoute("/random/sub"), false);
+  // legacy 308 prefixes stay boundary-aware too
+  assert.equal(isKnownRoute("/founders"), true);
+  assert.equal(isKnownRoute("/founders/x"), true);
+  assert.equal(isKnownRoute("/foundersXYZ"), false);
+  assert.equal(isKnownRoute("/specBoard"), false);
 });
 
 test("genuine routes are never relabelled", () => {
@@ -21,6 +55,7 @@ test("genuine routes are never relabelled", () => {
     "/refund",
     "/contact",
     "/api/webhooks/cashfree",
+    "/api/favicon",
     "/_serverFn/abc123",
     "/robots.txt",
     "/sitemap.xml",

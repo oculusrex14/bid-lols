@@ -54,7 +54,13 @@ export const Route = createFileRoute("/api/webhooks/cashfree")({
           status === "SUCCESS" ||
           status === "PAID";
         if (!paidEvent) {
-          return Response.json({ ok: true, ignored: type || "unpaid_event", requestId }, { status: 200 });
+          // Phase 00.6, WS4-C: every JSON body carrying a requestId must carry
+          // the SAME value in x-request-id (the outer request-id middleware
+          // only keeps handler-set ids — it must not mint a second one).
+          return Response.json(
+            { ok: true, ignored: type || "unpaid_event", requestId },
+            { status: 200, headers: { "x-request-id": requestId } },
+          );
         }
 
         const orderId = String(order.order_id ?? order.orderId ?? body.order_id ?? "");

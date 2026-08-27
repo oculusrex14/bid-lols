@@ -25,16 +25,50 @@ interface RequestIdEvent {
 }
 
 /**
- * Routes that have a real handler — a 500 from these is genuine and must
- * stay a 500. Everything else is an unknown path, whose only 500 source in
- * this framework is the JSON-Accept not-found quirk (see below).
+ * Boundary-aware route classification (Phase 00.6, WS4-B).
+ *
+ * "Known" = the path has (or has) a real handler, so a 500 from it is GENUINE
+ * and must stay a 500:
+ *  - exact page/static routes (home + legal + robots/sitemap);
+ *  - the two real API routes (everything else under /api/ is NOT a route);
+ *  - the /_serverFn/ namespace (server-function dispatch);
+ *  - the legacy 308 prefixes, boundary-aware (intercepted before Start).
+ *
+ * Everything else is an unknown path, whose only 500 source in this
+ * framework is the JSON-Accept not-found quirk — relabelled to an honest
+ * 404 below. `/termsXYZ`, `/privacy123`, `/api-whatever`, `/random` are all
+ * unknown. NOTE: `/terms/` (trailing slash) is answered by the router with a
+ * 307 → `/terms` (verified empirically), so a 500 can never originate from
+ * it — it is classified "unknown" anyway (safe: the quirk relabel can never
+ * mask a real failure there; see tests/request-id.test.ts).
  */
-const KNOWN_ROUTE_PREFIX =
-  /^\/($|terms|privacy|refund|contact|api|_serverFn|robots\.txt|sitemap\.xml|founders|culture|bidception|spec)/;
+const KNOWN_EXACT_PATHS = new Set([
+  "/",
+  "/terms",
+  "/privacy",
+  "/refund",
+  "/contact",
+  "/robots.txt",
+  "/sitemap.xml",
+]);
+
+/** The complete set of real API routes — /api/* is known ONLY for these. */
+const KNOWN_API_PATHS = new Set(["/api/webhooks/cashfree", "/api/favicon"]);
+
+const LEGACY_PREFIXES = ["/founders", "/culture", "/bidception", "/spec"];
+
+export function isKnownRoute(pathname: string): boolean {
+  if (KNOWN_EXACT_PATHS.has(pathname)) return true;
+  if (KNOWN_API_PATHS.has(pathname)) return true;
+  if (pathname.startsWith("/_serverFn/")) return true;
+  return LEGACY_PREFIXES.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+  );
+}
 
 /** Pure, unit-testable decision: should a 500 JSON-Accept response be relabelled to 404? */
 export function isUnknownRouteJsonQuirk(pathname: string, status: number, wantsJson: boolean): boolean {
-  return status === 500 && wantsJson && !KNOWN_ROUTE_PREFIX.test(pathname);
+  return status === 500 && wantsJson && !isKnownRoute(pathname);
 }
 
 function codeFor(status: number): string {
@@ -93,9 +127,10 @@ export default async function requestIdMiddleware(
       // generic JSON error body (e.g. the router's "Only HTML requests" 500)
       // to the standard envelope so header id === body id always.
       let specific = false;
+      let specificText: string | null = null;
       try {
-        const text = await result.text();
-        const parsed: unknown = JSON.parse(text);
+        specificText = await result.text(); // consumes the body — see below
+        const parsed: unknown = JSON.parse(specificText);
         if (
           parsed !== null &&
           typeof parsed === "object" &&
@@ -113,7 +148,14 @@ export default async function requestIdMiddleware(
             `[request ${requestId}] ${event.req.method ?? "GET"} ${event.url.pathname} -> ${status}`,
           );
         }
-        return result;
+        // The specific-envelope check consumed `result`'s body — return a
+        // FRESH response carrying the same body (returning the consumed
+        // original would send an empty body, Phase 00.6 WS4 regression).
+        return new Response(specificText, {
+          status,
+          statusText: result.statusText,
+          headers,
+        });
       }
     }
 
