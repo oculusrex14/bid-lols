@@ -1,6 +1,13 @@
-# PHASE_01_HANDOFF.md — FoundersBid (mid-phase state, 2026-08-27)
+# PHASE_01_HANDOFF.md — FoundersBid (FINAL, released 2026-08-27)
 
-**Status:** Phase 01 IMPLEMENTATION IN PROGRESS (autonomous roadmap authorized). This handoff is the durable memory for the next session round. Release NOT yet done (see "Remaining work").
+**Status: RELEASED TO PRODUCTION.**
+- Release SHA `da76db8462f4c80c08b04cd167eb3521bf11cedb` (== origin/main at deploy; tree clean).
+- Production deployment `dpl_DxjBNp1pDzf85jxXxeWpDAEKn4LZ` (READY, all four apex+www domains 200, /api/auth/ok 200).
+- CI: SUCCESS on `d7f289f` (the runtime-equivalent commit; da76db8 is docs-only on top of it).
+- Migrations 0012–0014 gated-applied to production Neon (ledger 0002–0014; additive; 00.6 production unaffected during apply).
+- **Incident record:** the first production rollout 500'd on every route because `BETTER_AUTH_SECRET` was not yet set on the Vercel project (auth fails loudly at startup by design). Rolled back to `c50cbdb` within minutes (all domains restored to 200), secret generated + added, redeployed clean. Lesson: set new required env BEFORE deploying a phase that requires it.
+- Post-release production verification: 4 domains 200; /api/auth/ok 200; signup round-trip (1 real account ops-e2e@bidthrone.lol, credential hash owned by Better Auth, email_verified=false pending audited admin verification); duplicate signup 422; wrong password 401; unsigned webhook 401; unknown-JSON 404 envelope with requestId === x-request-id; CSP nonce on HTML; /bounties index,follow; /signin + legal noindex,follow; dashboard redirects anonymous to /signin; DB: 0 bounties/projects/money_events (honest empty marketplace); 0 error-ish runtime events in the last 100.
+- Env additions: `BETTER_AUTH_SECRET` (production; preview NOT yet set — previews are SSO-gated/hermetic, noted as follow-up).
 
 ## Final architecture relevant to future phases
 
@@ -60,15 +67,13 @@
 
 0012 (auth/identity), 0013 (marketplace core), 0014 (money/trust) — authored, all additive; NOT applied to production yet (gated apply is part of the release step).
 
-## Remaining work for Phase 01 (in order)
+## Schemas / invariants / routes: see sections above (unchanged by release)
 
-1. **Legal marketplace drafts** (WS10): extend `src/lib/legal.ts` + /terms /privacy /refund with marketplace-appropriate sections (bounty rules, project rules, dispute policy, IP ownership default: winning deliverable IP transfers per published rules only after reward obligation satisfied; non-winners keep IP). Label as operational drafts for professional review. Money-off state must be reflected honestly.
-2. **Dashboard notifications section** (bell + list via listNotifications; markNotificationRead serverFn).
-3. **Reviews UI** (bounty detail: sponsor judges → post-completion review forms) — engine exists.
-4. **E2E Playwright** (scripts/browser-smoke.mjs pattern): sponsor create→fund(fake)→OPEN; builder apply→submit; keep baselines.
-5. **Full gates**: `npm run lint`, typecheck, `node --test scripts/**` + tsx tests, `vite build`; then gated migration apply to Neon (dry-run first), push, CI green, preview deploy, preview verify (desktop+mobile), production deploy from exact pushed SHA, production verify, logs, handoff update, STATE/ROADMAP updates.
-6. **Payouts doc**: docs/ops/PAYOUTS.md (exact Cashfree Payouts setup needed to flip moneyMode to live).
-7. Then PHASE_01B_GRAVEYARD per mission (spec first), then PHASE_02/03/04.
+## What remains AFTER Phase 01 (roadmap continues autonomously)
+
+1. PHASE_01B_GRAVEYARD: spec (docs/phases/PHASE_01B_GRAVEYARD.md) → implement /graveyard (listings + offer workflow behind transaction gates; no one-click domain auth-code exposure; 10% acquisition fee config) → release per the phase loop.
+2. PHASE_02_CULTUREBID → PHASE_03_BIDCEPTION → PHASE_04_BIDTHRONE: each with spec first, reusing the shared engines.
+3. Follow-ups logged: preview BETTER_AUTH_SECRET env (browser-side branch prompt blocked CLI), Cashfree webhook wiring for marketplace funding settlement (required BEFORE flag-ON), professional legal review of the marketplace drafts.
 
 ## Known gotchas for the next round
 
