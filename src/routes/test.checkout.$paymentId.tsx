@@ -39,19 +39,44 @@ export const Route = createFileRoute("/test/checkout/$paymentId")({
             [params.paymentId],
           )
         )[0];
-        const bountyId = payment?.meta?.bounty_id as string | undefined;
-        if (!bountyId) {
-          return Response.json({ code: "not_found", message: "Unknown payment." }, { status: 404 });
+        const meta = (payment?.meta ?? {}) as Record<string, string | undefined>;
+        const ref = `test-${randomUUID()}`;
+        if (meta.bounty_id) {
+          const result = await verifyFundingAndOpen({
+            bountyId: meta.bounty_id,
+            paymentId: params.paymentId,
+            providerRef: ref,
+          });
+          if (result === "opened") {
+            throw redirect({ to: "/bounties/$id", params: { id: meta.bounty_id } });
+          }
+          return Response.json({ code: result }, { status: 409 });
         }
-        const result = await verifyFundingAndOpen({
-          bountyId,
-          paymentId: params.paymentId,
-          providerRef: `test-${randomUUID()}`,
-        });
-        if (result === "opened") {
-          throw redirect({ to: "/bounties/$id", params: { id: bountyId } });
+        if (meta.project_id) {
+          const { verifyProjectFunding } = await import("@/lib/marketplace/projects.server");
+          const result = await verifyProjectFunding({
+            projectId: meta.project_id,
+            paymentId: params.paymentId,
+            providerRef: ref,
+          });
+          if (result === "active" || result === "alreadyActive") {
+            throw redirect({ to: "/projects/$id", params: { id: meta.project_id } });
+          }
+          return Response.json({ code: result }, { status: 409 });
         }
-        return Response.json({ code: result }, { status: 409 });
+        if (meta.parent_id) {
+          const { verifyParentFunding } = await import("@/lib/marketplace/bidception.server");
+          const result = await verifyParentFunding({
+            parentWorkId: meta.parent_id,
+            paymentId: params.paymentId,
+            providerRef: ref,
+          });
+          if (result === "funded" || result === "alreadyFunded") {
+            throw redirect({ to: "/bidception/$id", params: { id: meta.parent_id } });
+          }
+          return Response.json({ code: result }, { status: 409 });
+        }
+        return Response.json({ code: "unknown_entity", message: "Payment has no linked work entity." }, { status: 404 });
       },
     },
   },

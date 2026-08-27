@@ -271,6 +271,7 @@ export async function verifyProjectFunding(opts: {
     bountyId: opts.projectId,
     paymentId: opts.paymentId,
     providerRef: opts.providerRef,
+    entityType: "PROJECT",
   });
   if (result === "decompositionMismatch") return "mismatch";
   if (result !== "settled" && result !== "alreadyPaid") return "not_settled";

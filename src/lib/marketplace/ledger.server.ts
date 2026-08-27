@@ -31,7 +31,8 @@ export type MoneyEntityType =
   | "MILESTONE"
   | "AWARD"
   | "PAYOUT"
-  | "REFUND";
+  | "REFUND"
+  | "PARENT_WORK";
 
 export type MoneyEventInput = {
   entityType: MoneyEntityType;
@@ -105,6 +106,9 @@ export async function settleFundingPayment(opts: {
   bountyId: string;
   paymentId: string;
   providerRef?: string;
+  /** Entity label for the money_events rows (default BOUNTY; PARENT_WORK
+   * for Bidception parent funding). */
+  entityType?: "BOUNTY" | "PROJECT" | "PARENT_WORK";
   /** Authoritative provider re-check (runs INSIDE the claim). */
   reverify?: (providerOrderId: string | null) => Promise<boolean>;
 }): Promise<
@@ -129,9 +133,19 @@ export async function settleFundingPayment(opts: {
     if (pmt.status === "paid") return "alreadyPaid";
     if (pmt.status !== "pending") return "notPaid";
 
-    // Authoritative provider re-verification inside the claim.
-    if (opts.reverify) {
-      const paid = await opts.reverify(pmt.provider_order_id);
+    // Authoritative provider re-verification inside the claim. Settlement
+    // NEVER trusts a caller that skips this: when no custom reverify is
+    // supplied, default to the provider's own order-status API. This closes the
+    // "client says paid" hole — the provider is the only source of truth.
+    const reverifyFn =
+      opts.reverify ??
+      (async (providerOrderId: string | null): Promise<boolean> => {
+        if (!providerOrderId) return false;
+        const { getPaymentProvider } = await import("@/lib/payments/provider");
+        return getPaymentProvider().isOrderPaid(providerOrderId);
+      });
+    {
+      const paid = await reverifyFn(pmt.provider_order_id);
       if (!paid) return "notPaid";
     }
 
@@ -155,7 +169,7 @@ export async function settleFundingPayment(opts: {
     if (!claimed || claimed.length !== 1) return "alreadyPaid";
 
     await insertMoneyEvent(tx, {
-      entityType: "BOUNTY",
+      entityType: opts.entityType ?? "BOUNTY",
       entityId: opts.bountyId,
       type: "REWARD",
       amountMinor: reward,
@@ -165,7 +179,7 @@ export async function settleFundingPayment(opts: {
       paymentId: opts.paymentId,
     });
     await insertMoneyEvent(tx, {
-      entityType: "BOUNTY",
+      entityType: opts.entityType ?? "BOUNTY",
       entityId: opts.bountyId,
       type: "PLATFORM_FEE",
       amountMinor: fee,
