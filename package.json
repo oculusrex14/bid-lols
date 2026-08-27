@@ -12,7 +12,7 @@
     "preview": "vite preview",
     "db:migrate": "node scripts/migrate.mjs",
     "typecheck": "tsc --noEmit",
-    "test": "node --test \"scripts/**/*.test.mjs\" && tsx --test \"src/**/*.test.ts\"",
+    "test": "node --test \"scripts/**/*.test.mjs\" && tsx --test \"src/**/*.test.ts\" \"server/**/*.test.ts\"",
     "lint": "eslint .",
     "format": "prettier --write ."
   },

@@ -7,6 +7,10 @@
  * - Client errors (4xx/5xx) that answered an `Accept: application/json`
  *   request are converted to a machine-readable `{ code, message, requestId }`
  *   envelope instead of an HTML error page.
+ * - The framework's unknown-route + JSON-Accept quirk (a missing page
+ *   answered as 500 "Only HTML requests are supported here") is relabelled
+ *   to its honest 404 before enveloping; genuine 500s on real routes are
+ *   never touched (Phase 00.5, AC-6.5).
  * - 4xx/5xx are logged with the id, so a client can quote one id against one
  *   log line (AC-18 / G5).
  *
@@ -18,6 +22,19 @@ import { randomUUID } from "node:crypto";
 interface RequestIdEvent {
   url: URL;
   req: { method?: string; headers: Headers };
+}
+
+/**
+ * Routes that have a real handler — a 500 from these is genuine and must
+ * stay a 500. Everything else is an unknown path, whose only 500 source in
+ * this framework is the JSON-Accept not-found quirk (see below).
+ */
+const KNOWN_ROUTE_PREFIX =
+  /^\/($|terms|privacy|refund|contact|api|_serverFn|robots\.txt|sitemap\.xml|founders|culture|bidception|spec)/;
+
+/** Pure, unit-testable decision: should a 500 JSON-Accept response be relabelled to 404? */
+export function isUnknownRouteJsonQuirk(pathname: string, status: number, wantsJson: boolean): boolean {
+  return status === 500 && wantsJson && !KNOWN_ROUTE_PREFIX.test(pathname);
 }
 
 function codeFor(status: number): string {
@@ -47,10 +64,20 @@ export default async function requestIdMiddleware(
   const headers = new Headers(result.headers);
   if (!headers.get("x-request-id")) headers.set("x-request-id", requestId);
 
-  const status = result.status;
+  let status = result.status;
   const wantsJson = String(event.req.headers.get("accept") ?? "").includes(
     "application/json",
   );
+
+  // Framework quirk (deterministic, not a server failure): an UNKNOWN route
+  // requested with `Accept: application/json` makes Start answer 500
+  // ("Only HTML requests are supported here") instead of 404. Genuine routes
+  // are excluded from the relabel (isUnknownRouteJsonQuirk), so a real 500
+  // is never masked — only the missing-page case gets its honest 404
+  // (Phase 00.5, AC-6.5).
+  if (isUnknownRouteJsonQuirk(event.url.pathname, status, wantsJson)) {
+    status = 404;
+  }
 
   if (status >= 400 && wantsJson) {
     const envelope = JSON.stringify({
