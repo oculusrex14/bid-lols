@@ -72,7 +72,7 @@ test("AC-1/AC-2: reputation is derived from verified work; honest empty state fo
 
 test("AC-3: leaderboard ranks only members with verified work; no seeding", async () => {
   await seed();
-  const rows = await leaderboard("most_experience", "foundersbid", 10, 1);
+  const rows = await leaderboard("most_experience", 10, 1);
   const handles = rows.map((r) => r.handle);
   assert.ok(handles.includes("alpha"), "A (alpha) is ranked (2 completions)");
   assert.ok(handles.includes("gamma"), "C (gamma) is ranked (project + captained)");
@@ -84,7 +84,7 @@ test("AC-3: leaderboard ranks only members with verified work; no seeding", asyn
 test("AC-3b: leaderboard returns empty (not padded) when no one meets the sample threshold", async () => {
   await seed();
   // minSample above any member's experience -> honest empty result
-  const rows = await leaderboard("most_experience", "foundersbid", 10, 100);
+  const rows = await leaderboard("most_experience", 10, 100);
   assert.equal(rows.length, 0, "below the sample threshold the board is empty, never fake");
 });
 

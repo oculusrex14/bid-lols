@@ -58,7 +58,9 @@ export const boardFn = createServerFn({ method: "GET" })
       try {
         // Boards are network-wide by design (reputation crosses products);
         // the product arg is a read refinement reserved for later.
-        const rows = await leaderboard(data.board, "foundersbid", data.limit, 1);
+        // Boards are network-wide by design (documented) — each board ranks
+        // by its own dedicated metric; there is no misleading product arg.
+        const rows = await leaderboard(data.board, data.limit, 1);
         return { ok: true, board: data.board, rows, newNetwork: rows.length === 0 };
       } catch (err) {
         const mapped = toErrorResponse(err);
