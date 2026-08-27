@@ -66,9 +66,9 @@ export function legalDoc(productKey: ProductKey, slug: LegalSlug): {
         {
           heading: "The service today",
           body: [
-            `${cfg.name} is part of the Bid Network — an internet bounty network that is being built. Today the site offers: public pages describing what each network product will do, a founding-access request form, and internal page analytics. Nothing else.`,
+            `${cfg.name} is part of the Bid Network — an internet bounty network. Today the site offers: public marketplace pages (bounties and projects), member accounts, public profiles, the founding-access request form, and internal page analytics.`,
             productIntent(productKey),
-            "The marketplace is not live. Bounties and projects cannot yet be listed, funded, competed on, or paid out. No payment of any kind is accepted on this site today.",
+            "Members can create accounts, build profiles, and prepare bounty or project listings. Listing a bounty or project in DRAFT is free. Publishing a listing to the open marketplace requires funding, and funding is NOT yet enabled: no payment of any kind is accepted on this site today, and no bounty or project can become publicly open while payments are disabled.",
             "Content marked EXAMPLE or DEMO is illustrative. It is not an offer, not a real transaction, and not evidence of any activity.",
           ],
         },
@@ -80,9 +80,34 @@ export function legalDoc(productKey: ProductKey, slug: LegalSlug): {
           ],
         },
         {
-          heading: "Future terms",
+          heading: "Marketplace rules (operational draft)",
           body: [
-            "Terms for marketplace transactions — bounties, projects, payouts, and disputes — will be specified and published before any transactions are enabled. They are not implied by this page.",
+            "These marketplace rules are the platform's operational draft. They are structured for professional legal review and take effect only when marketplace payments are enabled; until then no transaction obligations exist. Where a numbered rule and this page conflict, the numbered rule published at the time of funding governs that transaction.",
+            "MODE A — BOUNTIES. A bounty is a funded, bounded problem that multiple qualified members may compete on. A sponsor defines the work, deliverables, acceptance criteria, deadlines, participant cap, qualification rules, and a published reward structure (winner-takes-all, podium, or finalist pool). The advertised reward is funded before the bounty opens; the advertised amounts are exactly what winners receive, and the platform's service fee is charged to the sponsor on top — it is never deducted from advertised rewards. Once an approved participant has begun work, the sponsor cannot unilaterally cancel: cancellation goes to dispute resolution, and eligible participants are compensated from the funded pool before any refund is made.",
+            "MODE B — PROJECTS. A project is posted as a brief. Providers respond with proposals (approach, relevant experience and evidence, a quoted amount, a timeline, and a milestone plan) before any deliverable work is done. Proposals must not include completed deliverable work. The sponsor selects one provider; funding of the quoted amount (plus the disclosed service fee) is required before work begins; work runs through the published milestones.",
+            "REVIEWS. After a bounty or project genuinely completes, the sponsor and the winning/selected provider may review each other. Reviews are tied to that specific completed work and cannot be created for work that did not happen.",
+          ],
+        },
+        {
+          heading: "Disputes (operational draft)",
+          body: [
+            "A dispute is reviewed manually by the platform — there is no automated adjudication. Either verified counterparty of a funded work can open a dispute with a reason and evidence. Disputes move through OPEN, UNDER REVIEW, RESOLVED, and CLOSED states, and every administrative action on a dispute is recorded in an internal audit trail.",
+            "Where a dispute is resolved with a monetary outcome (full or partial settlement, refund, or cancellation), the outcome is applied to the funded amount — never to the advertised reward of other participants.",
+          ],
+        },
+        {
+          heading: "Intellectual property (operational draft)",
+          body: [
+            "BOUNTIES: ownership or licensing of a winning deliverable transfers according to the rules published on the bounty, and only once the related reward obligation has been satisfied. Non-winning submissions remain the property of their authors, except the limited rights needed to evaluate the submission and to operate the competition.",
+            "PROJECTS: deliverable IP transfers according to the project's published terms as the related milestones are approved and paid. Neither party acquires rights to the other's pre-existing property.",
+            "The platform never takes ownership of member work beyond what these published rules require, and reputation is derived only from verified marketplace outcomes — it cannot be bought.",
+          ],
+        },
+        {
+          heading: "Accounts",
+          body: [
+            "Creating an account requires a valid email address and a password (handled by our authentication provider; we never see or store your raw password). You are responsible for activity under your account. We may suspend accounts for fraud, abuse, payment misrepresentation, or violations of these terms — recorded in our audit trail.",
+            "Money-facing actions (funding a bounty or project, receiving payouts) additionally require a verified email address. Until email delivery is configured on the platform, verification is performed manually by platform administrators and recorded.",
           ],
         },
         {
@@ -177,9 +202,18 @@ export function legalDoc(productKey: ProductKey, slug: LegalSlug): {
       intro: "No payment of any kind is accepted on this site today. There is nothing to buy, no checkout, and no payment method can be entered.",
       blocks: [
         {
-          heading: "Future payments",
+          heading: "When payments open (operational draft)",
           body: [
-            "When the marketplace opens, payment and refund terms will be specified and published before any payment flow is enabled. They will not be inferred from this page.",
+            "These refund terms are the platform's operational draft for marketplace payments; they take effect only when marketplace payments are enabled and will be finalized before any payment flow is enabled.",
+            "BOUNTY FUNDING. The sponsor pays the advertised reward plus a disclosed service fee. If a bounty is cancelled before any approved participant has begun work, the full reward obligation (and the service fee) is refunded. If work has begun, cancellation is resolved through the dispute process: eligible participants are compensated from the funded pool first, and only the remainder is refundable. Once winners are paid, funded rewards are not refundable.",
+            "PROJECT FUNDING. Approved milestones are paid to the provider on approval. Unapproved or cancelled milestone funds refund to the sponsor after dispute resolution; in-progress work is compensated according to the dispute resolution.",
+            "Refunds are recorded in the platform's money ledger and audit trail. Refund timing depends on the payment provider's own processing windows; the platform never reports a refund as complete without the provider confirming it.",
+          ],
+        },
+        {
+          heading: "No payments today",
+          body: [
+            "Payments are not yet enabled: there is no checkout and no payment method can be entered. Funding a listing is impossible until the platform enables payments — at which point these terms, finalized, will govern it.",
           ],
         },
         {
