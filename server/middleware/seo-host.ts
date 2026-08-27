@@ -65,9 +65,11 @@ export default async function seoHostMiddleware(
 
   // www→apex permanent normalization (Phase 00.6, AC-3.5) — all methods,
   // before anything else: one canonical host per product. Culturebid is
-  // excluded (its apex DNS is broken; see wwwRedirectFor's docs). On
-  // deployed runtimes the Vercel edge (vercel.json) already does this; the
-  // middleware covers the local built preview, where vercel.json is inert.
+  // excluded (its apex DNS is broken; see wwwRedirectFor's docs). This is
+  // the ONLY implementation on deployed runtimes: vercel.json cannot carry
+  // host-scoped redirects (its schema rejects `host` on redirects), so the
+  // app-level middleware covers prod + the local built preview alike, and
+  // the Vite dev twin keeps local dev identical.
   const wwwRedirect = wwwRedirectFor(host, path, event.url.search);
   if (wwwRedirect !== null) {
     return new Response(null, {

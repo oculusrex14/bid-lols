@@ -191,8 +191,12 @@ Hard constraints:
   dev server both verified by curl (`www.bidthrone.lol` → 301
   `https://bidthrone.lol/`, `www.foundersbid.lol/terms?x=1` → 301
   `https://foundersbid.lol/terms?x=1`, `www.culturebid.lol` → 200 no
-  redirect). Edge-level: `vercel.json` host-scoped 301s for the three
-  healthy apexes (CultureBid excluded pending DNS).
+  redirect). Implemented app-level in ALL runtimes: an initial
+  `vercel.json` attempt was rejected by Vercel's schema (`redirects`
+  entries do not accept a `host` property — deploy failed with
+  "should NOT have additional property `host`"), so the Nitro
+  `seo-host` middleware + dev twin are the single source of the 301s
+  (documented in docs/ops/DEPLOYMENT.md; CultureBid excluded pending DNS).
 - **WS4**: stale serverFn after the FULL middleware chain (integration
   test composing `staleServerFnGuard` under the real `request-id`
   middleware): 404 + `code: stale_client_bundle` + refresh message +
