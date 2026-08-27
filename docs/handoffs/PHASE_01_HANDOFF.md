@@ -69,11 +69,12 @@
 
 ## Schemas / invariants / routes: see sections above (unchanged by release)
 
-## What remains AFTER Phase 01 (roadmap continues autonomously)
+## RELEASED (2026-08-27, this session)
 
-1. PHASE_01B_GRAVEYARD: spec (docs/phases/PHASE_01B_GRAVEYARD.md) → implement /graveyard (listings + offer workflow behind transaction gates; no one-click domain auth-code exposure; 10% acquisition fee config) → release per the phase loop.
-2. PHASE_02_CULTUREBID → PHASE_03_BIDCEPTION → PHASE_04_BIDTHRONE: each with spec first, reusing the shared engines.
-3. Follow-ups logged: preview BETTER_AUTH_SECRET env (browser-side branch prompt blocked CLI), Cashfree webhook wiring for marketplace funding settlement (required BEFORE flag-ON), professional legal review of the marketplace drafts.
+- **Phase 01 (FoundersBid marketplace)**: live — release runtime SHA `d7f289f`, docs tip `2ba63cc`.
+- **Phase 01B (Startup Graveyard)**: live — release SHA `4a6971406d1387e0a05c2fc75bb0038a02adfa3b`, production deployment `dpl_CNrVXvhUK93gPazkQexmFHooKXyK`; migration 0015 gated-applied (ledger 0002–0015); /graveyard live with honest empty state; all four domains + auth 200; CI SUCCESS.
+- Next: PHASE_02_CULTUREBID (spec first — reuses the shared bounty engine with creative categories + brand/creator roles), then PHASE_03_BIDCEPTION, PHASE_04_BIDTHRONE.
+- Follow-ups logged: preview BETTER_AUTH_SECRET env; Cashfree webhook wiring for marketplace funding settlement (required BEFORE flag-ON); professional legal review of the marketplace drafts.
 
 ## Known gotchas for the next round
 
