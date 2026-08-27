@@ -131,6 +131,7 @@ export async function listOpenProjects(
 
 export type BountyPublic = {
   id: string;
+  product: string;
   title: string;
   slug: string;
   category: string;
@@ -189,7 +190,7 @@ export async function getBountyDetail(
   viewerUserId: string | null,
 ): Promise<BountyDetail | null> {
   const rows = await sql.query<BountyPublic>(
-    `select b.id, b.title, b.slug, b.category, b.description, b.deliverables,
+    `select b.id, b.product, b.title, b.slug, b.category, b.description, b.deliverables,
             b.acceptance_criteria, b.ip_and_confidentiality, b.reward_total_minor,
             b.currency, b.reward_structure, b.status, b.participant_cap,
             b.application_deadline, b.submission_deadline, b.published_at,

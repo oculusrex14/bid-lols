@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate , redirect } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { currentProductKey } from "@/lib/host";
@@ -16,6 +16,7 @@ import {
   withdrawApplicationFn,
 } from "@/lib/marketplace/bounties";
 import { getSession } from "@/lib/authz";
+import { entityRedirectFor } from "@/lib/marketplace/capabilities.server";
 import { createReviewFn } from "@/lib/marketplace/reviews";
 
 /**
@@ -30,12 +31,17 @@ const loadDetail = createServerFn({ method: "GET" })
     const session = await getSession();
     const detail = await getBountyDetail(sql, data.id, session?.user.id ?? null);
     if (!detail) return null;
+    // Entity-aware capability redirect (RC1, R4): a bounty belongs to the
+    // product that hosts it; the wrong host 301s to its origin.
+    const product = await currentProductKey();
+    const entityUrl = entityRedirectFor(detail.bounty.product, product, `/bounties/${data.id}`);
+    if (entityUrl) throw redirect({ to: entityUrl });
     let applications: Awaited<ReturnType<typeof listApplicationsForSponsor>> = [];
     if (detail.viewer?.isSponsor) {
       applications = await listApplicationsForSponsor(sql, data.id, session?.user.id ?? "");
     }
     return {
-      product: await currentProductKey(),
+      product,
       detail,
       applications,
       emailVerified: session?.user.emailVerified ?? false,

@@ -10,6 +10,11 @@ import {
   markTransferred,
 } from "@/lib/marketplace/graveyard.server";
 import { requireUser, toErrorResponse } from "@/lib/authz";
+import {
+  assertHostCapability,
+  assertGraveyardListingOnHost,
+  assertGraveyardOfferListingOnHost,
+} from "@/lib/marketplace/capabilities.server";
 
 /**
  * Client-safe graveyard serverFns (Phase 01B). Envelope + authorization
@@ -41,6 +46,7 @@ export const createListingFn = createServerFn({ method: "POST" })
       data,
     }): Promise<{ ok: true; id: string; slug: string } | { ok: false; code: string; message: string }> => {
       try {
+        await assertHostCapability("graveyard");
         const session = await requireUser();
         const { serverProductKey } = await import("@/lib/host.server");
         const result = await createListing({
@@ -73,6 +79,7 @@ export const publishListingFn = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     try {
+      await assertGraveyardListingOnHost(data.listingId);
       const session = await requireUser();
       return await publishListing({ listingId: data.listingId, sellerUserId: session.user.id });
     } catch (err) {
@@ -88,6 +95,7 @@ export const withdrawListingFn = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     try {
+      await assertGraveyardListingOnHost(data.listingId);
       const session = await requireUser();
       return await withdrawListing({ listingId: data.listingId, sellerUserId: session.user.id });
     } catch (err) {
@@ -110,6 +118,7 @@ export const submitOfferFn = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     try {
+      await assertGraveyardListingOnHost(data.listingId);
       const session = await requireUser();
       return await submitOffer({
         listingId: data.listingId,
@@ -133,6 +142,7 @@ export const decideOfferFn = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     try {
+      await assertGraveyardOfferListingOnHost(data.offerId);
       const session = await requireUser();
       return await decideOffer({
         offerId: data.offerId,
@@ -152,6 +162,7 @@ export const retractOfferFn = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     try {
+      await assertGraveyardOfferListingOnHost(data.offerId);
       const session = await requireUser();
       return await retractOffer({ offerId: data.offerId, buyerUserId: session.user.id });
     } catch (err) {
@@ -170,6 +181,7 @@ export const markTransferredFn = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     try {
+      await assertGraveyardListingOnHost(data.listingId);
       const session = await requireUser();
       return await markTransferred({
         listingId: data.listingId,

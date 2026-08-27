@@ -10,16 +10,11 @@ import { getRequest } from "@tanstack/react-start/server";
  * map it to the machine-readable { code, message } error envelope.
  */
 
-export class AuthzError extends Error {
-  constructor(
-    readonly status: number,
-    readonly code: string,
-    message: string,
-  ) {
-    super(message);
-    this.name = "AuthzError";
-  }
-}
+// Single source of the pure error type + boundary mapping (RC1, R4): kept in
+// authz-shared.ts so client-graph modules can reference it without pulling
+// the server-only auth chain into the browser.
+import { AuthzError } from "@/lib/authz-shared";
+export { AuthzError, toErrorResponse } from "@/lib/authz-shared";
 
 /**
  * The active session for the current request, or null. Safe to call from any
@@ -76,18 +71,4 @@ export function requireVerifiedEmail(session: AuthSession): void {
       "Verify your email address before handling money.",
     );
   }
-}
-
-/** Map AuthzError to a Response-friendly { status, body } at serverFn boundaries. */
-export function toErrorResponse(err: unknown): {
-  status: number;
-  body: { code: string; message: string };
-} | null {
-  if (err instanceof AuthzError) {
-    return {
-      status: err.status,
-      body: { code: err.code, message: err.message },
-    };
-  }
-  return null;
 }

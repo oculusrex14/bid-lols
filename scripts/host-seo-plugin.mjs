@@ -18,6 +18,7 @@ import {
   robotsTextFor,
   sitemapXml,
   wwwRedirectFor,
+  capabilityReadRedirectFor,
 } from "./host-seo-shared.mjs";
 
 /** @param {import("node:http").IncomingMessage} req */
@@ -59,6 +60,20 @@ export function hostSeoDevPlugin() {
         if (wwwRedirect !== null) {
           res.statusCode = 301;
           res.setHeader("location", wwwRedirect);
+          res.end();
+          return;
+        }
+        // Capability read-redirect (RC1, R4): list/create route on a host that
+        // cannot serve it 301s to the canonical product origin, same path.
+        const capProduct =
+          productForHost(normalizeHost(requestHost(req))) ?? DEFAULT_PRODUCT;
+        const capPath = pathOf(req).split("?")[0];
+        const capabilityRedirect = capabilityReadRedirectFor(capProduct, capPath);
+        if (capabilityRedirect !== null) {
+          const qIdx = (req.url ?? "").indexOf("?");
+          const search = qIdx >= 0 ? (req.url ?? "").slice(qIdx) : "";
+          res.statusCode = 301;
+          res.setHeader("location", capabilityRedirect + search);
           res.end();
           return;
         }

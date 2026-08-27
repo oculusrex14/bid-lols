@@ -15,6 +15,11 @@ import {
   beginParentSettlement,
 } from "@/lib/marketplace/bidception.server";
 import { requireUser, toErrorResponse, requireVerifiedEmail } from "@/lib/authz";
+import {
+  assertHostCapability,
+  assertParentWorkOnHost,
+  assertChildWorkParentOnHost,
+} from "@/lib/marketplace/capabilities.server";
 
 /**
  * Client-safe Bidception serverFns (Phase 03). Product is derived
@@ -34,6 +39,7 @@ export const createParentWorkFn = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     try {
       const session = await requireUser();
+      await assertHostCapability("bidception");
       const { serverProductKey } = await import("@/lib/host.server");
       const result = await createParentWork({
         sponsorUserId: session.user.id,
@@ -63,6 +69,7 @@ export const publishParentWorkFn = createServerFn({ method: "POST" })
     try {
       const session = await requireUser();
       requireVerifiedEmail(session);
+      await assertParentWorkOnHost(data.parentWorkId);
       return await publishParentForFunding({
         parentWorkId: data.parentWorkId,
         sponsorUserId: session.user.id,
@@ -87,6 +94,7 @@ export const fundParentWorkFn = createServerFn({ method: "POST" })
     try {
       const session = await requireUser();
       requireVerifiedEmail(session);
+      await assertParentWorkOnHost(data.parentWorkId);
       const result = await verifyParentFunding({
         parentWorkId: data.parentWorkId,
         paymentId: data.paymentId,
@@ -106,6 +114,7 @@ export const activateParentWorkFn = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     try {
       const session = await requireUser();
+      await assertParentWorkOnHost(data.parentWorkId);
       return await activateParent({ parentWorkId: data.parentWorkId, sponsorUserId: session.user.id });
     } catch (err) {
       const mapped = toErrorResponse(err);
@@ -127,6 +136,7 @@ export const selectCaptainFn = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     try {
       const session = await requireUser();
+      await assertParentWorkOnHost(data.parentWorkId);
       return await selectCaptain({
         parentWorkId: data.parentWorkId,
         sponsorUserId: session.user.id,
@@ -152,6 +162,7 @@ export const setCaptainFeeFn = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     try {
       const session = await requireUser();
+      await assertParentWorkOnHost(data.parentWorkId);
       return await setCaptainCompensation({
         parentWorkId: data.parentWorkId,
         actorUserId: session.user.id,
@@ -179,6 +190,7 @@ export const allocateChildWorkFn = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     try {
       const session = await requireUser();
+      await assertParentWorkOnHost(data.parentWorkId);
       return await allocateChildWork({
         parentWorkId: data.parentWorkId,
         actorUserId: session.user.id,
@@ -207,6 +219,7 @@ export const childStateFn = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     try {
       const session = await requireUser();
+      await assertChildWorkParentOnHost(data.childWorkId);
       switch (data.action) {
         case "mark_ready":
           return await markChildReady({ childWorkId: data.childWorkId, actorUserId: session.user.id });
@@ -242,6 +255,7 @@ export const settleParentWorkFn = createServerFn({ method: "POST" })
     try {
       const session = await requireUser();
       requireVerifiedEmail(session);
+      await assertParentWorkOnHost(data.parentWorkId);
       return await beginParentSettlement({
         parentWorkId: data.parentWorkId,
         actorUserId: session.user.id,

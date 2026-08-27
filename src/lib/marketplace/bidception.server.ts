@@ -95,7 +95,8 @@ export async function publishParentForFunding(opts: {
         order.providerOrderId,
         `parent-funding:${opts.parentWorkId}`,
         JSON.stringify({
-          parent_budget_minor: budgetMinor,
+          parent_id: opts.parentWorkId,
+          reward_minor: budgetMinor,
           platform_fee_minor: decomposition.feeMinor,
         }),
       ],
@@ -104,7 +105,7 @@ export async function publishParentForFunding(opts: {
       `update parent_works set status='AWAITING_FUNDING', funded_budget_minor=$2,
          funding_payment_id=$3, updated_at=now()
        where id=$1 and sponsor_user_id=$4 and status='DRAFT' returning id`,
-      [opts.parentWorkId || "", paymentId, decomposition.sponsorSubtotal - decomposition.feeMinor, opts.sponsorUserId],
+      [opts.parentWorkId, budgetMinor, paymentId, opts.sponsorUserId],
     );
     if (claimed.length !== 1) {
       return { ok: false, code: "invalid_state", message: "Parent work is not a draft." };
@@ -197,6 +198,7 @@ export async function verifyParentFunding(opts: {
     bountyId: opts.parentWorkId, // entity_id is the parent work; ledger is entity-agnostic
     paymentId: opts.paymentId,
     providerRef: opts.providerRef,
+    entityType: "PARENT_WORK",
   });
   if (result === "decompositionMismatch") return "mismatch";
   if (result !== "settled" && result !== "alreadyPaid") return "not_settled";

@@ -33,6 +33,7 @@ import {
   robotsTextFor,
   sitemapXml,
   wwwRedirectFor,
+  capabilityReadRedirectFor,
 } from "../../scripts/host-seo-shared.mjs";
 
 interface SeoHostEvent {
@@ -113,6 +114,19 @@ export default async function seoHostMiddleware(
     return new Response(null, {
       status: 301,
       headers: { location: wwwRedirect },
+    });
+  }
+
+  // Capability read-redirect (RC1, R4): a list/create route on a host that
+  // cannot serve its capability 301s to the canonical product's origin, same
+  // path. Detail routes are entity-aware and redirect in their loaders (DB).
+  const capabilityRedirect = capabilityReadRedirectFor(productKey, path);
+  if (capabilityRedirect !== null) {
+    const location =
+      capabilityRedirect + (event.url.search ? event.url.search : "");
+    return new Response(null, {
+      status: 301,
+      headers: { location },
     });
   }
 

@@ -309,7 +309,7 @@ export async function submitMilestone(opts: {
        select 1 from projects p2 where p2.id = project_milestones.project_id
          and p2.selected_proposal_id in (select id from project_proposals pp where pp.provider_user_id = $2)
      ) returning id`,
-    [opts.milestoneId, JSON.stringify({ notes: opts.notes ?? "", links: opts.links ?? [] })],
+    [opts.milestoneId, opts.userId, JSON.stringify({ notes: opts.notes ?? "", links: opts.links ?? [] })],
   );
   if (claimed.length === 0) {
     return { ok: false, code: "not_submittable", message: "Milestone is not active for you." };
@@ -476,4 +476,77 @@ export async function fundProject(opts: {
       message: err instanceof Error ? err.message : "Provider refused the order.",
     };
   }
+}
+
+/**
+ * Complete the project (RC1, R1): COMPLETION_REVIEW -> COMPLETED. Sponsor-only,
+ * all milestones must be APPROVED/PAID_OUT. Writes the verified-outcome
+ * reputation seed for the selected provider + audit + review-request
+ * notification so the Phase 01 review gate unlocks correctly.
+ */
+export async function completeProject(opts: {
+  projectId: string;
+  sponsorUserId: string;
+}): Promise<{ ok: true } | { ok: false; code: string; message: string }> {
+  const sql = await getSql();
+  return sql.transaction(async (tx) => {
+    const rows = await tx.query<{
+      id: string; sponsor_user_id: string; status: string; title: string;
+      selected_proposal_id: string | null;
+    }>(
+      "select id, sponsor_user_id, status, title, selected_proposal_id from projects where id = $1 for update",
+      [opts.projectId],
+    );
+    const p = rows[0];
+    if (!p) return { ok: false, code: "not_found", message: "Project not found." };
+    if (p.sponsor_user_id !== opts.sponsorUserId) {
+      return { ok: false, code: "forbidden", message: "Not your project." };
+    }
+    if (p.status !== "COMPLETION_REVIEW") {
+      return { ok: false, code: "invalid_state", message: `Project is ${p.status}; complete it from COMPLETION_REVIEW.` };
+    }
+    const openMilestones = await tx.query<{ n: number }>(
+      "select count(*)::int as n from project_milestones where project_id = $1 and status not in ('APPROVED','PAID_OUT')",
+      [opts.projectId],
+    );
+    if ((openMilestones[0]?.n ?? 0) > 0) {
+      return { ok: false, code: "milestones_open", message: "All milestones must be approved before completion." };
+    }
+    const claimed = await tx.query<{ id: string }>(
+      "update projects set status='COMPLETED', completed_at=now(), updated_at=now() where id=$1 and status='COMPLETION_REVIEW' returning id",
+      [opts.projectId],
+    );
+    if (claimed.length !== 1) return { ok: false, code: "invalid_state", message: "State changed concurrently." };
+    // Verified-outcome seed (Phase 04 consumes; no ranking computed here).
+    if (p.selected_proposal_id) {
+      const provider = await tx.query<{ provider_user_id: string }>(
+        "select provider_user_id from project_proposals where id = $1",
+        [p.selected_proposal_id],
+      );
+      if (provider[0]) {
+        await tx.query(
+          `insert into reputation_events (id, user_id, kind, work_type, work_id, meta)
+           values ($1,$2,'project_completed','PROJECT',$3,$4::jsonb)`,
+          [makeId("rep_"), provider[0].provider_user_id, opts.projectId, JSON.stringify({ project_title: p.title })],
+        );
+        await notify(tx, {
+          userId: provider[0].provider_user_id,
+          type: "review_requested",
+          title: "Project complete — leave a review",
+          body: `"${p.title}" is complete. You can now review the sponsor.`,
+          entityType: "PROJECT",
+          entityId: opts.projectId,
+          link: `/projects/${opts.projectId}`,
+        });
+      }
+    }
+    const { insertAudit } = await import("@/lib/audit.server");
+    await insertAudit(tx, {
+      actorUserId: opts.sponsorUserId,
+      action: "project_completed",
+      entityType: "PROJECT",
+      entityId: opts.projectId,
+    });
+    return { ok: true };
+  });
 }

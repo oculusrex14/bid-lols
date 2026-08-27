@@ -8,6 +8,7 @@ import {
   projectFundingPlan,
 } from "@/lib/marketplace/projects.server";
 import { requireUser, toErrorResponse, requireVerifiedEmail } from "@/lib/authz";
+import { assertHostCapability, assertProjectOnHost, assertMilestoneProjectOnHost } from "@/lib/marketplace/capabilities.server";
 import { moneyMode } from "@/lib/payments/provider";
 
 /**
@@ -35,6 +36,7 @@ export const createProjectFn = createServerFn({ method: "POST" })
       data,
     }): Promise<{ ok: true; id: string; slug: string } | { ok: false; code: string; message: string }> => {
       try {
+        await assertHostCapability("projects");
         const session = await requireUser();
         const { serverProductKey } = await import("@/lib/host.server");
         const result = await createProject({
@@ -70,6 +72,7 @@ export const publishProjectFn = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     try {
+      await assertProjectOnHost(data.projectId);
       const session = await requireUser();
       return await publishProject({
         projectId: data.projectId,
@@ -103,6 +106,7 @@ export const submitProposalFn = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     try {
+      await assertProjectOnHost(data.projectId);
       const session = await requireUser();
       return await submitProposal({
         projectId: data.projectId,
@@ -130,6 +134,7 @@ export const selectProposalFn = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     try {
+      await assertProjectOnHost(data.projectId);
       const session = await requireUser();
       requireVerifiedEmail(session);
       return await selectProposal({
@@ -170,6 +175,7 @@ export const fundProjectFn = createServerFn({ method: "POST" })
       try {
         const session = await requireUser();
         requireVerifiedEmail(session);
+        await assertProjectOnHost(data.projectId);
         const result = await (await import("@/lib/marketplace/projects.server")).fundProject({
           projectId: data.projectId,
           sponsorUserId: session.user.id,
@@ -199,6 +205,7 @@ export const decideMilestoneFn = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     try {
+      await assertMilestoneProjectOnHost(data.milestoneId);
       const session = await requireUser();
       const server = await import("@/lib/marketplace/projects.server");
       const result = await server.decideMilestone({
@@ -248,6 +255,7 @@ export const submitMilestoneFn = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     try {
+      await assertMilestoneProjectOnHost(data.milestoneId);
       const session = await requireUser();
       const { submitMilestone } = await import("@/lib/marketplace/projects.server");
       return await submitMilestone({

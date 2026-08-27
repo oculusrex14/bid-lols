@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link , redirect } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { currentProductKey } from "@/lib/host";
 import { ProductShell } from "@/components/product-shell";
 import { getSql } from "@/lib/db.server";
+import { entityRedirectFor } from "@/lib/marketplace/capabilities.server";
 import {
   publishProjectFn,
   submitProposalFn,
@@ -19,7 +20,7 @@ import { formatMinor } from "@/lib/money";
  * milestones run.
  */
 type ProjectPublic = {
-  id: string; title: string; slug: string; description: string; category: string;
+  id: string; product: string; title: string; slug: string; description: string; category: string;
   status: string; currency: string; sponsor_user_id: string;
   selected_quoted_minor: number | null; funding_payment_id: string | null;
   proposal_deadline: string | null; published_at: string | null; created_at: string;
@@ -33,7 +34,7 @@ const loadDetail = createServerFn({ method: "GET" })
     const { getSession } = await import("@/lib/authz");
     const session = await getSession();
     const rows = await sql.query<ProjectPublic>(
-      `select p.id, p.title, p.slug, p.description, p.status, p.currency,
+      `select p.id, p.product, p.title, p.slug, p.description, p.status, p.currency,
               p.sponsor_user_id, p.selected_quoted_minor, p.funding_payment_id,
               p.proposal_deadline, p.published_at, p.created_at,
               u.display_name as sponsor_name, pr.handle as sponsor_handle,
@@ -46,6 +47,9 @@ const loadDetail = createServerFn({ method: "GET" })
     );
     const project = rows[0];
     if (!project) return null;
+    const product = await currentProductKey();
+    const entityUrl = entityRedirectFor(String(project.product), product, `/projects/${data.id}`);
+    if (entityUrl) throw redirect({ to: entityUrl });
     const proposals = session && project.sponsor_user_id === session.user.id
       ? await sql.query<{ id: string; approach: string; quoted_minor: number; timeline_weeks: number | null; status: string; milestones_proposed: Array<{ title: string; amountMinor: number }>; handle: string | null; display_name: string | null }>(
           `select pp.id, pp.approach, pp.quoted_minor, pp.timeline_weeks, pp.status,

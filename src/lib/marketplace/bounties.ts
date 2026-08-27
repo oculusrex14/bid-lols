@@ -13,6 +13,7 @@ import {
   bountyFundingPlan,
 } from "@/lib/marketplace/bounties.server";
 import { requireUser, toErrorResponse, requireVerifiedEmail } from "@/lib/authz";
+import { assertHostCapability, assertBountyOnHost, assertBountyOfApplicationOnHost } from "@/lib/marketplace/capabilities.server";
 import { moneyMode } from "@/lib/payments/provider";
 import { REWARD_STRUCTURES } from "@/lib/marketplace/state";
 
@@ -74,6 +75,7 @@ export const createBountyFn = createServerFn({ method: "POST" })
       { ok: true; id: string; slug: string } | { ok: false; code: string; message: string }
     > => {
       try {
+        await assertHostCapability("bounties");
         const session = await requireUser();
         // NOTE: drafts are free and need no email verification — only the
         // FUNDING action does (publishBountyFn). Keeping drafts open lets
@@ -138,6 +140,7 @@ export const publishBountyFn = createServerFn({ method: "POST" })
       | { ok: false; code: string; message: string }
     > => {
       try {
+        await assertBountyOnHost(data.bountyId);
         const session = await requireUser();
         requireVerifiedEmail(session);
         const result = await publishBountyForFunding({
@@ -168,6 +171,7 @@ export const applyToBountyFn = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     try {
+      await assertBountyOnHost(data.bountyId);
       const session = await requireUser();
       return await applyToBounty({
         bountyId: data.bountyId,
@@ -193,6 +197,7 @@ export const decideApplicationFn = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     try {
+      await assertBountyOfApplicationOnHost(data.applicationId);
       const session = await requireUser();
       return await decideApplication({
         applicationId: data.applicationId,
@@ -212,6 +217,7 @@ export const withdrawApplicationFn = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     try {
+      await assertBountyOfApplicationOnHost(data.applicationId);
       const session = await requireUser();
       return await withdrawApplication({
         applicationId: data.applicationId,
@@ -230,6 +236,7 @@ export const startWorkFn = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     try {
+      await assertBountyOnHost(data.bountyId);
       const session = await requireUser();
       return await startWork({ bountyId: data.bountyId, userId: session.user.id });
     } catch (err) {
@@ -253,6 +260,7 @@ export const submitWorkFn = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     try {
+      await assertBountyOnHost(data.bountyId);
       const session = await requireUser();
       return await upsertSubmission({
         bountyId: data.bountyId,
@@ -288,6 +296,7 @@ export const judgeBountyFn = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     try {
+      await assertBountyOnHost(data.bountyId);
       const session = await requireUser();
       requireVerifiedEmail(session);
       return await judgeBounty({
@@ -314,6 +323,7 @@ export const cancelBountyFn = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     try {
+      await assertBountyOnHost(data.bountyId);
       const session = await requireUser();
       return await sponsorCancelBounty({
         bountyId: data.bountyId,

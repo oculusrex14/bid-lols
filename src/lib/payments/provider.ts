@@ -109,6 +109,27 @@ function cashfreeAuthHeaders(): Record<string, string> {
   };
 }
 
+/**
+ * Exact minor-unit (paise) → Cashfree order amount conversion.
+ *
+ * RC1: previously `Math.round(amountMinor / 100)` silently dropped paise
+ * (₹1,101.10 became 1101). Cashfree INR order amounts support two decimal
+ * places, so the conversion is exact: divide by 100 and keep both decimals.
+ * Rejects zero/negative and non-integer amounts — the ledger is integer
+ * minor units and the gateway must match it exactly.
+ */
+export function toCashfreeOrderAmount(amountMinor: number): number {
+  if (!Number.isInteger(amountMinor)) {
+    throw new Error(`cashfree order amount: not an integer minor-unit amount: ${amountMinor}`);
+  }
+  if (amountMinor <= 0) {
+    throw new Error("cashfree order amount must be positive");
+  }
+  // toFixed(2) then Number: shortest round-trip of the exact 2-decimal value
+  // (₹1101.10 → 1101.1, which serializes to the Cashfree API as 1101.10).
+  return Number((amountMinor / 100).toFixed(2));
+}
+
 export class CashfreeProvider implements PaymentProvider {
   readonly name = "cashfree";
   readonly capabilities: ProviderCapabilities = {
@@ -122,10 +143,7 @@ export class CashfreeProvider implements PaymentProvider {
     if (input.currency !== "INR") {
       throw new Error(`Cashfree provider supports INR only (got ${input.currency})`);
     }
-    if (!Number.isInteger(input.amountMinor) || input.amountMinor <= 0) {
-      throw new Error("Cashfree: amountMinor must be a positive integer (paise)");
-    }
-    const inrRupees = Math.round(input.amountMinor / 100);
+    const inrRupees = toCashfreeOrderAmount(input.amountMinor);
     const customerId = `usr_${input.localOrderId.replace(/[^a-zA-Z0-9_-]/g, "").slice(-40)}`;
     const res = await fetch(`${cashfreeHost()}/pg/orders`, {
       method: "POST",

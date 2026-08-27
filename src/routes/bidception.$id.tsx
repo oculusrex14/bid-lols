@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link , redirect } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { currentProductKey } from "@/lib/host";
@@ -7,6 +7,7 @@ import { ProductShell } from "@/components/product-shell";
 import { getSql } from "@/lib/db.server";
 import { formatMinor } from "@/lib/money";
 import { getSession } from "@/lib/authz";
+import { entityRedirectFor } from "@/lib/marketplace/capabilities.server";
 import {
   allocateChildWorkFn,
   childStateFn,
@@ -27,12 +28,12 @@ const loadDetail = createServerFn({ method: "GET" })
     const session = await getSession();
     const row = (
       await sql.query<{
-        id: string; title: string; objective: string; status: string;
+        id: string; product: string; title: string; objective: string; status: string;
         sponsor_user_id: string; captain_user_id: string | null;
         funded_budget_minor: number | null; captain_compensation_minor: number;
         currency: string; sponsor_name: string | null; captain_name: string | null;
       }>(
-        `select pw.id, pw.title, pw.objective, pw.status, pw.sponsor_user_id, pw.captain_user_id,
+        `select pw.id, pw.product, pw.title, pw.objective, pw.status, pw.sponsor_user_id, pw.captain_user_id,
                 pw.funded_budget_minor, pw.captain_compensation_minor, pw.currency,
                 su.display_name as sponsor_name, cu.display_name as captain_name
          from parent_works pw
@@ -43,6 +44,9 @@ const loadDetail = createServerFn({ method: "GET" })
       )
     )[0];
     if (!row) return null;
+    const product = await currentProductKey();
+    const entityUrl = entityRedirectFor(String(row.product), product, `/bidception/${data.id}`);
+    if (entityUrl) throw redirect({ to: entityUrl });
     const children = await sql.query<{
       id: string; title: string; state: string; allocated_minor: number; seq: number; depends_on: string[];
     }>(

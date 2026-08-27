@@ -247,6 +247,86 @@ export function linkOrigin(key) {
 }
 
 /**
+ * Product capability matrix (RC1, R4) — single source shared by the Nitro
+ * middleware, the Vite dev twin, and src/lib/marketplace/capabilities.ts.
+ * Which product hosts which marketplace surface; shared capabilities exist
+ * on every host and never redirect.
+ */
+/** @type {Record<string, string[]>} */
+const CAPABILITY_MATRIX = {
+  foundersbid: ["bounties", "projects", "graveyard"],
+  culturebid: ["bounties"],
+  bidception: ["bidception"],
+  bidthrone: ["reputation"],
+};
+const SHARED_CAPABILITIES = ["profiles", "auth", "dashboard", "notifications"];
+
+/**
+ * @param {string} productKey
+ * @returns {string[]}
+ */
+export function productCapabilities(productKey) {
+  return [...(CAPABILITY_MATRIX[productKey] ?? []), ...SHARED_CAPABILITIES];
+}
+
+/**
+ * @param {string} productKey
+ * @param {string} capability
+ * @returns {boolean}
+ */
+export function hasCapability(productKey, capability) {
+  return productCapabilities(productKey).includes(capability);
+}
+
+/** @type {Record<string, string>} */
+const CANONICAL_FOR_CAPABILITY = {
+  bounties: "foundersbid",
+  projects: "foundersbid",
+  graveyard: "foundersbid",
+  bidception: "bidception",
+  reputation: "bidthrone",
+};
+
+/**
+ * @param {string} capability
+ * @returns {string | null} canonical product key, or null for shared caps
+ */
+export function canonicalProductForCapability(capability) {
+  return CANONICAL_FOR_CAPABILITY[capability] ?? null;
+}
+
+/**
+ * @param {string} pathname
+ * @returns {string | null} the capability a path requires (null = shared/other)
+ */
+export function capabilityForPath(pathname) {
+  if (pathname === "/bounties" || pathname.startsWith("/bounties/")) return "bounties";
+  if (pathname === "/projects" || pathname.startsWith("/projects/")) return "projects";
+  if (pathname === "/graveyard" || pathname.startsWith("/graveyard/")) return "graveyard";
+  if (pathname === "/bidception" || pathname.startsWith("/bidception/")) return "bidception";
+  if (pathname === "/leaderboards" || pathname === "/bid-index") return "reputation";
+  return null;
+}
+
+/**
+ * READ redirect (RC1, R4): list/create routes on a host that cannot serve the
+ * capability get a permanent 301 to the canonical product origin, same path.
+ * Detail routes redirect entity-aware at the loader (they need the DB).
+ * null = the host serves it (or there is no canonical home).
+ * @param {string} hostProduct
+ * @param {string} pathname
+ * @returns {string | null} absolute redirect URL or null
+ */
+export function capabilityReadRedirectFor(hostProduct, pathname) {
+  const cap = capabilityForPath(pathname);
+  if (!cap) return null;
+  if (hasCapability(hostProduct, cap)) return null;
+  const canonical = canonicalProductForCapability(cap);
+  if (!canonical) return null;
+  return `${linkOrigin(canonical)}${pathname}`;
+}
+
+/**
  * @param {string} productKey
  * @param {string} pathname
  * @returns {string}

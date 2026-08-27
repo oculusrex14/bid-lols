@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link , redirect } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { currentProductKey } from "@/lib/host";
@@ -7,6 +7,7 @@ import { ProductShell } from "@/components/product-shell";
 import { getSql } from "@/lib/db.server";
 import { formatMinor } from "@/lib/money";
 import { getSession } from "@/lib/authz";
+import { entityRedirectFor } from "@/lib/marketplace/capabilities.server";
 import { submitOfferFn, decideOfferFn, retractOfferFn, markTransferredFn, withdrawListingFn, publishListingFn } from "@/lib/marketplace/graveyard";
 
 /**
@@ -20,12 +21,12 @@ const loadDetail = createServerFn({ method: "GET" })
     const session = await getSession();
     const listing = (
       await sql.query<{
-        id: string; seller_user_id: string; title: string; description: string;
+        id: string; product: string; seller_user_id: string; title: string; description: string;
         reason_of_death: string; includes: string[]; technology: string[];
         liabilities: string; history_self_reported: string;
         asking_price_minor: number | null; currency: string; status: string;
       }>(
-        `select id, seller_user_id, title, description, reason_of_death, includes,
+        `select id, product, seller_user_id, title, description, reason_of_death, includes,
                 technology, screenshots, liabilities, history_self_reported,
                 asking_price_minor, currency, created_at
          from graveyard_listings where id = $1`,
@@ -33,6 +34,9 @@ const loadDetail = createServerFn({ method: "GET" })
       )
     )[0];
     if (!listing) return null;
+    const product = await currentProductKey();
+    const entityUrl = entityRedirectFor(listing.product, product, `/graveyard/${data.id}`);
+    if (entityUrl) throw redirect({ to: entityUrl });
 
     let offers: Array<{
       id: string; buyer_user_id: string; amount_minor: number; message: string;
