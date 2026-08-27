@@ -62,13 +62,15 @@ test("robots.txt is host-aware with the domain's own sitemap URL", () => {
   assert.match(robotsTextFor("bidthrone"), /User-agent: \*/);
 });
 
-test("sitemap is host-aware: own host's home + legal pages, no other origins", () => {
-  // Phase 00.5 (AC-6.2): each domain inventories only itself.
+test("sitemap is host-aware and product-content focused (Phase 00.6, AC-6.2)", () => {
+  // Each domain inventories only its OWN home URL: legal pages are
+  // noindex,follow boilerplate and stay out of the sitemap.
   const xml = sitemapXml("bidthrone");
   assert.match(xml, /^<\?xml version="1.0" encoding="UTF-8"\?>/);
-  assert.equal((xml.match(/<url>/g) ?? []).length, 5);
+  assert.equal((xml.match(/<url>/g) ?? []).length, 1);
+  assert.ok(xml.includes("<loc>https://bidthrone.lol/</loc>"));
   assert.ok(!/<loc>https:\/\/www\./.test(xml), "no www URLs in the sitemap");
-  assert.ok(xml.includes("https://bidthrone.lol/terms"));
+  assert.ok(!xml.includes("/terms"), "legal pages are not in the inventory");
   assert.ok(!xml.includes("foundersbid.lol"), "no other product origin");
 });
 
