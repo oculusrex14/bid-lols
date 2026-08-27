@@ -85,7 +85,7 @@ export const PRODUCTS = {
     name: "Bidception",
     wordmark: "bidception",
     kicker: "Break big projects into funded pieces a team can build",
-    title: "bidception.lol — Bidception, nested & team bounties",
+    title: "bidception.lol — Fund one project, build it as a team",
     description:
       "Bidception is coming next: nested and team bounties, where a funded problem is decomposed into smaller funded sub-bounties and teams captain their way to the win.",
     oneLine: "Fund one project. A captain breaks it up. A team builds it together.",
