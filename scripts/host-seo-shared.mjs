@@ -127,6 +127,44 @@ export function productForHost(host) {
 }
 
 /**
+ * www→apex normalization (Phase 00.6, AC-3.5).
+ *
+ * bidthrone/foundersbid/bidception: www.<apex> is the same origin as <apex>
+ * and must 301 (permanent) to the apex so search engines and browsers see
+ * ONE canonical host (and so analytics sessions are not split across two
+ * browser origins).
+ *
+ * culturebid is EXCLUDED: its apex DNS is misconfigured (private 10.x A
+ * records — see docs/ops/DEPLOYMENT.md "DNS note"), so www is the only
+ * working origin; a www→apex redirect would break the site. After the
+ * external DNS fix, remove "culturebid" from this set and the redirect
+ * applies there too.
+ *
+ * Returns the apex Location for a www host that should be normalized,
+ * otherwise null.
+ */
+const WWW_NORMALIZE_EXCLUDED = new Set(["culturebid"]);
+
+/**
+ * @param {string | null | undefined} host
+ * @param {string} [pathname]
+ * @param {string} [search]
+ * @returns {string | null}
+ */
+export function wwwRedirectFor(host, pathname = "/", search = "") {
+  const raw = String(host ?? "").toLowerCase().trim().replace(/:\d+$/, "");
+  if (!raw.startsWith("www.")) return null;
+  const apex = raw.slice(4);
+  for (const key of PRODUCT_KEYS) {
+    if (PRODUCTS[key].apex === apex) {
+      if (WWW_NORMALIZE_EXCLUDED.has(key)) return null;
+      return `https://${apex}${pathname}${search}`;
+    }
+  }
+  return null; // www of an unknown host -> umbrella default, no redirect
+}
+
+/**
  * @param {string} key
  * @returns {Product}
  */
@@ -203,6 +241,24 @@ function esc(s) {
 }
 
 /**
+ * Deliberate indexing policy (Phase 00.6, WS6 / AC-6.1):
+ *  - home: indexable — the product surface is the network's public face;
+ *  - legal pages (terms/privacy/refund/contact): `noindex,follow` — generic
+ *    boilerplate per product with little search value; links still flow;
+ *  - unknown routes: `noindex,follow` (Phase 00.5, via notFoundHeadTags).
+ * Sitemaps therefore list home URLs only (AC-6.2) — the inventory is
+ * product-content focused and matches what we ask crawlers to index.
+ * @param {string} productKey
+ * @param {string} pathname
+ * @returns {string}
+ */
+export function robotsMetaFor(productKey, pathname) {
+  void productKey; // policy is uniform across products today; keep the shape
+  if (pathname in PATH_TITLES) return "noindex,follow";
+  return "index,follow";
+}
+
+/**
  * The host-aware head tag set for one (product, path) pair.
  * @param {string} productKey
  * @param {string} pathname
@@ -212,6 +268,7 @@ export function renderSeoHeadTags(productKey, pathname) {
   const m = seoMeta(productKey, pathname);
   return [
     `<title>${esc(m.title)}</title>`,
+    `<meta name="robots" content="${robotsMetaFor(productKey, pathname)}">`,
     `<meta name="description" content="${esc(m.description)}">`,
     `<link rel="canonical" href="${esc(m.canonical)}">`,
     `<meta property="og:title" content="${esc(m.ogTitle)}">`,
@@ -262,19 +319,17 @@ export function robotsTextFor(productKey) {
 }
 
 /**
- * Host-aware sitemap (Phase 00.5, AC-6.2): each domain inventories only its
- * own public URLs — home plus the four legal pages on THAT host's apex. A
- * product host does not present another product's canonical origin as its
- * own sitemap inventory.
+ * Host-aware, product-content-focused sitemap (Phase 00.6, WS6 / AC-6.2):
+ * each domain inventories only its OWN home URL on its apex. Legal pages are
+ * noindex,follow boilerplate (see robotsMetaFor) and are deliberately NOT in
+ * the inventory; no fake/demo URLs exist as independent routes. A product
+ * host does not present another product's origin in its inventory.
  * @param {string} productKey
  * @returns {string}
  */
 export function sitemapXml(productKey) {
   const p = product(productKey);
-  const paths = ["/", "/terms", "/privacy", "/refund", "/contact"];
-  const urls = paths
-    .map((path) => `  <url>\n    <loc>https://${p.apex}${path}</loc>\n  </url>`)
-    .join("\n");
+  const urls = `  <url>\n    <loc>https://${p.apex}/</loc>\n  </url>`;
   return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls}\n</urlset>\n`;
 }
 

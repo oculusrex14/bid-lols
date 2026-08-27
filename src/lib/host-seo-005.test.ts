@@ -5,7 +5,9 @@ import {
   injectSeoHead,
   linkOrigin,
   notFoundHeadTags,
+  robotsMetaFor,
   sitemapXml,
+  wwwRedirectFor,
 } from "../../scripts/host-seo-shared.mjs";
 import { PRODUCT_KEYS, product } from "@/lib/host";
 
@@ -23,17 +25,28 @@ const SAMPLE_HTML =
 for (const key of PRODUCT_KEYS) {
   const apex = product(key).apex;
 
-  test(`${key}: sitemap inventories only its own URLs`, () => {
+  test(`${key}: sitemap inventories only its own home URL (AC-6.2, Phase 00.6)`, () => {
     const xml = sitemapXml(key);
     assert.match(xml, new RegExp(`<loc>https://${apex}/</loc>`));
+    assert.equal((xml.match(/<url>/g) ?? []).length, 1, "home only — legal pages are noindex");
     for (const path of ["/terms", "/privacy", "/refund", "/contact"]) {
-      assert.match(xml, new RegExp(`<loc>https://${apex}${path}</loc>`));
+      assert.ok(!xml.includes(`${apex}${path}`), `${key} sitemap still lists ${path}`);
     }
-    // No other product origin in this host's inventory (AC-6.2).
+    // No other product origin in this host's inventory.
     for (const other of PRODUCT_KEYS) {
       if (other === key) continue;
       assert.ok(!xml.includes(product(other).apex), `${key} sitemap leaked ${other}'s origin`);
     }
+  });
+
+  test(`${key}: deliberate indexing policy (AC-6.1)`, () => {
+    assert.equal(robotsMetaFor(key, "/"), "index,follow");
+    for (const path of ["/terms", "/privacy", "/refund", "/contact"]) {
+      assert.equal(robotsMetaFor(key, path), "noindex,follow");
+    }
+    // the 200 head carries the policy tag
+    assert.match(injectSeoHead(SAMPLE_HTML, key, "/", 200), /<meta name="robots" content="index,follow">/);
+    assert.match(injectSeoHead(SAMPLE_HTML, key, "/terms", 200), /<meta name="robots" content="noindex,follow">/);
   });
 
   test(`${key}: not-found head is noindex,follow without canonical`, () => {
@@ -72,4 +85,27 @@ test("linkOrigin: culturebid visitors go to www (apex DNS broken), others to ape
   assert.equal(linkOrigin("bidthrone"), "https://bidthrone.lol");
   assert.equal(linkOrigin("foundersbid"), "https://foundersbid.lol");
   assert.equal(linkOrigin("bidception"), "https://bidception.lol");
+});
+
+test("wwwRedirectFor: 301 to apex for the three DNS-healthy products (AC-3.5)", () => {
+  for (const key of ["bidthrone", "foundersbid", "bidception"] as const) {
+    const apex = product(key).apex;
+    assert.equal(wwwRedirectFor(`www.${apex}`), `https://${apex}/`);
+    assert.equal(wwwRedirectFor(`www.${apex}`, "/terms"), `https://${apex}/terms`);
+    assert.equal(wwwRedirectFor(`www.${apex}`, "/terms", "?q=1"), `https://${apex}/terms?q=1`);
+    // ports do not defeat the match
+    assert.equal(wwwRedirectFor(`www.${apex}:443`, "/x"), `https://${apex}/x`);
+  }
+});
+
+test("wwwRedirectFor: excluded/unknown hosts never redirect (AC-3.5)", () => {
+  // culturebid: apex DNS broken — www is the only working origin
+  assert.equal(wwwRedirectFor("www.culturebid.lol", "/"), null);
+  assert.equal(wwwRedirectFor("WWW.CultureBid.Lol:8080", "/terms"), null);
+  // apex hosts themselves never redirect
+  for (const key of PRODUCT_KEYS) {
+    assert.equal(wwwRedirectFor(product(key).apex, "/"), null);
+  }
+  // www of an unknown host -> umbrella default, no redirect
+  assert.equal(wwwRedirectFor("www.unknown-preview.vercel.app", "/"), null);
 });

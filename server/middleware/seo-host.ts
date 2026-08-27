@@ -3,6 +3,10 @@
  * Auto-registered as global Nitro middleware via `serverDir: "./server"` in
  * vite.config.ts (same mechanism as the request-id middleware).
  *
+ * For ALL methods, before anything else:
+ *  - `www.<apex>` hosts of the three DNS-healthy products -> 301 to the same
+ *    path on the apex (Phase 00.6, AC-3.5; culturebid excluded — DNS note).
+ *
  * For GET requests:
  *  - `/robots.txt`   -> host-aware robots.txt (Sitemap: this domain).
  *  - `/sitemap.xml`  -> host-aware sitemap: this domain's own public URLs
@@ -28,6 +32,7 @@ import {
   productForHost,
   robotsTextFor,
   sitemapXml,
+  wwwRedirectFor,
 } from "../../scripts/host-seo-shared.mjs";
 
 interface SeoHostEvent {
@@ -54,12 +59,25 @@ export default async function seoHostMiddleware(
   event: SeoHostEvent,
   next: () => unknown | Promise<unknown>,
 ): Promise<unknown> {
-  const method = (event.req.method ?? "GET").toUpperCase();
-  if (method !== "GET") return next();
-
   const path = event.url.pathname;
   const host = requestHost(event);
   const productKey = productForHost(normalizeHost(host)) ?? DEFAULT_PRODUCT;
+
+  // www→apex permanent normalization (Phase 00.6, AC-3.5) — all methods,
+  // before anything else: one canonical host per product. Culturebid is
+  // excluded (its apex DNS is broken; see wwwRedirectFor's docs). On
+  // deployed runtimes the Vercel edge (vercel.json) already does this; the
+  // middleware covers the local built preview, where vercel.json is inert.
+  const wwwRedirect = wwwRedirectFor(host, path, event.url.search);
+  if (wwwRedirect !== null) {
+    return new Response(null, {
+      status: 301,
+      headers: { location: wwwRedirect },
+    });
+  }
+
+  const method = (event.req.method ?? "GET").toUpperCase();
+  if (method !== "GET") return next();
 
   if (path === "/robots.txt") {
     return new Response(robotsTextFor(productKey), {

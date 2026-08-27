@@ -17,6 +17,7 @@ import {
   productForHost,
   robotsTextFor,
   sitemapXml,
+  wwwRedirectFor,
 } from "./host-seo-shared.mjs";
 
 /** @param {import("node:http").IncomingMessage} req */
@@ -43,8 +44,24 @@ export function hostSeoDevPlugin() {
     name: "bid-network:host-seo",
     apply: "serve",
     configureServer(server) {
-      // Pre-app: robots / sitemap / legacy 308s.
+      // Pre-app: www 301s / robots / sitemap / legacy 308s.
       server.middlewares.use((req, res, next) => {
+        // www→apex permanent normalization (Phase 00.6, AC-3.5) — all methods,
+        // same shared decision as the Nitro middleware (culturebid excluded).
+        const wwwRedirect = wwwRedirectFor(
+          requestHost(req),
+          pathOf(req).split("?")[0],
+          (() => {
+            const i = (req.url ?? "").indexOf("?");
+            return i >= 0 ? (req.url ?? "").slice(i) : "";
+          })(),
+        );
+        if (wwwRedirect !== null) {
+          res.statusCode = 301;
+          res.setHeader("location", wwwRedirect);
+          res.end();
+          return;
+        }
         const method = String(req.method ?? "GET").toUpperCase();
         if (method !== "GET") return next();
         const path = pathOf(req);

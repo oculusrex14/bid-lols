@@ -1,0 +1,23 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "redirects": [
+    {
+      "host": "www.bidthrone.lol",
+      "source": "/:path*",
+      "destination": "https://bidthrone.lol/:path*",
+      "statusCode": 301
+    },
+    {
+      "host": "www.foundersbid.lol",
+      "source": "/:path*",
+      "destination": "https://foundersbid.lol/:path*",
+      "statusCode": 301
+    },
+    {
+      "host": "www.bidception.lol",
+      "source": "/:path*",
+      "destination": "https://bidception.lol/:path*",
+      "statusCode": 301
+    }
+  ]
+}
