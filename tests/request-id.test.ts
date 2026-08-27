@@ -68,6 +68,26 @@ test("genuine routes are never relabelled", () => {
   }
 });
 
+test("live marketplace routes are known (a real 500 there is not a fake-404)", () => {
+  for (const path of [
+    "/bounties",
+    "/projects",
+    "/graveyard",
+    "/bidception",
+    "/leaderboards",
+    "/bid-index",
+    "/signin",
+    "/signup",
+    "/bounties/bnt_abc123def456",
+    "/graveyard/gyl_abc123def456",
+    "/profile/alpha",
+    "/api/auth/session",
+    "/test/checkout/pmt_abc",
+  ]) {
+    assert.equal(isKnownRoute(path), true, `${path} is a known route`);
+  }
+});
+
 test("non-JSON accepts and non-500 statuses are not the quirk", () => {
   assert.equal(isUnknownRouteJsonQuirk("/no/such/page", 500, false), false);
   assert.equal(isUnknownRouteJsonQuirk("/no/such/page", 404, true), false);

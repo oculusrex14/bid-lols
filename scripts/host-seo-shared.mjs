@@ -193,6 +193,10 @@ const PRIVATE_PATHS = new Set([
   "/dashboard",
   "/settings/profile",
   "/admin",
+  // Gated aggregate (Phase 04, FR-4): only indexable once a sample threshold
+  // is met — which the static middleware cannot know per category, so the
+  // aggregate page itself stays noindex; individual data is not deal-level.
+  "/bid-index",
 ]);
 
 /**
@@ -221,6 +225,8 @@ function marketplacePathMeta(pathname) {
   if (pathname === "/projects" || pathname.startsWith("/projects/")) return { suffix: "Open projects" };
   if (pathname === "/graveyard" || pathname.startsWith("/graveyard/")) return { suffix: "The Graveyard" };
   if (pathname === "/bidception" || pathname.startsWith("/bidception/")) return { suffix: "Funded parent work" };
+  if (pathname === "/leaderboards") return { suffix: "Leaderboards" };
+  if (pathname === "/bid-index") return { suffix: "The Bid Index" };
   if (pathname.startsWith("/profile/")) return { suffix: "Member profile" };
   if (pathname.startsWith("/test/")) return { suffix: "Test" };
   return null;

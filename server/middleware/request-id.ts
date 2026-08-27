@@ -50,17 +50,41 @@ const KNOWN_EXACT_PATHS = new Set([
   "/contact",
   "/robots.txt",
   "/sitemap.xml",
+  // Live marketplace + auth surfaces (Phases 01–04): a genuine 500 on these
+  // stays a 500; they are not "unknown routes" to relabel to 404.
+  "/bounties",
+  "/projects",
+  "/graveyard",
+  "/bidception",
+  "/leaderboards",
+  "/bid-index",
+  "/signin",
+  "/signup",
+  "/dashboard",
+  "/admin",
+  "/settings/profile",
 ]);
 
 /** The complete set of real API routes — /api/* is known ONLY for these. */
 const KNOWN_API_PATHS = new Set(["/api/webhooks/cashfree", "/api/favicon"]);
+// /api/auth/* and /api/dev/* are real (auth + test-only) surfaces too.
+const KNOWN_API_PREFIXES = ["/api/auth/", "/api/dev/"];
 
-const LEGACY_PREFIXES = ["/founders", "/culture", "/bidception", "/spec"];
+const LEGACY_PREFIXES = ["/founders", "/culture", "/spec"];
 
 export function isKnownRoute(pathname: string): boolean {
   if (KNOWN_EXACT_PATHS.has(pathname)) return true;
   if (KNOWN_API_PATHS.has(pathname)) return true;
+  if (KNOWN_API_PREFIXES.some((p) => pathname.startsWith(p))) return true;
   if (pathname.startsWith("/_serverFn/")) return true;
+  // Dynamic marketplace routes are "known" surfaces: a JSON request to a
+  // valid shape that 500s is a real server error, not a fake-404 quirk.
+  if (
+    /^\/(bounties|projects|graveyard|bidception|profile)\/[^/]+$/.test(pathname) ||
+    pathname.startsWith("/test/checkout/")
+  ) {
+    return true;
+  }
   return LEGACY_PREFIXES.some(
     (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
   );
