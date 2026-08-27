@@ -1,7 +1,7 @@
 # State
 
-Current phase: PHASE_01_FOUNDERSBID
-Status: IMPLEMENTATION IN PROGRESS (2026-08-27, autonomous). Spec + engines + UI built; release loop pending. Durable memory: docs/handoffs/PHASE_01_HANDOFF.md.
+Current phase: PHASE_01B_GRAVEYARD (Phase 01 RELEASED)
+Status: Phase 01 FOUNDERSBID RELEASED to production (2026-08-27); Phase 01B specifying next. Durable memory: docs/handoffs/PHASE_01_HANDOFF.md.
 Phase 00 foundation: COMPLETE (2026-08-26).
 Phase 00.5 alignment: COMPLETE (release SHA 2a8edf7, 2026-08-27).
 Phase 00.6 guardrails: COMPLETE (release SHA c50cbdb, 2026-08-27).
