@@ -1,6 +1,7 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { currentProductKey } from "@/lib/host";
+import { shellContext } from "@/lib/shell-context";
 import { ProductShell } from "@/components/product-shell";
 import { ProfileFormLoader } from "@/components/profile-form";
 
@@ -12,7 +13,8 @@ const loadSettings = createServerFn({ method: "GET" }).handler(async () => {
   const { getSession } = await import("@/lib/authz");
   const session = await getSession();
   if (!session) throw redirect({ to: "/signin" });
-  return currentProductKey();
+  const { me } = await shellContext();
+  return { product: await currentProductKey(), me };
 });
 
 export const Route = createFileRoute("/settings/profile")({
@@ -21,9 +23,9 @@ export const Route = createFileRoute("/settings/profile")({
 });
 
 function SettingsProfilePage() {
-  const site = Route.useLoaderData();
+  const { product: site, me } = Route.useLoaderData();
   return (
-    <ProductShell site={site}>
+    <ProductShell site={site} me={me}>
       <div className="mx-auto max-w-3xl px-4 py-10">
         <p className="text-xs font-medium uppercase tracking-kicker text-subtle">
           Your account

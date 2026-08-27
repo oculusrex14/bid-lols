@@ -1,5 +1,6 @@
 import { linkOrigin, product, PRODUCT_KEYS } from "@/lib/host";
 import { FoundingAccess } from "@/components/founding-access";
+import type { ShellMe } from "@/components/product-shell";
 import { FlowStep, Kicker, SectionLabel } from "@/components/home/shared";
 
 /**
@@ -8,7 +9,7 @@ import { FlowStep, Kicker, SectionLabel } from "@/components/home/shared";
  * No fake activity: the flow is a description of how the network will work,
  * and the only interactive element is the founding-access capture.
  */
-export function BidthroneHome() {
+export function BidthroneHome({ me }: { me?: ShellMe | null }) {
   const others = PRODUCT_KEYS.filter((key) => key !== "bidthrone");
 
   return (
@@ -43,7 +44,7 @@ export function BidthroneHome() {
       </section>
 
       <section className="mx-auto w-full max-w-5xl px-4 py-14 sm:px-5">
-        <SectionLabel>How it will work</SectionLabel>
+        <SectionLabel>How the network works</SectionLabel>
         <ol className="mt-4 grid gap-3 sm:grid-cols-4">
           <FlowStep
             index="01"
@@ -74,8 +75,8 @@ export function BidthroneHome() {
           </h2>
           <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted">
             There is no way to buy a reputation on Bidthrone. It comes only
-            from work that was done, verified, and paid for. Everything else
-            on the network is priced; reputation is not.
+            from work that was done, verified, and settled. Everything else on
+            the network is priced; reputation is not.
           </p>
         </div>
       </section>
@@ -110,7 +111,12 @@ export function BidthroneHome() {
       </section>
 
       <section className="mx-auto w-full max-w-5xl px-4 pb-20 sm:px-5">
-        <FoundingAccess site="bidthrone" />
+        <FoundingAccess
+          site="bidthrone"
+          heading="Get updates from Bidthrone."
+          intro="We email people on this list about network milestones — new leaderboards, Bid Index releases, and launch moments. One email per update — no payment, no spam."
+          ctaLabel="Get launch updates"
+        />
       </section>
 
     </>

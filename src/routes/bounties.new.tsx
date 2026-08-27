@@ -2,6 +2,7 @@ import { useState } from "react";
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { currentProductKey } from "@/lib/host";
+import { shellContext } from "@/lib/shell-context";
 import { ProductShell } from "@/components/product-shell";
 import { createBountyFn, fundingPlanFn } from "@/lib/marketplace/bounties";
 import { formatMinor } from "@/lib/money";
@@ -18,7 +19,7 @@ const loadCreate = createServerFn({ method: "GET" }).handler(async () => {
   const session = await getSession();
   if (!session) throw redirect({ to: "/signin" });
   const product = await currentProductKey();
-  return { product, emailVerified: session.user.emailVerified, categories: categoriesFor(product) };
+  return { product, me: (await shellContext()).me, emailVerified: session.user.emailVerified, categories: categoriesFor(product) };
 });
 
 export const Route = createFileRoute("/bounties/new")({
@@ -125,7 +126,7 @@ function NewBountyPage() {
   }
 
   return (
-    <ProductShell site={d.product}>
+    <ProductShell site={d.product} me={d.me}>
       <div className="mx-auto max-w-3xl px-4 py-10">
         <p className="text-xs font-medium uppercase tracking-kicker text-subtle">Sponsor</p>
         <h1 className="mt-1 font-display-site text-2xl tracking-tight sm:text-3xl">Post a bounty</h1>

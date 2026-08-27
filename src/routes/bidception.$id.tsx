@@ -3,6 +3,7 @@ import { createFileRoute, Link , redirect } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { currentProductKey } from "@/lib/host";
+import { shellContext } from "@/lib/shell-context";
 import { ProductShell } from "@/components/product-shell";
 import { getSql } from "@/lib/db.server";
 import { formatMinor } from "@/lib/money";
@@ -57,6 +58,7 @@ const loadDetail = createServerFn({ method: "GET" })
     const balance = Number(row.funded_budget_minor ?? 0) - allocated - Number(row.captain_compensation_minor);
     return {
       product: await currentProductKey(),
+      me: (await shellContext()).me,
       parent: row,
       children,
       allocated,
@@ -117,7 +119,7 @@ function BidceptionDetailBody({
   const status = p.status;
 
   return (
-    <ProductShell site={data.product}>
+    <ProductShell site={data.product} me={data.me}>
       <div className="mx-auto max-w-5xl px-4 py-10">
         <Link to="/bidception" className="text-sm text-subtle underline underline-offset-2">← Parent work</Link>
 

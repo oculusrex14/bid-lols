@@ -62,11 +62,17 @@ function errorMessage(code: string | undefined, fallback: string): string {
 export function FoundingAccess({
   site,
   defaultRole,
-  ctaLabel = "Request founding access",
+  ctaLabel = "Get launch updates",
+  heading,
+  intro,
 }: {
   site: ProductKey;
   defaultRole?: WaitlistRole;
   ctaLabel?: string;
+  /** Heading override (RC1: founding access is a secondary launch-updates list, not the product). */
+  heading?: string;
+  /** Intro copy override. */
+  intro?: string;
 }) {
   const cfg = product(site);
   const options = ROLE_OPTIONS[site];
@@ -130,14 +136,15 @@ export function FoundingAccess({
     <div id="access" className="mt-12 scroll-mt-20">
       <div className="rounded-lg border-2 border-fg/20 bg-surface p-5 sm:p-6">
         <p className="text-xs font-medium uppercase tracking-kicker text-subtle">
-          Founding access
+          Launch updates
         </p>
         <h2 className="mt-2 font-display-site text-2xl tracking-tight sm:text-3xl">
-          {cfg.name} opens in stages. Get on the list.
+          {heading ?? `Get updates from ${cfg.name}.`}
         </h2>
         <p className="mt-2 max-w-xl text-sm leading-relaxed text-muted">
-          We contact people on this list about early access to {cfg.name} —
-          nothing else. One email, no payment, no spam.
+          {intro ??
+            `We email people on this list about ${cfg.name} — funding opening, ` +
+              `new categories, launch moments. One email per update, no payment, no spam.`}
         </p>
 
         {status.state === "success" ? (

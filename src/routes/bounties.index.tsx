@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { currentProductKey } from "@/lib/host";
+import { shellContext } from "@/lib/shell-context";
 import { ProductShell } from "@/components/product-shell";
 import { getSql } from "@/lib/db.server";
 import { listOpenBounties } from "@/lib/marketplace/queries.server";
@@ -26,6 +27,7 @@ const loadBounties = createServerFn({ method: "GET" })
   .handler(async ({ data }) => {
     const sql = await getSql();
     const product = await currentProductKey();
+    const { me } = await shellContext();
     const result = await listOpenBounties(sql, product, {
       category: data.category,
       sort: data.sort as "newest" | "ending_soon" | "reward",
@@ -33,7 +35,7 @@ const loadBounties = createServerFn({ method: "GET" })
       rewardMinMinor: data.rewardMin,
       limit: 20,
     });
-    return { ...result, product };
+    return { ...result, product, me };
   });
 
 export const Route = createFileRoute("/bounties/")({
@@ -56,7 +58,7 @@ function BountiesPage() {
   const hasFilters = Boolean(search.category || (search.sort && search.sort !== "newest"));
 
   return (
-    <ProductShell site={data.product}>
+    <ProductShell site={data.product} me={data.me}>
       <div className="mx-auto max-w-5xl px-4 py-10">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>

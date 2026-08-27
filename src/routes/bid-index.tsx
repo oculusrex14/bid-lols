@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { currentProductKey } from "@/lib/host";
+import { shellContext } from "@/lib/shell-context";
 import { ProductShell } from "@/components/product-shell";
 import { formatMinor } from "@/lib/money";
 import { bidIndexFor } from "@/lib/marketplace/reputation.server";
@@ -24,6 +25,7 @@ void 0;
 
 const loadIndex = createServerFn({ method: "GET" }).handler(async () => {
   const product = await currentProductKey();
+  const { me } = await shellContext();
   const cats = await (await import("@/lib/db.server")).getSql().then((sql) =>
     sql.query<{ category: string }>(
       `select distinct category from (
@@ -46,7 +48,7 @@ const loadIndex = createServerFn({ method: "GET" }).handler(async () => {
       sufficient: sample.sufficient,
     });
   }
-  return { product, rows };
+  return { product, me, rows };
 });
 
 export const Route = createFileRoute("/bid-index")({
@@ -58,7 +60,7 @@ function BidIndexPage() {
   const d = Route.useLoaderData();
   const sufficient = d.rows.filter((r) => r.sufficient);
   return (
-    <ProductShell site={d.product}>
+    <ProductShell site={d.product} me={d.me}>
       <div className="mx-auto max-w-4xl px-4 py-10">
         <p className="text-xs font-medium uppercase tracking-kicker text-subtle">Bidthrone · Bid Index</p>
         <h1 className="mt-1 font-display-site text-2xl tracking-tight sm:text-3xl">What the market pays</h1>

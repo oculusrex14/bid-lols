@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { currentProductKey } from "@/lib/host";
+import { shellContext } from "@/lib/shell-context";
 import { ProductShell } from "@/components/product-shell";
 import { getSql } from "@/lib/db.server";
 import { formatMinor } from "@/lib/money";
@@ -9,6 +10,7 @@ import { formatMinor } from "@/lib/money";
 const loadGraveyard = createServerFn({ method: "GET" }).handler(async () => {
   const sql = await getSql();
   const product = await currentProductKey();
+  const { me } = await shellContext();
   const items = await sql.query<{
     id: string; title: string; slug: string; status: string;
     asking_price_minor: number | null; currency: string; created_at: string;
@@ -19,7 +21,7 @@ const loadGraveyard = createServerFn({ method: "GET" }).handler(async () => {
      order by created_at desc limit 50`,
     [product],
   );
-  return { product, items };
+  return { product, me, items };
 });
 
 export const Route = createFileRoute("/graveyard/")({
@@ -30,7 +32,7 @@ export const Route = createFileRoute("/graveyard/")({
 function GraveyardPage() {
   const d = Route.useLoaderData();
   return (
-    <ProductShell site={d.product}>
+    <ProductShell site={d.product} me={d.me}>
       <div className="mx-auto max-w-5xl px-4 py-10">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>

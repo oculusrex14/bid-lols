@@ -3,6 +3,7 @@ import { createFileRoute, Link , redirect } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { currentProductKey } from "@/lib/host";
+import { shellContext } from "@/lib/shell-context";
 import { ProductShell } from "@/components/product-shell";
 import { getSql } from "@/lib/db.server";
 import { entityRedirectFor } from "@/lib/marketplace/capabilities.server";
@@ -73,6 +74,7 @@ const loadDetail = createServerFn({ method: "GET" })
       : null;
     return {
       product: await currentProductKey(),
+      me: (await shellContext()).me,
       project,
       proposals,
       milestones,
@@ -129,7 +131,7 @@ function ProjectDetailBody({ data }: { data: Data }) {
   const status = String(p.status);
 
   return (
-    <ProductShell site={data.product}>
+    <ProductShell site={data.product} me={data.me}>
       <div className="mx-auto max-w-4xl px-4 py-10">
         <Link to="/projects" className="text-sm text-subtle underline underline-offset-2">← All projects</Link>
         <div className="mt-4 flex flex-wrap items-start justify-between gap-4">

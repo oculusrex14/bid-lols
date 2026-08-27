@@ -35,12 +35,12 @@ test("R4: capability matrix (the authoritative matrix)", () => {
   assert.ok(!hasCapability("culturebid", "reputation"));
   // bidception: parent work only
   assert.ok(hasCapability("bidception", "bidception"));
-  for (const c of ["bounties", "projects", "graveyard", "reputation"]) {
+  for (const c of ["bounties", "projects", "graveyard", "reputation"] as const) {
     assert.ok(!hasCapability("bidception", c), `bidception must not host ${c}`);
   }
   // bidthrone: reputation only
   assert.ok(hasCapability("bidthrone", "reputation"));
-  for (const c of ["bounties", "projects", "graveyard", "bidception"]) {
+  for (const c of ["bounties", "projects", "graveyard", "bidception"] as const) {
     assert.ok(!hasCapability("bidthrone", c), `bidthrone must not host ${c}`);
   }
   // shared capabilities everywhere

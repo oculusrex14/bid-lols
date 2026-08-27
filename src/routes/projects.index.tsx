@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { currentProductKey } from "@/lib/host";
+import { shellContext } from "@/lib/shell-context";
 import { ProductShell } from "@/components/product-shell";
 import { getSql } from "@/lib/db.server";
 import { listOpenProjects } from "@/lib/marketplace/queries.server";
@@ -10,8 +11,9 @@ import { formatMinor } from "@/lib/money";
 const loadProjects = createServerFn({ method: "GET" }).handler(async () => {
   const sql = await getSql();
   const product = await currentProductKey();
+  const { me } = await shellContext();
   const result = await listOpenProjects(sql, product, { limit: 20 });
-  return { ...result, product };
+  return { ...result, product, me };
 });
 
 export const Route = createFileRoute("/projects/")({
@@ -22,7 +24,7 @@ export const Route = createFileRoute("/projects/")({
 function ProjectsPage() {
   const data = Route.useLoaderData();
   return (
-    <ProductShell site={data.product}>
+    <ProductShell site={data.product} me={data.me}>
       <div className="mx-auto max-w-5xl px-4 py-10">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>

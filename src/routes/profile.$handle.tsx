@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { currentProductKey } from "@/lib/host";
+import { shellContext } from "@/lib/shell-context";
 import { ProductShell } from "@/components/product-shell";
 import type { PublicProfile } from "@/lib/profiles.server";
 
@@ -18,15 +19,16 @@ const loadProfile = createServerFn({ method: "GET" })
   .handler(async ({ data }) => {
     const { getPublicProfile } = await import("@/lib/profiles.server");
     const { reputationFor } = await import("@/lib/marketplace/reputation.server");
-    const [profile, product] = await Promise.all([
+    const [profile, product, shell] = await Promise.all([
       getPublicProfile(data.handle),
       currentProductKey(),
+      shellContext(),
     ]);
     let reputation = null;
     if (profile) {
       reputation = await reputationFor(profile.userId).catch(() => null);
     }
-    return { profile, product, handle: data.handle, reputation };
+    return { profile, product, handle: data.handle, reputation, me: shell.me };
   });
 
 export const Route = createFileRoute("/profile/$handle")({
@@ -38,7 +40,7 @@ function ProfilePage() {
   const d = Route.useLoaderData();
   if (!d.profile) {
     return (
-      <ProductShell site={d.product}>
+      <ProductShell site={d.product} me={d.me}>
         <div className="mx-auto max-w-2xl px-4 py-16 text-center">
           <h1 className="font-display-site text-2xl tracking-tight">Profile not found</h1>
           <p className="mt-2 text-sm text-muted">
@@ -54,7 +56,7 @@ function ProfilePage() {
   }
   const p: PublicProfile = d.profile;
   return (
-    <ProductShell site={d.product}>
+    <ProductShell site={d.product} me={d.me}>
       <div className="mx-auto max-w-3xl px-4 py-10">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>

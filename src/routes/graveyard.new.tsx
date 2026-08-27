@@ -2,6 +2,7 @@ import { useState } from "react";
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { currentProductKey } from "@/lib/host";
+import { shellContext } from "@/lib/shell-context";
 import { ProductShell } from "@/components/product-shell";
 import { createListingFn, publishListingFn } from "@/lib/marketplace/graveyard";
 
@@ -10,7 +11,7 @@ const loadNew = createServerFn({ method: "GET" }).handler(async () => {
   const { getSession } = await import("@/lib/authz");
   const session = await getSession();
   if (!session) throw redirect({ to: "/signin" });
-  return { product: await currentProductKey() };
+  return { product: await currentProductKey(), me: (await shellContext()).me };
 });
 
 export const Route = createFileRoute("/graveyard/new")({
@@ -87,7 +88,7 @@ function NewListingPage() {
   }
 
   return (
-    <ProductShell site={d.product}>
+    <ProductShell site={d.product} me={d.me}>
       <div className="mx-auto max-w-3xl px-4 py-10">
         <p className="text-xs font-medium uppercase tracking-kicker text-subtle">Graveyard</p>
         <h1 className="mt-1 font-display-site text-2xl tracking-tight sm:text-3xl">List an abandoned startup</h1>

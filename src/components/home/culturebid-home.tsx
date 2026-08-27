@@ -1,7 +1,6 @@
-import { useState } from "react";
-import type { WaitlistRole } from "@/lib/waitlist-shared";
 import { FoundingAccess } from "@/components/founding-access";
 import { ExampleCard, Kicker, SectionLabel } from "@/components/home/shared";
+import type { ShellMe } from "@/components/product-shell";
 
 const MECHANICS = [
   {
@@ -32,19 +31,12 @@ const USE_CASES = [
 ];
 
 /**
- * CultureBid — creative bounties with fair, capped competition
- * (Phase 00.5, AC-2.3). The fairness mechanics are explained conceptually —
- * this is what the rules will be, not a live board. The example brief is
- * labelled EXAMPLE.
+ * CultureBid — operational creative-marketplace home (RC1, R5). Creative
+ * bounties with fair, capped competition. Funding is disabled until the
+ * payout rail exists, and the page says so plainly. The example brief is
+ * labelled EXAMPLE and is not marketplace activity.
  */
-export function CulturebidHome() {
-  const [presetRole, setPresetRole] = useState<WaitlistRole>("brand");
-
-  const goAccess = (role: WaitlistRole) => {
-    setPresetRole(role);
-    document.getElementById("access")?.scrollIntoView({ behavior: "auto", block: "start" });
-  };
-
+export function CulturebidHome({ me }: { me?: ShellMe | null }) {
   return (
     <>
       <section className="mx-auto w-full max-w-5xl px-4 pt-16 sm:px-5 sm:pt-24">
@@ -57,32 +49,38 @@ export function CulturebidHome() {
           Creative work with real money on it — and rules that keep the
           competition fair for the people doing the work.
         </p>
-        <div className="mt-8 flex flex-wrap gap-3">
-          <button
-            type="button"
-            onClick={() => goAccess("brand")}
+        <div className="mt-8 flex flex-wrap items-center gap-3">
+          <a
+            href="/bounties/new"
             className="inline-flex h-12 items-center rounded-md bg-accent px-5 text-sm font-semibold text-accent-fg"
           >
-            I'm a brand
-          </button>
-          <button
-            type="button"
-            onClick={() => goAccess("creator")}
-            className="inline-flex h-12 items-center rounded-md border-2 border-fg/30 px-5 text-sm font-semibold hover:border-fg/60"
-          >
-            I'm a creator
-          </button>
+            Post a creative brief
+          </a>
           <a
             href="/bounties"
             className="inline-flex h-12 items-center rounded-md border-2 border-fg/30 px-5 text-sm font-semibold hover:border-fg/60"
           >
-            Browse creative briefs
+            Browse creative bounties
           </a>
+          {me ? (
+            <a href="/settings/profile" className="text-sm font-medium underline underline-offset-4">
+              Creator profile
+            </a>
+          ) : (
+            <a href="/signup" className="text-sm font-medium underline underline-offset-4">
+              Create an account
+            </a>
+          )}
         </div>
+        <p className="mt-5 max-w-2xl rounded-md border-2 border-fg/15 bg-raised/40 p-3 text-sm text-muted" data-testid="funding-note">
+          The creative marketplace preview is open — briefs, accounts and discovery are
+          live. Funding opens when the payout rail is enabled; until then no payment
+          can be made on this site.
+        </p>
       </section>
 
       <section className="mx-auto w-full max-w-5xl px-4 py-14 sm:px-5">
-        <SectionLabel>Briefs that will be funded</SectionLabel>
+        <SectionLabel>What briefs fund</SectionLabel>
         <ul className="mt-4 flex flex-wrap gap-2">
           {USE_CASES.map((useCase) => (
             <li
@@ -114,7 +112,7 @@ export function CulturebidHome() {
         <div className="mt-10">
           <ExampleCard
             label="Example · Brief"
-            caption="Illustrative only — no brief is live and no creator has been asked to work."
+            caption="Illustrative only — not a live brief; no creator has been asked to work."
           >
             <p className="font-display-site text-lg tracking-tight">
               A 15-second product video for a launch
@@ -130,8 +128,9 @@ export function CulturebidHome() {
       <section className="mx-auto w-full max-w-5xl px-4 pb-20 sm:px-5">
         <FoundingAccess
           site="culturebid"
-          defaultRole={presetRole}
-          ctaLabel={presetRole === "brand" ? "I'm a brand — notify me" : "I'm a creator — notify me"}
+          heading="Get updates from CultureBid."
+          intro="We email people on this list when funding opens, when new creative categories land, and at launch moments. One email per update — no payment, no spam."
+          ctaLabel="Get launch updates"
         />
       </section>
     </>

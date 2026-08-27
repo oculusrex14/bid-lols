@@ -3,6 +3,7 @@ import { createFileRoute, Link, useNavigate , redirect } from "@tanstack/react-r
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { currentProductKey } from "@/lib/host";
+import { shellContext } from "@/lib/shell-context";
 import { ProductShell } from "@/components/product-shell";
 import { getSql } from "@/lib/db.server";
 import { getBountyDetail, listApplicationsForSponsor } from "@/lib/marketplace/queries.server";
@@ -34,6 +35,7 @@ const loadDetail = createServerFn({ method: "GET" })
     // Entity-aware capability redirect (RC1, R4): a bounty belongs to the
     // product that hosts it; the wrong host 301s to its origin.
     const product = await currentProductKey();
+    const me = (await shellContext()).me;
     const entityUrl = entityRedirectFor(detail.bounty.product, product, `/bounties/${data.id}`);
     if (entityUrl) throw redirect({ to: entityUrl });
     let applications: Awaited<ReturnType<typeof listApplicationsForSponsor>> = [];
@@ -42,6 +44,7 @@ const loadDetail = createServerFn({ method: "GET" })
     }
     return {
       product,
+      me,
       detail,
       applications,
       emailVerified: session?.user.emailVerified ?? false,
@@ -72,13 +75,14 @@ function BountyDetailPage() {
 
 type DetailData = {
   product: "bidthrone" | "foundersbid" | "culturebid" | "bidception";
+  me: import("@/lib/shell-context").ShellMe;
   detail: NonNullable<Awaited<ReturnType<typeof loadDetail>>>["detail"];
   applications: Array<{ id: string; status: string; message: string; created_at: string; handle: string | null; display_name: string | null }>;
   emailVerified: boolean;
 };
 
 function BountyDetailBody({ data }: { data: DetailData }) {
-  const { detail, product } = data;
+  const { detail, product, me } = data;
   const b = detail.bounty as Record<string, unknown>;
   const navigate = useNavigate();
   const [message, setMessage] = useState<string | null>(null);
@@ -120,7 +124,7 @@ function BountyDetailBody({ data }: { data: DetailData }) {
   }
 
   return (
-    <ProductShell site={product}>
+    <ProductShell site={product} me={me}>
       <div className="mx-auto max-w-4xl px-4 py-10">
         <Link to="/bounties" className="text-sm text-subtle underline underline-offset-2">← All bounties</Link>
 

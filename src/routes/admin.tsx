@@ -2,6 +2,7 @@ import { createFileRoute, redirect } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { currentProductKey } from "@/lib/host";
+import { shellContext } from "@/lib/shell-context";
 import { ProductShell } from "@/components/product-shell";
 import { getSql } from "@/lib/db.server";
 import { requireAdmin, getSession } from "@/lib/authz";
@@ -41,7 +42,7 @@ const loadAdmin = createServerFn({ method: "GET" }).handler(async () => {
               (select count(*)::int from bounties) as bounties_n`,
     ),
   ]);
-  return { product: await currentProductKey(), users, bounties, payments, obligations, disputes, auditTrail, stats };
+  return { product: await currentProductKey(), me: (await shellContext()).me, users, bounties, payments, obligations, disputes, auditTrail, stats };
 });
 
 export const Route = createFileRoute("/admin")({
@@ -141,7 +142,7 @@ const adminAction = createServerFn({ method: "POST" })
 function AdminPage() {
   const d = Route.useLoaderData();
   return (
-    <ProductShell site={d.product}>
+    <ProductShell site={d.product} me={d.me}>
       <div className="mx-auto max-w-6xl px-4 py-10">
         <p className="text-xs font-medium uppercase tracking-kicker text-subtle">Admin</p>
         <h1 className="mt-1 font-display-site text-2xl tracking-tight sm:text-3xl">Operations</h1>

@@ -1,7 +1,7 @@
-import { useState } from "react";
-import type { WaitlistRole } from "@/lib/waitlist-shared";
+import { product } from "@/lib/host";
 import { FoundingAccess } from "@/components/founding-access";
 import { ExampleCard, Kicker, SectionLabel } from "@/components/home/shared";
+import type { ShellMe } from "@/components/product-shell";
 
 const CATEGORIES = [
   "Development",
@@ -16,48 +16,57 @@ const CATEGORIES = [
 ];
 
 /**
- * FoundersBid — the startup execution product (Phase 00.5, AC-2.2).
- * Two modes, both funded: BOUNTY (compete on bounded work) and PROJECT
- * (proposals first, one selected before work). Example cards are labelled
- * EXAMPLE and are not marketplace activity. The two CTAs preset the role in
- * the single founding-access form below — genuine capture, no simulation.
+ * FoundersBid — operational home (RC1, R5). The marketplace software is live:
+ * accounts, open bounties/projects, and discovery exist. Funding is intentionally disabled
+ * until a payout rail exists, so the page says that plainly instead of
+ * implying the work isn't real. Bounty vs Project is explained up front.
  */
-export function FoundersbidHome() {
-  const [presetRole, setPresetRole] = useState<WaitlistRole>("sponsor");
-
-  const goAccess = (role: WaitlistRole) => {
-    setPresetRole(role);
-    document.getElementById("access")?.scrollIntoView({ behavior: "auto", block: "start" });
-  };
+export function FoundersbidHome({ me }: { me?: ShellMe | null }) {
+  const cfg = product("foundersbid");
 
   return (
     <>
       <section className="mx-auto w-full max-w-5xl px-4 pt-16 sm:px-5 sm:pt-24">
-        <Kicker>FoundersBid · The startup execution product</Kicker>
+        <Kicker>FoundersBid · Startup execution marketplace</Kicker>
         <h1 className="mt-4 font-display-site text-5xl leading-none tracking-tight sm:text-6xl">
           Fund startup work
           <span className="block text-subtle">with money on the table.</span>
         </h1>
         <p className="mt-6 max-w-2xl text-lg leading-relaxed text-muted">
-          Two ways to get real work done for a funded price. The budget is
-          stated before the work exists — no vague promises.
+          Two ways to get real work done for a funded price — a bounded bounty
+          competitors race on, or a project where proposals come first and one
+          provider is selected before any work begins. The budget is stated
+          before the work exists.
         </p>
-        <div className="mt-8 flex flex-wrap gap-3">
-          <button
-            type="button"
-            onClick={() => goAccess("sponsor")}
+        <div className="mt-8 flex flex-wrap items-center gap-3">
+          <a
+            href="/bounties/new"
             className="inline-flex h-12 items-center rounded-md bg-accent px-5 text-sm font-semibold text-accent-fg"
           >
-            I need work done
-          </button>
-          <button
-            type="button"
-            onClick={() => goAccess("builder")}
+            Post work
+          </a>
+          <a
+            href="/bounties"
             className="inline-flex h-12 items-center rounded-md border-2 border-fg/30 px-5 text-sm font-semibold hover:border-fg/60"
           >
-            I want to build
-          </button>
+            Browse opportunities
+          </a>
+          {me ? (
+            <a href="/dashboard" className="text-sm font-medium underline underline-offset-4">
+              Your dashboard
+            </a>
+          ) : (
+            <a href="/signup" className="text-sm font-medium underline underline-offset-4">
+              Create an account
+            </a>
+          )}
         </div>
+        <p className="mt-5 max-w-2xl rounded-md border-2 border-fg/15 bg-raised/40 p-3 text-sm text-muted" data-testid="funding-note">
+          Marketplace preview is open — accounts, bounties, projects and
+          discovery are live. Funding opens when the payout rail is enabled;
+          until then work stays an honest draft and no payment can be made on
+          this site.
+        </p>
       </section>
 
       <section className="mx-auto w-full max-w-5xl px-4 py-14 sm:px-5">
@@ -65,30 +74,35 @@ export function FoundersbidHome() {
         <div className="mt-4 grid gap-3 md:grid-cols-2">
           <div className="rounded-lg border-2 border-fg/20 bg-surface p-5 sm:p-6">
             <p className="text-xs font-semibold uppercase tracking-kicker text-subtle">
-              Mode 1 · Bounty
+              Bounty
             </p>
             <h2 className="mt-2 font-display-site text-2xl tracking-tight">
               Compete on bounded work.
             </h2>
             <p className="mt-2 text-sm leading-relaxed text-muted">
-              A sponsor publishes one bounded piece of work with a fixed
-              reward. Multiple qualified participants compete on it. The
-              sponsor picks the winner; the winner is paid on a verified
-              outcome.
+              A sponsor publishes one bounded piece of work with a fixed reward
+              and a participant cap. Qualified participants compete; the
+              sponsor picks the winner, who is paid on a verified outcome.
             </p>
+            <a href="/bounties/new" className="mt-3 inline-block text-sm font-medium underline underline-offset-4">
+              Post a bounty
+            </a>
           </div>
           <div className="rounded-lg border-2 border-fg/20 bg-surface p-5 sm:p-6">
             <p className="text-xs font-semibold uppercase tracking-kicker text-subtle">
-              Mode 2 · Project
+              Project
             </p>
             <h2 className="mt-2 font-display-site text-2xl tracking-tight">
               Proposals first. One gets picked.
             </h2>
             <p className="mt-2 text-sm leading-relaxed text-muted">
-              Providers submit proposals before any work starts. The sponsor
-              reviews them and selects one — only then is the work funded and
-              done. No speculative building, no unpaid audits.
+              Larger client work: providers submit a proposal (approach, quote,
+              milestones) before any deliverable work. The sponsor selects one,
+              funds it, and the work runs through the milestones.
             </p>
+            <a href="/projects/new" className="mt-3 inline-block text-sm font-medium underline underline-offset-4">
+              Post a project
+            </a>
           </div>
         </div>
 
@@ -122,7 +136,7 @@ export function FoundersbidHome() {
       </section>
 
       <section className="mx-auto w-full max-w-5xl px-4 pb-14 sm:px-5">
-        <SectionLabel>Where the money will sit</SectionLabel>
+        <SectionLabel>What the money will fund</SectionLabel>
         <ul className="mt-4 flex flex-wrap gap-2">
           {CATEGORIES.map((category) => (
             <li
@@ -138,9 +152,13 @@ export function FoundersbidHome() {
       <section className="mx-auto w-full max-w-5xl px-4 pb-20 sm:px-5">
         <FoundingAccess
           site="foundersbid"
-          defaultRole={presetRole}
-          ctaLabel={presetRole === "sponsor" ? "I need work done — notify me" : "I want to build — notify me"}
+          heading="Get updates from FoundersBid."
+          intro="We email people on this list when funding opens, when new categories land, and at launch moments. One email per update — no payment, no spam."
+          ctaLabel="Get launch updates"
         />
+        <p className="mt-2 text-xs text-subtle">
+          {cfg.apex} — secondary newsletter; the marketplace above is the product.
+        </p>
       </section>
     </>
   );

@@ -1,4 +1,5 @@
 import { FoundingAccess } from "@/components/founding-access";
+import type { ShellMe } from "@/components/product-shell";
 import { ExampleCard, Kicker, SectionLabel } from "@/components/home/shared";
 
 const CHILDREN = [
@@ -9,12 +10,12 @@ const CHILDREN = [
 ];
 
 /**
- * Bidception — nested & team bounties (Phase 00.5, AC-2.4). A concrete,
- * labelled DEMO of the nesting: a ₹100,000 parent project, a captain paid
- * from the parent budget, four funded child bounties that reconcile to the
- * parent. Positioned clearly as the network's LATER product.
+ * Bidception — operational home (RC1, R5). Nested & team work: one funded
+ * parent problem, a captain decomposes it into funded child units. The
+ * labelled demo tree stays (it explains the shape honestly), but the hero and
+ * CTAs are the live product: browse parent work, create parent work.
  */
-export function BidceptionHome() {
+export function BidceptionHome({ me }: { me?: ShellMe | null }) {
   return (
     <>
       <section className="mx-auto w-full max-w-4xl px-4 pt-16 sm:px-5 sm:pt-24">
@@ -24,9 +25,38 @@ export function BidceptionHome() {
           <span className="block text-subtle">A team forms around the money.</span>
         </h1>
         <p className="mt-6 max-w-2xl text-lg leading-relaxed text-muted">
-          Bidception is the network's later product: a funded parent problem
-          that a chosen captain decomposes into funded child bounties, and a
-          team works to get them all done.
+          A sponsor funds one parent problem. A captain is chosen to decompose
+          it into funded child units, and the budget invariant holds: allocated
+          + reserved + captain compensation can never exceed the funded
+          budget. A team works to get them all done.
+        </p>
+        <div className="mt-8 flex flex-wrap items-center gap-3">
+          <a
+            href="/bidception"
+            className="inline-flex h-12 items-center rounded-md bg-accent px-5 text-sm font-semibold text-accent-fg"
+          >
+            Browse parent work
+          </a>
+          <a
+            href="/bidception/new"
+            className="inline-flex h-12 items-center rounded-md border-2 border-fg/30 px-5 text-sm font-semibold hover:border-fg/60"
+          >
+            Create parent work
+          </a>
+          {me ? (
+            <a href="/dashboard" className="text-sm font-medium underline underline-offset-4">
+              Your dashboard
+            </a>
+          ) : (
+            <a href="/signup" className="text-sm font-medium underline underline-offset-4">
+              Create an account
+            </a>
+          )}
+        </div>
+        <p className="mt-5 max-w-2xl rounded-md border-2 border-fg/15 bg-raised/40 p-3 text-sm text-muted" data-testid="funding-note">
+          The nested marketplace preview is open. Funding parent work opens when
+          the payout rail is enabled; until then parent drafts stay drafts and no
+          payment can be made on this site.
         </p>
       </section>
 
@@ -42,14 +72,14 @@ export function BidceptionHome() {
             </p>
             <p className="mt-2 text-sm text-muted">
               The sponsor funds the whole problem. A captain is chosen to
-              decompose it — and is paid from the parent budget for doing so.
+              decompose it — and is compensated from the parent budget for doing so.
             </p>
           </div>
 
           <div className="ml-6 space-y-3 border-l-2 border-dashed border-fg/30 pl-5 pt-4">
             <div className="rounded-md border-2 border-fg/20 bg-raised/50 p-4">
               <p className="text-xs font-semibold uppercase tracking-kicker text-subtle">
-                Captain · paid from the parent budget
+                Captain · compensated from the parent budget
               </p>
               <p className="mt-1 text-sm font-medium">Chooses the structure — ₹10,000</p>
             </div>
@@ -59,7 +89,7 @@ export function BidceptionHome() {
                 className="rounded-md border-2 border-fg/20 bg-surface p-4"
               >
                 <p className="text-xs font-semibold uppercase tracking-kicker text-subtle">
-                  Child bounty · funded
+                  Child unit · funded
                 </p>
                 <p className="mt-1 text-sm font-medium">
                   {child.name} — {child.amount}
@@ -88,13 +118,13 @@ export function BidceptionHome() {
       </section>
 
       <section className="mx-auto w-full max-w-4xl px-4 pb-20 sm:px-5">
-        <p className="rounded-lg border-2 border-fg/20 bg-surface p-5 text-sm leading-relaxed text-muted">
-          <span className="font-semibold text-fg">A later product.</span>{" "}
-          Bidception opens after the first two products have found their
-          footing. Founding access for the network is open below — captain
-          seats open here first.
-        </p>
-        <FoundingAccess site="bidception" defaultRole="captain" ctaLabel="Get notified" />
+        <FoundingAccess
+          site="bidception"
+          defaultRole="captain"
+          heading="Captain & team launches"
+          intro="We email people on this list when parent-work funding opens and when captain seats become available. One email per update — no payment, no spam."
+          ctaLabel="Get notified"
+        />
       </section>
     </>
   );

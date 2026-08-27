@@ -3,6 +3,7 @@ import { createFileRoute, Link , redirect } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { currentProductKey } from "@/lib/host";
+import { shellContext } from "@/lib/shell-context";
 import { ProductShell } from "@/components/product-shell";
 import { getSql } from "@/lib/db.server";
 import { formatMinor } from "@/lib/money";
@@ -58,6 +59,7 @@ const loadDetail = createServerFn({ method: "GET" })
     }
     return {
       product: await currentProductKey(),
+      me: (await shellContext()).me,
       listing,
       offers,
       isSeller: Boolean(session && listing.seller_user_id === session.user.id),
@@ -110,7 +112,7 @@ function GraveyardDetailBody({ data }: { data: NonNullable<Awaited<ReturnType<ty
   const viewerOffer = data.offers.find((o) => o.buyer_user_id === data.viewerUserId) ?? null;
 
   return (
-    <ProductShell site={data.product}>
+    <ProductShell site={data.product} me={data.me}>
       <div className="mx-auto max-w-4xl px-4 py-10">
         <Link to="/graveyard" className="text-sm text-subtle underline underline-offset-2">← The graveyard</Link>
 

@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { currentProductKey } from "@/lib/host";
+import { shellContext } from "@/lib/shell-context";
 import { ProductShell } from "@/components/product-shell";
 import { boardFn, BOARD_NAMES, type LeaderboardRow } from "@/lib/marketplace/reputation";
 import { getSession } from "@/lib/authz";
@@ -30,6 +31,7 @@ const TITLES: Record<string, { title: string; blurb: string }> = {
 
 const loadBoards = createServerFn({ method: "GET" }).handler(async () => {
   const product = await currentProductKey();
+  const { me } = await shellContext();
   const session = await getSession();
   const sections: BoardSection[] = [];
   for (const board of BOARD_NAMES.slice(0, 6)) {
@@ -38,7 +40,7 @@ const loadBoards = createServerFn({ method: "GET" }).handler(async () => {
       sections.push({ board, ...(TITLES[board] ?? { title: board, blurb: "" }), rows: r.rows });
     }
   }
-  return { product, sections, viewerId: session?.user.id ?? null };
+  return { product, me, sections, viewerId: session?.user.id ?? null };
 });
 
 export const Route = createFileRoute("/leaderboards")({
@@ -50,7 +52,7 @@ function LeaderboardsPage() {
   const d = Route.useLoaderData();
   const anyData = d.sections.some((s) => s.rows.length > 0);
   return (
-    <ProductShell site={d.product}>
+    <ProductShell site={d.product} me={d.me}>
       <div className="mx-auto max-w-5xl px-4 py-10">
         <p className="text-xs font-medium uppercase tracking-kicker text-subtle">Bidthrone</p>
         <h1 className="mt-1 font-display-site text-2xl tracking-tight sm:text-3xl">Leaderboards</h1>

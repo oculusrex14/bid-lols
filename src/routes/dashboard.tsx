@@ -1,6 +1,7 @@
 import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { currentProductKey } from "@/lib/host";
+import { shellContext } from "@/lib/shell-context";
 import { ProductShell } from "@/components/product-shell";
 
 /**
@@ -20,7 +21,9 @@ const loadDashboard = createServerFn({ method: "GET" }).handler(async () => {
   ]);
   const { listNotifications } = await import("@/lib/marketplace/notifications.server");
   const notifications = await listNotifications(session.user.id, 20);
+  const { me } = await shellContext();
   return {
+    me,
     product: await currentProductKey(),
     emailVerified: user?.email_verified ?? false,
     handle: profile.handle,
@@ -38,7 +41,7 @@ export const Route = createFileRoute("/dashboard")({
 function DashboardPage() {
   const d = Route.useLoaderData();
   return (
-    <ProductShell site={d.product}>
+    <ProductShell site={d.product} me={d.me}>
       <div className="mx-auto max-w-4xl px-4 py-10">
         <p className="text-xs font-medium uppercase tracking-kicker text-subtle">
           Dashboard
