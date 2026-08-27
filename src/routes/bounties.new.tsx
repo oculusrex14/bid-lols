@@ -19,7 +19,7 @@ const loadCreate = createServerFn({ method: "GET" }).handler(async () => {
   const session = await getSession();
   if (!session) throw redirect({ to: "/signin" });
   const product = await currentProductKey();
-  return { product, me: (await shellContext()).me, emailVerified: session.user.emailVerified, categories: categoriesFor(product) };
+  return { product, me: (await (await import("@/lib/shell-context")).getShellContext()).me, emailVerified: session.user.emailVerified, categories: categoriesFor(product) };
 });
 
 export const Route = createFileRoute("/bounties/new")({

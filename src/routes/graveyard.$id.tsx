@@ -59,7 +59,7 @@ const loadDetail = createServerFn({ method: "GET" })
     }
     return {
       product: await currentProductKey(),
-      me: (await shellContext()).me,
+      me: (await (await import("@/lib/shell-context")).getShellContext()).me,
       listing,
       offers,
       isSeller: Boolean(session && listing.seller_user_id === session.user.id),

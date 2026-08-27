@@ -13,7 +13,7 @@ const loadSettings = createServerFn({ method: "GET" }).handler(async () => {
   const { getSession } = await import("@/lib/authz");
   const session = await getSession();
   if (!session) throw redirect({ to: "/signin" });
-  const { me } = await shellContext();
+  const { me } = await (await import("@/lib/shell-context")).getShellContext();
   return { product: await currentProductKey(), me };
 });
 

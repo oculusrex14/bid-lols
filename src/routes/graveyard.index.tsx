@@ -10,7 +10,7 @@ import { formatMinor } from "@/lib/money";
 const loadGraveyard = createServerFn({ method: "GET" }).handler(async () => {
   const sql = await getSql();
   const product = await currentProductKey();
-  const { me } = await shellContext();
+  const { me } = await (await import("@/lib/shell-context")).getShellContext();
   const items = await sql.query<{
     id: string; title: string; slug: string; status: string;
     asking_price_minor: number | null; currency: string; created_at: string;

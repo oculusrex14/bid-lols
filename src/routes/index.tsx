@@ -18,7 +18,7 @@ import { BidceptionHome } from "@/components/home/bidception-home";
 const getShell = createServerFn({ method: "GET" }).handler(async () => {
   const { currentProductKey } = await import("@/lib/host");
   const { shellContext } = await import("@/lib/shell-context");
-  const { me } = await shellContext();
+  const { me } = await (await import("@/lib/shell-context")).getShellContext();
   return { product: await currentProductKey(), me };
 });
 

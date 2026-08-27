@@ -13,7 +13,7 @@ import { formatMinor } from "@/lib/money";
 const loadList = createServerFn({ method: "GET" }).handler(async () => {
   const sql = await getSql();
   const product = await currentProductKey();
-  const { me } = await shellContext();
+  const { me } = await (await import("@/lib/shell-context")).getShellContext();
   const items = await sql.query<{
     id: string; title: string; slug: string; status: string;
     funded_budget_minor: number | null; currency: string;

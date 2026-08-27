@@ -27,7 +27,7 @@ const loadBounties = createServerFn({ method: "GET" })
   .handler(async ({ data }) => {
     const sql = await getSql();
     const product = await currentProductKey();
-    const { me } = await shellContext();
+    const { me } = await (await import("@/lib/shell-context")).getShellContext();
     const result = await listOpenBounties(sql, product, {
       category: data.category,
       sort: data.sort as "newest" | "ending_soon" | "reward",

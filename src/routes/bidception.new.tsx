@@ -14,7 +14,7 @@ const loadNew = createServerFn({ method: "GET" }).handler(async () => {
   const { getSession } = await import("@/lib/authz");
   const session = await getSession();
   if (!session) throw redirect({ to: "/signin" });
-  return { product: await currentProductKey(), me: (await shellContext()).me, emailVerified: session.user.emailVerified };
+  return { product: await currentProductKey(), me: (await (await import("@/lib/shell-context")).getShellContext()).me, emailVerified: session.user.emailVerified };
 });
 
 export const Route = createFileRoute("/bidception/new")({

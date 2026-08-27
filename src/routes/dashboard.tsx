@@ -21,7 +21,7 @@ const loadDashboard = createServerFn({ method: "GET" }).handler(async () => {
   ]);
   const { listNotifications } = await import("@/lib/marketplace/notifications.server");
   const notifications = await listNotifications(session.user.id, 20);
-  const { me } = await shellContext();
+  const { me } = await (await import("@/lib/shell-context")).getShellContext();
   return {
     me,
     product: await currentProductKey(),

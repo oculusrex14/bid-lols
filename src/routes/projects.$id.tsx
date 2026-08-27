@@ -74,7 +74,7 @@ const loadDetail = createServerFn({ method: "GET" })
       : null;
     return {
       product: await currentProductKey(),
-      me: (await shellContext()).me,
+      me: (await (await import("@/lib/shell-context")).getShellContext()).me,
       project,
       proposals,
       milestones,

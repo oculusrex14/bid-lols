@@ -31,7 +31,7 @@ const TITLES: Record<string, { title: string; blurb: string }> = {
 
 const loadBoards = createServerFn({ method: "GET" }).handler(async () => {
   const product = await currentProductKey();
-  const { me } = await shellContext();
+  const { me } = await (await import("@/lib/shell-context")).getShellContext();
   const session = await getSession();
   const sections: BoardSection[] = [];
   for (const board of BOARD_NAMES.slice(0, 6)) {

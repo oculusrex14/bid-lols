@@ -11,7 +11,7 @@ import { formatMinor } from "@/lib/money";
 const loadProjects = createServerFn({ method: "GET" }).handler(async () => {
   const sql = await getSql();
   const product = await currentProductKey();
-  const { me } = await shellContext();
+  const { me } = await (await import("@/lib/shell-context")).getShellContext();
   const result = await listOpenProjects(sql, product, { limit: 20 });
   return { ...result, product, me };
 });

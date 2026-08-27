@@ -42,7 +42,7 @@ const loadAdmin = createServerFn({ method: "GET" }).handler(async () => {
               (select count(*)::int from bounties) as bounties_n`,
     ),
   ]);
-  return { product: await currentProductKey(), me: (await shellContext()).me, users, bounties, payments, obligations, disputes, auditTrail, stats };
+  return { product: await currentProductKey(), me: (await (await import("@/lib/shell-context")).getShellContext()).me, users, bounties, payments, obligations, disputes, auditTrail, stats };
 });
 
 export const Route = createFileRoute("/admin")({

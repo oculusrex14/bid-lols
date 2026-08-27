@@ -25,7 +25,7 @@ void 0;
 
 const loadIndex = createServerFn({ method: "GET" }).handler(async () => {
   const product = await currentProductKey();
-  const { me } = await shellContext();
+  const { me } = await (await import("@/lib/shell-context")).getShellContext();
   const cats = await (await import("@/lib/db.server")).getSql().then((sql) =>
     sql.query<{ category: string }>(
       `select distinct category from (

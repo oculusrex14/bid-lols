@@ -58,7 +58,7 @@ const loadDetail = createServerFn({ method: "GET" })
     const balance = Number(row.funded_budget_minor ?? 0) - allocated - Number(row.captain_compensation_minor);
     return {
       product: await currentProductKey(),
-      me: (await shellContext()).me,
+      me: (await (await import("@/lib/shell-context")).getShellContext()).me,
       parent: row,
       children,
       allocated,

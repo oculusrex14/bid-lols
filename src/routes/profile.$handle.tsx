@@ -2,7 +2,6 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { currentProductKey } from "@/lib/host";
-import { shellContext } from "@/lib/shell-context";
 import { ProductShell } from "@/components/product-shell";
 import type { PublicProfile } from "@/lib/profiles.server";
 
@@ -22,7 +21,10 @@ const loadProfile = createServerFn({ method: "GET" })
     const [profile, product, shell] = await Promise.all([
       getPublicProfile(data.handle),
       currentProductKey(),
-      shellContext(),
+      (async () => {
+        const { getShellContext } = await import("@/lib/shell-context");
+        return getShellContext();
+      })(),
     ]);
     let reputation = null;
     if (profile) {

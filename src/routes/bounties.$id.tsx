@@ -35,7 +35,7 @@ const loadDetail = createServerFn({ method: "GET" })
     // Entity-aware capability redirect (RC1, R4): a bounty belongs to the
     // product that hosts it; the wrong host 301s to its origin.
     const product = await currentProductKey();
-    const me = (await shellContext()).me;
+    const me = (await (await import("@/lib/shell-context")).getShellContext()).me;
     const entityUrl = entityRedirectFor(detail.bounty.product, product, `/bounties/${data.id}`);
     if (entityUrl) throw redirect({ to: entityUrl });
     let applications: Awaited<ReturnType<typeof listApplicationsForSponsor>> = [];
