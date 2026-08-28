@@ -1,9 +1,10 @@
 # SEARCH_DISCOVERY_REPORT.md — RC2 content + search discovery
 
-**Final pushed SHA (main):** `558a006cdbebb9844409d1a08c0e3fb18a6af3df`
-(code in `fb25a93` + docs-only `558a006`)
+**Last code SHA:** `fb25a93cbe08bacda3052b2e7f250787165e81ea` (all runtime
+changes); docs-only successors on main: `558a006`, `7bd6c0d`, and this report.
 **GitHub Actions:** run `33150057407` on `fb25a93` and run `33152804124` on
 `558a006` — both SUCCESS (lint, typecheck, 1202 mjs + 200 ts tests, build).
+Docs-only commits carry no runtime change.
 **Vercel PREVIEW (final):** `dpl_G6Xj5WcTK6zm6rkMB3QYQYQ7bwkB` at
 `https://bidthrone-41f6wm3zd-oculusrex14s-projects.vercel.app` (READY, from the
 exact pushed SHA). An earlier preview `dpl_8cgy1tSyoZpYsdV37yE9vJTBqbkP`
