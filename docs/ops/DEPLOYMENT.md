@@ -70,7 +70,7 @@ curl -sI https://culturebid.lol | head -3   # expect HTTP 200
 curl -sI https://www.culturebid.lol | head -3  # expect HTTP 200
 ```
 
-Until the apex is verified reachable, the app routes **clickable** cross-product links to `https://www.culturebid.lol` (`linkOrigin()` in `scripts/host-seo-shared.mjs`); declarative URLs (canonical/OG/sitemap) keep the apex origin. Re-check after the DNS fix and flip `linkOrigin` back to apex-only if ever desired (the helper makes that a one-line change).
+Until the apex is verified reachable, the app routes **both** clickable cross-product links and **declarative** URLs (canonical, og:url, og:image, sitemap URLs, the robots `Sitemap:` line, JSON-LD `url`/`@id`, IndexNow) to `https://www.culturebid.lol` (`linkOrigin()` / `seoOrigin()` in `scripts/host-seo-shared.mjs`). Search engines must never be told that the broken apex is canonical. Re-check after the DNS fix, then remove `"culturebid"` from BOTH `WWW_NORMALIZE_EXCLUDED` and `SEO_CANONICAL_WWW` in `scripts/host-seo-shared.mjs` (the test suite pins the two sets in agreement); www 301s to apex and the apex becomes canonical again. Full rollback steps: `docs/ops/SEARCH_VISIBILITY.md`, "CultureBid DNS mode".
 
 ## Autonomous-safe deployment sequence
 
