@@ -17,17 +17,47 @@ import { AuthzError } from "@/lib/authz-shared";
 export { AuthzError, toErrorResponse } from "@/lib/authz-shared";
 
 /**
+ * Session-resolution policy (RC3, S-10.1), isolated so the tests exercise
+ * the EXACT branch that `getSession` runs:
+ *
+ *  - no request context            -> null (unit/CLI context, anonymous)
+ *  - session getter RESOLVES null  -> null (the normal "signed out" case:
+ *    Better Auth documents that no/invalid/expired sessions resolve to null)
+ *  - session getter REJECTS        -> structured log + visible
+ *    `auth_unavailable` failure. A database outage or auth-stack fault must
+ *    NEVER be converted into "anonymous user": fail-closed and fail-visible,
+ *    with internal details kept server-side (the client only sees the
+ *    friendly message plus the request-id envelope from the boundary).
+ *
+ * @param request the ambient request (null/undefined = no request context)
+ * @param fetchSession the Better Auth session read for that request
+ */
+export async function resolveSession(
+  request: Request | null | undefined,
+  fetchSession: (req: Request) => Promise<AuthSession | null>,
+): Promise<AuthSession | null> {
+  if (!request) return null;
+  try {
+    return await fetchSession(request);
+  } catch (err) {
+    console.error(
+      `[authz] session resolution failed on ${request.method} ${request.url} — surfacing as auth_unavailable:`,
+      err,
+    );
+    throw new AuthzError(
+      500,
+      "auth_unavailable",
+      "We couldn't confirm your session. Please try again.",
+    );
+  }
+}
+
+/**
  * The active session for the current request, or null. Safe to call from any
  * server context (serverFns, route loaders via start handlers).
  */
 export async function getSession(): Promise<AuthSession | null> {
-  const request = getRequest();
-  if (!request) return null;
-  try {
-    return await auth.api.getSession({ headers: request.headers });
-  } catch {
-    return null;
-  }
+  return resolveSession(getRequest(), (req) => auth.api.getSession({ headers: req.headers }));
 }
 
 export type ActingUser = AuthSession["user"];

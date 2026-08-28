@@ -104,3 +104,20 @@
 ### Bot/fraud considerations
 - Rate limits + email verification + honeypot fields on entry forms are the baseline anti-bot stack.
 - Anti-fraud: no seeded/fake activity (product rule); monitor concentration signals (many orders from one IP/device/payment instrument) in admin views; `users.status='suspended'` blocks entry and payout paths.
+
+### Content-Security-Policy (RC3 audit, 2026-08-28)
+`server/middleware/00-security-headers.ts` (deployed runtimes only; dev HMR deliberately exempt) emits, on every `text/html` response:
+
+```
+default-src 'self'; script-src 'self' 'nonce-<per-request>';
+style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:;
+connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self';
+frame-ancestors 'none'
+```
+
+plus `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, and a Permissions-Policy denying camera/microphone/geolocation/interest-cohort. HSTS is Vercel's on production domains (we never emit it; no `includeSubDomains`, no preload — CultureBid DNS). Audit outcome:
+
+- `script-src`: no `unsafe-inline`; the SSR-emitted inline scripts receive a per-request nonce. Tightest feasible.
+- `style-src 'unsafe-inline'`: **kept, audited and justified** — sonner (toast library) injects a runtime `<style>` element and the Toaster passes inline `style` objects to toast options; both require `unsafe-inline` and no per-request nonce alternative exists in sonner 2.x. Re-audit if the toaster is replaced or sonner gains nonce support.
+- `img-src 'self' data:`: **not loosened** — this is why graveyard listing screenshots are stored (validated https URLs, max 6) but not rendered today (RC3 spec 7.2). Remote screenshot display needs an image proxy or a deliberate `img-src` expansion with subdomain pinning; that is a future explicit decision, not a silent relaxation.
+- `connect-src 'self'`, `form-action 'self'`, `base-uri 'self'`, `object-src 'none'`, `frame-ancestors 'none'`: unchanged, verified in the preview/production smoke battery.

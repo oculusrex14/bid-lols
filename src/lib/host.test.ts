@@ -22,6 +22,8 @@ import {
   sitemapXml,
   wwwRedirectFor,
   buildEntityMeta,
+  notFoundHeadTags,
+  securityTxtFor,
 } from "../../scripts/host-seo-shared.mjs";
 
 test("product hosts resolve to their product", () => {
@@ -96,7 +98,7 @@ test("robots.txt is host-aware with the CANONICAL-origin sitemap URL (RC2, C9)",
 });
 
 test("indexing policy: private surfaces noindex, public surfaces index (RC2, C9/C12)", () => {
-  for (const path of ["/dashboard", "/settings/profile", "/admin", "/bid-index", "/signin", "/signup", "/terms", "/privacy", "/refund", "/contact", "/api/webhooks/cashfree"]) {
+  for (const path of ["/dashboard", "/settings/profile", "/admin", "/bid-index", "/post", "/signin", "/signup", "/terms", "/privacy", "/refund", "/contact", "/api/webhooks/cashfree"]) {
     assert.equal(robotsMetaFor("bidthrone", path), "noindex,follow", `${path} stays noindex`);
   }
   for (const path of ["/", "/bounties", "/bounties/bnt_x", "/projects", "/graveyard", "/bidception", "/leaderboards", "/blog", "/blog/some-article", "/profile/someone"]) {
@@ -159,6 +161,7 @@ test("injectSeoHead replaces the head with one host-aware title set", () => {
     '<meta name="description" content="old desc">' +
     '<link rel="canonical" href="https://old.example/">' +
     '<meta property="og:title" content="old og">' +
+    '<meta name="theme-color" content="#f4efe4">' +
     "</head><body>hi</body></html>";
   const out = injectSeoHead(html, "bidception", "/");
   assert.equal((out.match(/<title>/g) ?? []).length, 1);
@@ -168,6 +171,21 @@ test("injectSeoHead replaces the head with one host-aware title set", () => {
   assert.ok(!out.includes("old.example") && !out.includes("old desc"));
   // non-HTML passes through unchanged
   assert.equal(injectSeoHead('{"ok":true}', "bidthrone", "/"), '{"ok":true}');
+});
+
+test("theme-color is product-aware in the SSR head (RC3, S-38)", () => {
+  // The stale umbrella value (#f4efe4 = foundersbid's light bg) must be
+  // replaced per product — no Founders color leaking onto other domains.
+  const html = '<html><head><meta name="theme-color" content="#f4efe4"></head><body>x</body></html>';
+  assert.match(injectSeoHead(html, "bidthrone", "/"), /<meta name="theme-color" content="#f3efe6">/);
+  assert.match(injectSeoHead(html, "foundersbid", "/"), /<meta name="theme-color" content="#f4efe4">/);
+  assert.match(injectSeoHead(html, "culturebid", "/"), /<meta name="theme-color" content="#f1efe8">/);
+  assert.match(injectSeoHead(html, "bidception", "/"), /<meta name="theme-color" content="#f3f3f5">/);
+  // exactly one theme-color meta after injection
+  const out = injectSeoHead(html, "bidception", "/");
+  assert.equal((out.match(/theme-color/g) ?? []).length, 1);
+  // 404 head carries the product color too
+  assert.match(notFoundHeadTags("culturebid"), /<meta name="theme-color" content="#f1efe8">/);
 });
 
 test("entity meta wins over the host fallback and escapes user content (RC2, C3)", () => {
@@ -211,6 +229,22 @@ test("truncateWords cuts at word boundaries without an ellipsis", () => {
   assert.equal(truncateWords("short", 40), "short");
   assert.equal(truncateWords("alpha beta gamma delta", 11), "alpha beta");
   assert.equal(truncateWords("   spaced   out    ", 20), "spaced out");
+});
+
+test("security.txt is host-aware, standards-shaped, and expires ~90 days out (RC3, S-10.6)", () => {
+  for (const key of ["bidthrone", "foundersbid", "culturebid", "bidception"] as const) {
+    const txt = securityTxtFor(key, new Date("2026-08-28T00:00:00Z"));
+    const apex = key === "culturebid" ? "www.culturebid.lol" : `${key}.lol`;
+    assert.ok(txt.includes(`Contact: mailto:contact@${key}.lol`), `${key}: existing contact channel only`);
+    assert.ok(txt.includes(`Policy: https://${apex}/terms`), `${key}: policy on the reachable origin`);
+    assert.ok(txt.includes(`Canonical: https://${apex}/.well-known/security.txt`));
+    assert.ok(txt.includes("Preferred-Languages: en"));
+    // 90-day expiry from the fixed now:
+    assert.ok(txt.includes("Expires: 2026-11-26T00:00:00.000Z"), `${key}: expiry +90d`);
+    // no invented security mailbox, no placeholder fields
+    assert.ok(!/security@/i.test(txt));
+    assert.ok(!/[<>]/.test(txt.split("\n")[0].replace("mailto:", "")), "contact is a clean mailto");
+  }
 });
 
 test("IndexNow key is a stable committed GUID (RC2, C10)", () => {

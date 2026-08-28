@@ -38,6 +38,67 @@ export const PROJECT_STATES = [
 ] as const;
 export type ProjectState = (typeof PROJECT_STATES)[number];
 
+export const GRAVEYARD_LISTING_STATES = [
+  "DRAFT",
+  "LISTED",
+  "UNDER_OFFER",
+  "TRANSFERRED",
+  "WITHDRAWN",
+] as const;
+export type GraveyardListingState = (typeof GRAVEYARD_LISTING_STATES)[number];
+
+export const GRAVEYARD_OFFER_STATES = ["PENDING", "ACCEPTED", "REJECTED", "WITHDRAWN"] as const;
+export type GraveyardOfferState = (typeof GRAVEYARD_OFFER_STATES)[number];
+
+/** Graveyard listing transitions (DB check constraint + engine guards). */
+export const GRAVEYARD_LISTING_TRANSITIONS: Record<GraveyardListingState, GraveyardListingState[]> = {
+  DRAFT: ["LISTED", "WITHDRAWN"],
+  LISTED: ["UNDER_OFFER", "TRANSFERRED", "WITHDRAWN"],
+  UNDER_OFFER: ["TRANSFERRED"],
+  TRANSFERRED: [],
+  WITHDRAWN: [],
+};
+
+/**
+ * Pure control matrix for the graveyard detail page (RC3, S-7.1). The UI
+ * renders ONLY what this returns, so a missing `status` column can never
+ * again make the page's buttons vanish or misbehave. `viewerOfferStatus` is
+ * the viewer's own offer status (null when they have none or are the seller).
+ * Lives here (pure, client-safe) next to the transition map it mirrors.
+ */
+export function graveyardControls(input: {
+  status: string;
+  isSeller: boolean;
+  viewerOfferStatus: string | null;
+}): {
+  canPublish: boolean;
+  canMarkTransferred: boolean;
+  canWithdraw: boolean;
+  canOffer: boolean;
+  canRetractOffer: boolean;
+  canDecideOffers: boolean;
+} {
+  const s = input.status;
+  return {
+    // DRAFT only — matches publishListing's claim guard.
+    canPublish: input.isSeller && s === "DRAFT",
+    // The handover is attested once an offer is accepted (the engine also
+    // allows TRANSFERRED from LISTED, but the UI only surfaces it where a
+    // transfer is in flight).
+    canMarkTransferred: input.isSeller && s === "UNDER_OFFER",
+    // withdrawListing's guard is exactly (DRAFT, LISTED): do not offer the
+    // action in UNDER_OFFER where the engine refuses it.
+    canWithdraw: input.isSeller && (s === "DRAFT" || s === "LISTED"),
+    // Buyers can open an offer only while LISTED and only without a live one.
+    canOffer: !input.isSeller && s === "LISTED" && input.viewerOfferStatus == null,
+    // Matches retractOffer's guard exactly: only the owner of a PENDING offer
+    // retracts, regardless of listing status.
+    canRetractOffer: !input.isSeller && input.viewerOfferStatus === "PENDING",
+    // Seller may accept/reject pending offers while the listing is live.
+    canDecideOffers: input.isSeller && (s === "LISTED" || s === "UNDER_OFFER"),
+  };
+}
+
 export const APPLICATION_STATES = ["PENDING", "APPROVED", "REJECTED", "WITHDRAWN"] as const;
 export type ApplicationState = (typeof APPLICATION_STATES)[number];
 

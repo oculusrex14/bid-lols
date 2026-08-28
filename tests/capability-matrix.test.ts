@@ -66,6 +66,7 @@ test("R4: path → capability classification", () => {
   assert.equal(capabilityForPath("/bidception/pwr_x"), "bidception");
   assert.equal(capabilityForPath("/leaderboards"), "reputation");
   assert.equal(capabilityForPath("/bid-index"), "reputation");
+  assert.equal(capabilityForPath("/post"), "bounties", "RC3: Post work chooser rides the bounties capability");
   assert.equal(capabilityForPath("/profile/alpha"), null, "profiles are shared");
   assert.equal(capabilityForPath("/signin"), null);
   assert.equal(capabilityForPath("/terms"), null);
@@ -80,12 +81,16 @@ test("R4: READ redirects (host × route matrix)", () => {
   assert.equal(readRedirectFor("culturebid", "/projects"), "https://foundersbid.lol/projects");
   assert.equal(readRedirectFor("culturebid", "/graveyard"), "https://foundersbid.lol/graveyard");
   assert.equal(readRedirectFor("bidception", "/bid-index"), "https://bidthrone.lol/bid-index");
+  assert.equal(readRedirectFor("bidthrone", "/post"), "https://foundersbid.lol/post");
+  assert.equal(readRedirectFor("bidception", "/post"), "https://foundersbid.lol/post");
   // right host -> no redirect
   assert.equal(readRedirectFor("foundersbid", "/bounties"), null);
   assert.equal(readRedirectFor("foundersbid", "/graveyard"), null);
   assert.equal(readRedirectFor("culturebid", "/bounties"), null, "creative bounties are culturebid's own");
   assert.equal(readRedirectFor("bidception", "/bidception/new"), null);
   assert.equal(readRedirectFor("bidthrone", "/leaderboards"), null);
+  assert.equal(readRedirectFor("foundersbid", "/post"), null);
+  assert.equal(readRedirectFor("culturebid", "/post"), null, "culturebid serves /post; its loader redirects to its own create form");
   // shared paths never redirect
   assert.equal(readRedirectFor("bidthrone", "/signin"), null);
   assert.equal(readRedirectFor("culturebid", "/profile/alpha"), null);

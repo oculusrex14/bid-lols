@@ -34,7 +34,10 @@ export async function getShellContext(): Promise<ShellContext> {
     try {
       const { getOrCreateProfile } = await import("@/lib/profiles.server");
       handle = (await getOrCreateProfile(session.user.id)).handle ?? null;
-    } catch {
+    } catch (err) {
+      // RC3, S-10.1: a missing handle degrades display only (signed-in
+      // without a visible handle); log so the fault is not silent.
+      console.error("[shell-context] profile handle lookup failed:", err);
       handle = null;
     }
     return {
@@ -46,7 +49,11 @@ export async function getShellContext(): Promise<ShellContext> {
         role: session.user.role ?? "user",
       },
     };
-  } catch {
+  } catch (err) {
+    // RC3, S-10.1: shell navigation may degrade to anonymous (no PII either
+    // way), but the failure must be logged — silent nulls hid a whole class
+    // of infrastructure faults in RC2 and earlier.
+    console.error("[shell-context] shell context degraded to anonymous:", err);
     return { me: null };
   }
 }

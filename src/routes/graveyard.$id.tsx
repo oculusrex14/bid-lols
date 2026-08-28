@@ -10,43 +10,46 @@ import { JsonLd } from "@/components/seo";
 import { breadcrumbSchema } from "@/lib/schema";
 import { getSession } from "@/lib/authz";
 import { entityRedirectFor } from "@/lib/marketplace/capabilities.server";
-import { submitOfferFn, decideOfferFn, retractOfferFn, markTransferredFn, withdrawListingFn, publishListingFn } from "@/lib/marketplace/graveyard";
+import {
+  submitOfferFn,
+  decideOfferFn,
+  retractOfferFn,
+  markTransferredFn,
+  withdrawListingFn,
+  publishListingFn,
+} from "@/lib/marketplace/graveyard";
+import { graveyardControls } from "@/lib/marketplace/state";
+import { statusLabel } from "@/lib/marketplace/status-labels";
 
 /**
  * /graveyard/:id — asset detail (Phase 01B, FR-2/FR-3). Offers and authority
  * context resolve server-side; transactions complete directly between parties.
+ *
+ * RC3 (S-7.1): the listing row comes from `getGraveyardDetail`, whose type
+ * equals its SQL projection — `status` is selected, so the control matrix
+ * (`graveyardControls`) works on real data. Screenshots are stored but not
+ * rendered (CSP: no remote img-src; see RC3 spec, 7.2).
  */
 const loadDetail = createServerFn({ method: "GET" })
   .validator((input: { id: string }) => z.object({ id: z.string().trim().min(4).max(64) }).parse(input))
   .handler(async ({ data }) => {
-    const sql = await getSql();
     const session = await getSession();
-    const listing = (
-      await sql.query<{
-        id: string; product: string; seller_user_id: string; title: string; description: string;
-        reason_of_death: string; includes: string[]; technology: string[];
-        liabilities: string; history_self_reported: string;
-        asking_price_minor: number | null; currency: string; status: string;
-      }>(
-        `select id, product, seller_user_id, title, description, reason_of_death, includes,
-                technology, screenshots, liabilities, history_self_reported,
-                asking_price_minor, currency, created_at
-         from graveyard_listings where id = $1`,
-        [data.id],
-      )
-    )[0];
+    // Server-only module: dynamic import keeps the DB chain out of the
+    // client bundle (import-protection gate).
+    const { getGraveyardDetail } = await import("@/lib/marketplace/graveyard.server");
+    const listing = await getGraveyardDetail(data.id);
     if (!listing) throw notFound();
     const product = await currentProductKey();
     const entityUrl = entityRedirectFor(listing.product, product, `/graveyard/${data.id}`);
     if (entityUrl) throw redirect({ to: entityUrl });
 
+    const isSeller = Boolean(session && listing.seller_user_id === session.user.id);
     let offers: Array<{
       id: string; buyer_user_id: string; amount_minor: number; message: string;
       status: string; buyer_name: string | null; buyer_handle: string | null;
     }> = [];
     if (session) {
-      const isSeller = listing.seller_user_id === session.user.id;
-      offers = await sql.query(
+      offers = await (await getSql()).query(
         `select o.id, o.buyer_user_id, o.amount_minor, o.message, o.status,
                 u.display_name as "buyer_name", pr.handle as "buyer_handle"
          from graveyard_offers o
@@ -63,7 +66,7 @@ const loadDetail = createServerFn({ method: "GET" })
       me: (await (await import("@/lib/shell-context")).getShellContext()).me,
       listing,
       offers,
-      isSeller: Boolean(session && listing.seller_user_id === session.user.id),
+      isSeller,
       viewerUserId: session?.user.id ?? null,
     };
   });
@@ -101,6 +104,11 @@ function GraveyardDetailBody({ data }: { data: NonNullable<Awaited<ReturnType<ty
 
   const status = l.status;
   const viewerOffer = data.offers.find((o) => o.buyer_user_id === data.viewerUserId) ?? null;
+  const controls = graveyardControls({
+    status,
+    isSeller: data.isSeller,
+    viewerOfferStatus: viewerOffer?.status ?? null,
+  });
 
   return (
     <ProductShell site={data.product} me={data.me}>
@@ -117,7 +125,7 @@ function GraveyardDetailBody({ data }: { data: NonNullable<Awaited<ReturnType<ty
 
         <div className="mt-4 flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0">
-            <p className="text-xs font-medium uppercase tracking-kicker text-subtle">{status}</p>
+            <p className="text-xs font-medium uppercase tracking-kicker text-subtle">{statusLabel(status)}</p>
             <h1 className="mt-1 font-display-site text-2xl tracking-tight sm:text-3xl">{l.title}</h1>
           </div>
           <div className="text-right">
@@ -170,7 +178,7 @@ function GraveyardDetailBody({ data }: { data: NonNullable<Awaited<ReturnType<ty
           <div className="space-y-6">
             {data.isSeller ? (
               <>
-                {status === "DRAFT" ? (
+                {controls.canPublish ? (
                   <section className="rounded-lg border-2 border-accent/40 bg-raised/40 p-4">
                     <p className="text-sm font-medium">Publish this listing</p>
                     <button
@@ -186,7 +194,7 @@ function GraveyardDetailBody({ data }: { data: NonNullable<Awaited<ReturnType<ty
                   </section>
                 ) : null}
 
-                {status === "UNDER_OFFER" ? (
+                {controls.canMarkTransferred ? (
                   <button
                     type="button"
                     disabled={busy}
@@ -199,7 +207,7 @@ function GraveyardDetailBody({ data }: { data: NonNullable<Awaited<ReturnType<ty
                   </button>
                 ) : null}
 
-                {["DRAFT", "LISTED", "UNDER_OFFER"].includes(status) ? (
+                {controls.canWithdraw ? (
                   <button
                     type="button"
                     disabled={busy}
@@ -214,7 +222,7 @@ function GraveyardDetailBody({ data }: { data: NonNullable<Awaited<ReturnType<ty
               </>
             ) : null}
 
-            {!data.isSeller && status === "LISTED" && !viewerOffer ? (
+            {controls.canOffer ? (
               <OfferBox listingId={String(l.id)} onDone={(m) => setMessage(m)} />
             ) : null}
 
@@ -222,9 +230,9 @@ function GraveyardDetailBody({ data }: { data: NonNullable<Awaited<ReturnType<ty
               <section className="rounded-lg border-2 border-fg/15 bg-surface p-5" data-testid="my-offer">
                 <h2 className="text-xs font-medium uppercase tracking-kicker text-subtle">Your offer</h2>
                 <p className="mt-2 text-sm">
-                  {formatMinor(Number(viewerOffer.amount_minor), l.currency)} · {viewerOffer.status}
+                  {formatMinor(Number(viewerOffer.amount_minor), l.currency)} · {statusLabel(viewerOffer.status)}
                 </p>
-                {viewerOffer.status === "PENDING" ? (
+                {controls.canRetractOffer ? (
                   <button
                     type="button"
                     disabled={busy}
@@ -246,11 +254,11 @@ function GraveyardDetailBody({ data }: { data: NonNullable<Awaited<ReturnType<ty
                   {data.offers.map((o) => (
                     <li key={o.id} className="rounded-md border-2 border-fg/10 p-3 text-sm">
                       <div className="flex flex-wrap items-baseline justify-between gap-2">
-                        <p className="font-medium">{formatMinor(Number(o.amount_minor), l.currency)} · {o.status}</p>
+                        <p className="font-medium">{formatMinor(Number(o.amount_minor), l.currency)} · {statusLabel(o.status)}</p>
                         <p className="text-xs text-subtle">{o.buyer_name ?? "member"}{o.buyer_handle ? ` (@${o.buyer_handle})` : ""}</p>
                       </div>
                       {o.message ? <p className="mt-1 text-muted">{o.message}</p> : null}
-                      {o.status === "PENDING" && ["LISTED", "UNDER_OFFER"].includes(status) ? (
+                      {o.status === "PENDING" && controls.canDecideOffers ? (
                         <div className="mt-2 flex gap-2">
                           <button
                             type="button"

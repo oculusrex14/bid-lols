@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { createFileRoute } from "@tanstack/react-router";
-import { verifyCashfreeWebhook } from "@/lib/cashfree";
+import { verifyCashfreeWebhook } from "@/lib/payments/provider";
 
 /**
  * Cashfree webhook — the ONLY settlement entry point (Phase 00, S-2).

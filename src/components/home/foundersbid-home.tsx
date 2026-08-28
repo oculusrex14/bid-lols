@@ -41,7 +41,7 @@ export function FoundersbidHome({ me }: { me?: ShellMe | null }) {
         </p>
         <div className="mt-8 flex flex-wrap items-center gap-3">
           <a
-            href="/bounties/new"
+            href="/post"
             className="inline-flex h-12 items-center rounded-md bg-accent px-5 text-sm font-semibold text-accent-fg"
           >
             Post work

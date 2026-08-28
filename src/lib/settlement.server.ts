@@ -1,6 +1,6 @@
 import { getSql, type Sql } from "@/lib/db.server";
 import { makeId } from "@/lib/ids";
-import { cashfreeOrderIsPaid } from "@/lib/cashfree";
+import { cashfreeOrderIsPaid } from "@/lib/payments/provider";
 import { clampSocials } from "@/lib/socials";
 import { clampValues } from "@/lib/values";
 

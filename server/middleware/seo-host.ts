@@ -42,6 +42,7 @@ import {
   normalizeHost,
   productForHost,
   robotsTextFor,
+  securityTxtFor,
   sitemapXml,
   truncateWords,
   wwwRedirectFor,
@@ -348,6 +349,16 @@ export default async function seoHostMiddleware(
 
   if (path === "/robots.txt") {
     return new Response(robotsTextFor(productKey), {
+      headers: {
+        "content-type": "text/plain; charset=utf-8",
+        "cache-control": "public, max-age=3600",
+      },
+    });
+  }
+
+  // Security disclosure (RC3, S-10.6): host-aware contact + policy + expiry.
+  if (path === "/.well-known/security.txt") {
+    return new Response(securityTxtFor(productKey), {
       headers: {
         "content-type": "text/plain; charset=utf-8",
         "cache-control": "public, max-age=3600",

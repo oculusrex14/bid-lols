@@ -30,7 +30,10 @@ export const Route = createRootRoute({
         content:
           "The Bid Network is an internet bounty network across foundersbid.lol, culturebid.lol, and bidception.lol, with bidthrone.lol as its reputation and discovery layer.",
       },
-      { name: "theme-color", content: "#f4efe4" },
+      // Umbrella default only. On deployed runtimes the host-aware SEO
+      // middleware replaces this per product (RC3, S-38); in dev it stands
+      // as the bidthrone (default product) light color.
+      { name: "theme-color", content: "#f3efe6" },
     ],
     links: [
       { rel: "icon", type: "image/svg+xml", href: "/favicon.svg" },

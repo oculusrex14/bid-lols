@@ -42,6 +42,29 @@ export const PRODUCT_KEYS = [
  * @property {string} contactEmail
  */
 
+/**
+ * Browser chrome color (RC3, S-38). The SSR value is the product's LIGHT
+ * page background — it must never be the umbrella default on every domain.
+ * The ProductShell swaps the meta to the dark value when the user's mode is
+ * dark (client-side, after hydration; the boot script keeps the SSR value so
+ * there is no flash of the wrong product color).
+ * @type {Record<string, { light: string; dark: string }>}
+ */
+export const THEME_COLORS = {
+  bidthrone: { light: "#f3efe6", dark: "#0a0a0a" },
+  foundersbid: { light: "#f4efe4", dark: "#1a1612" },
+  culturebid: { light: "#f1efe8", dark: "#141613" },
+  bidception: { light: "#f3f3f5", dark: "#09090b" },
+};
+
+/**
+ * @param {string} key
+ * @returns {string} light theme-color for the product
+ */
+export function themeColorFor(key) {
+  return (THEME_COLORS[key] ?? THEME_COLORS[DEFAULT_PRODUCT]).light;
+}
+
 /** @type {Record<string, Product>} */
 export const PRODUCTS = {
   bidthrone: {
@@ -266,6 +289,10 @@ export function canonicalProductForCapability(capability) {
  */
 export function capabilityForPath(pathname) {
   if (pathname === "/bounties" || pathname.startsWith("/bounties/")) return "bounties";
+  // RC3, S-7.3: the Post work chooser is a bounties-surface page (served by
+  // the canonical bounties+projects product; hosts without it get the
+  // capability read-redirect; culturebid handles it inside its loader).
+  if (pathname === "/post") return "bounties";
   if (pathname === "/projects" || pathname.startsWith("/projects/")) return "projects";
   if (pathname === "/graveyard" || pathname.startsWith("/graveyard/")) return "graveyard";
   if (pathname === "/bidception" || pathname.startsWith("/bidception/")) return "bidception";
@@ -306,6 +333,7 @@ const PATH_TITLES = {
   "/admin": "Admin",
   "/projects": "Open projects",
   "/blog": "Blog",
+  "/post": "Post work",
 };
 
 /** Product-aware suffix for /bounties (FoundersBid vs CultureBid surface). */
@@ -324,6 +352,8 @@ const PRIVATE_PATHS = new Set([
   // threshold is met per category, which the static middleware cannot know,
   // so the aggregate page itself stays noindex; no deal-level data exposed.
   "/bid-index",
+  // RC3, S-7.3: thin chooser page, useful but not search content.
+  "/post",
 ]);
 
 /**
@@ -473,6 +503,7 @@ export function renderHeadTags(productKey, m) {
   return [
     `<title>${esc(m.title)}</title>`,
     `<meta name="robots" content="${m.robots}">`,
+    `<meta name="theme-color" content="${themeColorFor(productKey)}">`,
     `<meta name="description" content="${esc(m.description)}">`,
     `<link rel="canonical" href="${esc(m.canonical)}">`,
     `<meta property="og:title" content="${esc(m.ogTitle)}">`,
@@ -555,6 +586,7 @@ export function injectSeoHead(html, productKey, pathname, status = 200, entityMe
     /<link\s+rel="canonical"\s+href="[^"]*"[^>]*\/?>/g,
     /<meta\s+property="og:[^"]*"\s+content="[^"]*"[^>]*\/?>/g,
     /<meta\s+name="robots"\s+content="[^"]*"[^>]*\/?>/g,
+    /<meta\s+name="theme-color"\s+content="[^"]*"[^>]*\/?>/g,
   ];
   for (const re of strip) out = out.replace(re, "");
   const tags =
@@ -645,6 +677,7 @@ export function notFoundHeadTags(productKey) {
     `<title>Page not found: ${esc(p.name)}</title>`,
     `<meta name="robots" content="noindex,follow">`,
     `<meta name="description" content="This page does not exist on ${esc(p.apex)}.">`,
+    `<meta name="theme-color" content="${themeColorFor(productKey)}">`,
   ].join("\n");
 }
 
@@ -677,4 +710,28 @@ export const INDEXNOW_KEY = "007a94fe-3404-482d-b88c-cef5d087511c";
  */
 export function isIndexnowKeyPath(pathname) {
   return pathname === `/${INDEXNOW_KEY}key.txt`;
+}
+
+/**
+ * /.well-known/security.txt (RC3, S-10.6). Host-aware: each domain names its
+ * OWN existing contact channel (the product contact address from the registry
+ * — no invented security mailbox) and its own canonical URL. Expires is 90
+ * days out, computed per request so the file never ships stale-by-design.
+ * @param {string} productKey
+ * @param {Date} [now]
+ * @returns {string}
+ */
+export function securityTxtFor(productKey, now = new Date()) {
+  const p = product(productKey);
+  // Canonical = the REACHABLE origin (www for culturebid while its apex DNS
+  // is broken — same rule as the sitemaps, RC2 C2).
+  const origin = seoOrigin(productKey);
+  const expires = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000);
+  return [
+    "Contact: mailto:" + p.contactEmail,
+    "Policy: " + origin + "/terms",
+    "Expires: " + expires.toISOString(),
+    "Preferred-Languages: en",
+    "Canonical: " + origin + "/.well-known/security.txt",
+  ].join("\n") + "\n";
 }

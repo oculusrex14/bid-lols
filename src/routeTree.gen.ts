@@ -15,6 +15,7 @@ import { Route as BidIndexRouteImport } from './routes/bid-index'
 import { Route as ContactRouteImport } from './routes/contact'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as LeaderboardsRouteImport } from './routes/leaderboards'
+import { Route as PostRouteImport } from './routes/post'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as RefundRouteImport } from './routes/refund'
 import { Route as SigninRouteImport } from './routes/signin'
@@ -71,6 +72,11 @@ const DashboardRoute = DashboardRouteImport.update({
 const LeaderboardsRoute = LeaderboardsRouteImport.update({
   id: '/leaderboards',
   path: '/leaderboards',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PostRoute = PostRouteImport.update({
+  id: '/post',
+  path: '/post',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PrivacyRoute = PrivacyRouteImport.update({
@@ -216,6 +222,7 @@ export interface FileRoutesByFullPath {
   '/contact': typeof ContactRoute
   '/dashboard': typeof DashboardRoute
   '/leaderboards': typeof LeaderboardsRoute
+  '/post': typeof PostRoute
   '/privacy': typeof PrivacyRoute
   '/refund': typeof RefundRoute
   '/signin': typeof SigninRoute
@@ -251,6 +258,7 @@ export interface FileRoutesByTo {
   '/contact': typeof ContactRoute
   '/dashboard': typeof DashboardRoute
   '/leaderboards': typeof LeaderboardsRoute
+  '/post': typeof PostRoute
   '/privacy': typeof PrivacyRoute
   '/refund': typeof RefundRoute
   '/signin': typeof SigninRoute
@@ -287,6 +295,7 @@ export interface FileRoutesById {
   '/contact': typeof ContactRoute
   '/dashboard': typeof DashboardRoute
   '/leaderboards': typeof LeaderboardsRoute
+  '/post': typeof PostRoute
   '/privacy': typeof PrivacyRoute
   '/refund': typeof RefundRoute
   '/signin': typeof SigninRoute
@@ -324,6 +333,7 @@ export interface FileRouteTypes {
     | '/contact'
     | '/dashboard'
     | '/leaderboards'
+    | '/post'
     | '/privacy'
     | '/refund'
     | '/signin'
@@ -359,6 +369,7 @@ export interface FileRouteTypes {
     | '/contact'
     | '/dashboard'
     | '/leaderboards'
+    | '/post'
     | '/privacy'
     | '/refund'
     | '/signin'
@@ -394,6 +405,7 @@ export interface FileRouteTypes {
     | '/contact'
     | '/dashboard'
     | '/leaderboards'
+    | '/post'
     | '/privacy'
     | '/refund'
     | '/signin'
@@ -430,6 +442,7 @@ export interface RootRouteChildren {
   ContactRoute: typeof ContactRoute
   DashboardRoute: typeof DashboardRoute
   LeaderboardsRoute: typeof LeaderboardsRoute
+  PostRoute: typeof PostRoute
   PrivacyRoute: typeof PrivacyRoute
   RefundRoute: typeof RefundRoute
   SigninRoute: typeof SigninRoute
@@ -501,6 +514,13 @@ declare module '@tanstack/react-router' {
       path: '/leaderboards'
       fullPath: '/leaderboards'
       preLoaderRoute: typeof LeaderboardsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/post': {
+      id: '/post'
+      path: '/post'
+      fullPath: '/post'
+      preLoaderRoute: typeof PostRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/privacy': {
@@ -702,6 +722,7 @@ const rootRouteChildren: RootRouteChildren = {
   ContactRoute: ContactRoute,
   DashboardRoute: DashboardRoute,
   LeaderboardsRoute: LeaderboardsRoute,
+  PostRoute: PostRoute,
   PrivacyRoute: PrivacyRoute,
   RefundRoute: RefundRoute,
   SigninRoute: SigninRoute,

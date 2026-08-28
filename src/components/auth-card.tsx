@@ -73,8 +73,8 @@ export function AuthCard({
       </h1>
       <p className="mt-2 text-sm leading-relaxed text-muted">
         {isSignup
-          ? "One account for every Bid Network marketplace. No payment is required to create it."
-          : "Welcome back. Your session is a secure, httpOnly cookie."}
+          ? "Your Bid Network account works across all four marketplaces. You may be asked to sign in again when moving between domains. No payment is required to create it."
+          : "Welcome back. Your session is a secure, httpOnly cookie. Moving between domains may ask you to sign in again."}
       </p>
 
       <form

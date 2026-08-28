@@ -31,6 +31,40 @@ export type ListingRow = {
   status: string;
 };
 
+/**
+ * Detail-page projection (RC3, S-7.1). The row type MUST equal the SQL
+ * projection exactly: RC3 ships the regression for the bug where `status`
+ * was claimed by the type but not selected by the query, which silently
+ * disabled every status-dependent control on the detail page.
+ */
+export type GraveyardDetailRow = {
+  id: string;
+  product: string;
+  seller_user_id: string;
+  title: string;
+  description: string;
+  reason_of_death: string;
+  includes: string[];
+  technology: string[];
+  liabilities: string;
+  history_self_reported: string;
+  asking_price_minor: number | null;
+  currency: string;
+  status: string;
+};
+
+export async function getGraveyardDetail(listingId: string): Promise<GraveyardDetailRow | null> {
+  const sql = await getSql();
+  const rows = await sql.query<GraveyardDetailRow>(
+    `select id, product, seller_user_id, title, description, reason_of_death,
+            includes, technology, liabilities, history_self_reported,
+            asking_price_minor, currency, status
+     from graveyard_listings where id = $1`,
+    [listingId],
+  );
+  return rows[0] ?? null;
+}
+
 function slugFor(title: string, seed: string): string {
   const base = title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 60);
   return `${base || "asset"}-${seed.slice(-6)}`;

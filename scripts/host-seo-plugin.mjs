@@ -19,6 +19,7 @@ import {
   normalizeHost,
   productForHost,
   robotsTextFor,
+  securityTxtFor,
   sitemapXml,
   wwwRedirectFor,
   capabilityReadRedirectFor,
@@ -83,11 +84,15 @@ export function hostSeoDevPlugin() {
         const method = String(req.method ?? "GET").toUpperCase();
         if (method !== "GET") return next();
         const path = pathOf(req);
-        if (path === "/robots.txt" || path === "/sitemap.xml") {
+        if (path === "/robots.txt" || path === "/sitemap.xml" || path === "/.well-known/security.txt") {
           const productKey =
             productForHost(normalizeHost(requestHost(req))) ?? DEFAULT_PRODUCT;
           if (path === "/robots.txt") {
             return send(res, 200, "text/plain; charset=utf-8", robotsTextFor(productKey));
+          }
+          if (path === "/.well-known/security.txt") {
+            // RC3, S-10.6 — same host-aware body as the Nitro middleware.
+            return send(res, 200, "text/plain; charset=utf-8", securityTxtFor(productKey));
           }
           // Host-aware inventory: this host's own URLs only (Phase 00.5,
           // AC-6.2) + evergreen routes (RC2, C7). Dev omits live entities and

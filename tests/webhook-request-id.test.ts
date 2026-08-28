@@ -104,3 +104,23 @@ test("stale timestamp is rejected fail-closed (id-matched 401)", async () => {
   assert.equal(json.code, "invalid_signature");
   assert.equal(res.headers.get("x-request-id"), json.requestId);
 });
+
+test("RC3 battery #4: valid signature but malformed JSON -> 400 invalid_json, id-matched", async () => {
+  const body = '{"type":"PAYMENT_SUCCESS","data": oops-not-json';
+  const ts = String(Math.floor(Date.now() / 1000));
+  const res = await handler({ request: signedRequest(body, ts, sign(body, ts)) });
+  assert.equal(res.status, 400, "malformed JSON is a client error, not 500/200");
+  const json = JSON.parse(await res.text()) as { code: string; requestId: string };
+  assert.equal(json.code, "invalid_json");
+  assert.equal(res.headers.get("x-request-id"), json.requestId);
+});
+
+test("RC3 battery #4b: paid event without an order id -> 400 missing_order_id, id-matched", async () => {
+  const body = JSON.stringify({ type: "PAYMENT_SUCCESS", data: { payment: { payment_status: "SUCCESS" } } });
+  const ts = String(Math.floor(Date.now() / 1000));
+  const res = await handler({ request: signedRequest(body, ts, sign(body, ts)) });
+  assert.equal(res.status, 400);
+  const json = JSON.parse(await res.text()) as { code: string; requestId: string };
+  assert.equal(json.code, "missing_order_id");
+  assert.equal(res.headers.get("x-request-id"), json.requestId);
+});

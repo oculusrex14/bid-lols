@@ -128,6 +128,53 @@ test("AC-4(f): duplicate event after settlement -> 200-equivalent, no second eff
   }
 });
 
+test("RC3 battery #6: paid event settles once — claim, effect, audit, paid_at", async () => {
+  const orderId = await insertPendingBidOrder({
+    targetBidCents: 3000,
+    url: "https://example.test/solo",
+    urlKey: "example.test/solo",
+  });
+  const listingsBefore = (await listingRows("founders")).length;
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = providerStub("PAID");
+  try {
+    const result = await settleOrder(orderId);
+    assert.equal(result.ok, true, "a verified paid event settles");
+    if (result.ok) assert.equal(result.alreadySettled, false);
+    const sql = await getSql();
+    const order = await sql.query<{ status: string }>(`select status from orders where id = $1`, [orderId]);
+    assert.equal(order[0]?.status, "paid");
+    assert.equal((await listingRows("founders")).length, listingsBefore + 1, "bid effect applied exactly once");
+    assert.equal((await auditRows(orderId)).length, 1, "audited exactly once");
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+});
+
+test("RC3 battery #10: effect failure rolls back the claim and stays retryable", async () => {
+  // A 'bid' order whose listing_id points at a missing listing: the effect
+  // pass throws inside the transaction, so the claim must roll back too.
+  const sql = await getSql();
+  const orderId = makeId("ord");
+  await sql.query(
+    `insert into orders (id, site, kind, amount_cents, status, listing_id, payload)
+     values ($1, 'founders', 'bid', 2000, 'pending', 'lst_missing_missing', $2::jsonb)`,
+    [orderId, JSON.stringify({ targetBidCents: 2000, url: "https://example.test/fail", urlKey: "example.test/fail" })],
+  );
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = providerStub("PAID");
+  try {
+    const result = await settleOrder(orderId);
+    assert.equal(result.ok, false);
+    if (!result.ok) assert.equal(result.code, "effect_failed");
+    const row = await sql.query<{ status: string }>(`select status from orders where id = $1`, [orderId]);
+    assert.equal(row[0]?.status, "pending", "the claim rolled back with the failed effect");
+    assert.equal((await auditRows(orderId)).length, 0, "no audit row for a failed effect pass");
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+});
+
 test("unknown order -> order_not_found (4xx, no settlement)", async () => {
   const result = await settleOrder(makeId("ord"));
   assert.equal(result.ok, false);

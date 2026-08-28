@@ -224,7 +224,33 @@ export class CashfreeProvider implements PaymentProvider {
 
 export const WEBHOOK_MAX_AGE_MS = 15 * 60 * 1000;
 
-/** Re-exported from the Phase 00 rail (fail-closed, replay-windowed). */
+/**
+ * RC3 (S-10.2): legacy-order re-verification, single source. Settlement of
+ * the four PENDING Phase 00 orders (docs/ops/LEGACY_ORDERS.md) re-queries
+ * the provider before claiming; this delegates to the provider class so
+ * credential lookup, API host, retry shape and "PAID" interpretation exist
+ * in exactly ONE place. (The Phase 00 session-creation rail that used the
+ * USD FX layer had zero consumers after Phase 00 and was removed.)
+ */
+export async function cashfreeOrderIsPaid(orderId: string): Promise<boolean> {
+  return new CashfreeProvider().isOrderPaid(orderId);
+}
+
+/**
+ * Cashfree webhook signature verification — the ONLY implementation
+ * (RC3, S-10.2 consolidated the Phase 00 rail into this module).
+ * **Fails closed** — every misconfigured or unprovable case returns `false`:
+ *
+ *  - no dedicated `CASHFREE_WEBHOOK_SECRET` configured -> `false`
+ *    (the Cashfree client secret is deliberately NOT a fallback: a leaked or
+ *    rotated client secret must never be able to impersonate the webhook);
+ *  - missing signature or timestamp -> `false`;
+ *  - timestamp outside ±15 minutes of now -> `false` (replay window);
+ *  - signature mismatch (constant-time compare) -> `false`.
+ *
+ * Signature scheme (unchanged since Phase 00): base64 HMAC-SHA256 over
+ * `timestamp + rawBody`, keyed with the webhook secret.
+ */
 export function verifyCashfreeWebhook(opts: {
   signature: string | null;
   timestamp: string | null;

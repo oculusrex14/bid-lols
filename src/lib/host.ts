@@ -7,6 +7,8 @@ import {
   pageTitleFor,
   productForHost,
   seoOrigin,
+  themeColorFor,
+  THEME_COLORS,
   truncateWords,
   evergreenPaths,
 } from "../../scripts/host-seo-shared.mjs";
@@ -33,6 +35,10 @@ export {
   seoOrigin,
   truncateWords,
   evergreenPaths,
+  /** RC3, S-38: product-aware browser chrome color (light value for SSR;
+   *  the shell swaps in the dark value after hydration). */
+  themeColorFor,
+  THEME_COLORS,
 };
 
 /** @param {ProductKey} key */
