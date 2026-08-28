@@ -6,6 +6,7 @@ import {
   linkOrigin,
   notFoundHeadTags,
   robotsMetaFor,
+  seoOrigin,
   sitemapXml,
   wwwRedirectFor,
 } from "../../scripts/host-seo-shared.mjs";
@@ -27,7 +28,7 @@ for (const key of PRODUCT_KEYS) {
 
   test(`${key}: sitemap inventories only its own home URL (AC-6.2, Phase 00.6)`, () => {
     const xml = sitemapXml(key);
-    assert.match(xml, new RegExp(`<loc>https://${apex}/</loc>`));
+    assert.match(xml, new RegExp(`<loc>${seoOrigin(key)}/</loc>`));
     assert.equal((xml.match(/<url>/g) ?? []).length, 1, "home only — legal pages are noindex");
     for (const path of ["/terms", "/privacy", "/refund", "/contact"]) {
       assert.ok(!xml.includes(`${apex}${path}`), `${key} sitemap still lists ${path}`);
@@ -39,11 +40,16 @@ for (const key of PRODUCT_KEYS) {
     }
   });
 
-  test(`${key}: sitemap lists live marketplace paths when provided (Phase 03)`, () => {
-    const xml = sitemapXml(key, ["/bounties/bnt_x", "/bidception/pwr_y"]);
-    assert.match(xml, new RegExp(`<loc>https://${apex}/bounties/bnt_x</loc>`));
-    assert.match(xml, new RegExp(`<loc>https://${apex}/bidception/pwr_y</loc>`));
+  test(`${key}: sitemap lists live marketplace paths when provided (RC2, C7)`, () => {
+    const origin = seoOrigin(key);
+    const xml = sitemapXml(key, [
+      { path: "/bounties/bnt_x", lastmod: "2026-08-28T00:00:00.000Z" },
+      { path: "/bidception/pwr_y", lastmod: null },
+    ]);
+    assert.match(xml, new RegExp(`<loc>${origin}/bounties/bnt_x</loc>`));
+    assert.match(xml, new RegExp(`<loc>${origin}/bidception/pwr_y</loc>`));
     assert.equal((xml.match(/<url>/g) ?? []).length, 3, "home + the provided paths");
+    assert.match(xml, /<lastmod>2026-08-28T00:00:00\.000Z<\/lastmod>/);
     for (const other of PRODUCT_KEYS) {
       if (other === key) continue;
       assert.ok(!xml.includes(product(other).apex), `${key} sitemap leaked ${other}'s origin`);
@@ -63,7 +69,7 @@ for (const key of PRODUCT_KEYS) {
   test(`${key}: not-found head is noindex,follow without canonical`, () => {
     const tags = notFoundHeadTags(key);
     assert.match(tags, /<meta name="robots" content="noindex,follow">/);
-    assert.match(tags, new RegExp(`Page not found — ${product(key).name.replace(/[.*+?^${}()|[\]\\]/g, "")}`));
+    assert.match(tags, new RegExp(`Page not found: ${product(key).name.replace(/[.*+?^${}()|[\]\\]/g, "")}`));
     assert.ok(!tags.includes("canonical"), "404 head must carry no canonical");
     assert.ok(!tags.includes("og:url"), "404 head must carry no og:url");
   });
@@ -76,9 +82,9 @@ for (const key of PRODUCT_KEYS) {
     assert.ok(!out.includes('content="index,follow"'), "old robots meta must be stripped");
   });
 
-  test(`${key}: 200 injection keeps canonical + host title`, () => {
+  test(`${key}: 200 injection keeps canonical (canonical origin) + host title`, () => {
     const out = injectSeoHead(SAMPLE_HTML, key, "/", 200);
-    assert.match(out, new RegExp(`<link rel="canonical" href="https://${apex}/">`));
+    assert.match(out, new RegExp(`<link rel="canonical" href="${seoOrigin(key)}/">`));
     assert.match(out, /<title>/);
     assert.ok(!out.includes("noindex"));
   });

@@ -10,10 +10,21 @@
  * Hermetic: the dev server runs PGLite, and the test drives the REAL browser
  * flows (signup -> verify seam -> create -> fund -> publish -> apply ->
  * submit -> judge) exactly as a person would.
+ *
+ * Host mapping (RC1 R4 / RC2): the dev server serves the app on the product
+ * apex hosts (allowedHosts in vite.config.ts). The suite points the browser
+ * at http://foundersbid.lol:8080 and maps the four apex names to 127.0.0.1,
+ * so the request Host header selects the product without the RC1 capability
+ * 301s escaping to the real (production) domains.
  */
 import { chromium } from "playwright";
 
-const BASE = process.env.E2E_BASE ?? "http://127.0.0.1:8080";
+const BASE = process.env.E2E_BASE ?? "http://foundersbid.lol:8080";
+// A single wildcard rule maps every .lol apex to loopback. (Multiple
+// explicit MAP entries hang the resolver on this stack: one of the names
+// falls through to public DNS and culturebid.lol apex is a broken 10.x
+// record, so the first navigation waits out the lookup.)
+const DEV_HOST_MAP = "MAP *.lol 127.0.0.1";
 const stamp = Date.now();
 const SPONSOR = { email: `e2e-sponsor-${stamp}@test.local`, password: "e2e-sponsor-pass-2026", name: "E2E Sponsor" };
 const BUILDER = { email: `e2e-builder-${stamp}@test.local`, password: "e2e-builder-pass-2026", name: "E2E Builder" };
@@ -121,7 +132,7 @@ async function main() {
     console.error("This E2E must run against a dev server started with PAYMENT_PROVIDER=fake.");
     process.exit(1);
   }
-  const browser = await chromium.launch();
+  const browser = await chromium.launch({ args: [`--host-resolver-rules=${DEV_HOST_MAP}`] });
   const context = await browser.newContext({ viewport: { width: 1280, height: 800 } });
   const page = await context.newPage();
   try {
