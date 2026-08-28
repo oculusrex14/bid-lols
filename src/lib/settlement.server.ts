@@ -120,40 +120,64 @@ async function applyBidEffect(sql: Sql, order: OrderRow): Promise<void> {
   if (!Number.isFinite(targetBidCents) || targetBidCents <= 0) {
     throw new Error(`Order ${order.id} bid effect has no valid target bid.`);
   }
-  const title = String(payload.title ?? "Listing");
-  const tagline = String(payload.tagline ?? "");
-  const team = String(payload.team ?? "");
-  const socialsIn = clampSocials(payload.socials);
-  const valuesIn = clampValues(payload.values);
-  const url = String(payload.url);
-  const key = String(payload.urlKey);
+  const fields = bidPayloadFields(order, payload);
+  // RC3 (S-11): the two shapes of the bid effect, extracted — the payment is
+  // authoritative in both; neither may silently drop a settled charge.
+  if (order.listing_id) await rebidEffect(sql, order, targetBidCents, fields);
+  else await newListingEffect(sql, order, targetBidCents, fields);
+}
 
-  if (order.listing_id) {
-    const current = await fetchListing(sql, order.listing_id);
-    if (!current) throw new Error(`Order ${order.id}: listing ${order.listing_id} is missing.`);
-    if (targetBidCents <= current.bid_cents) {
-      // The bid no longer outranks the listing. The payment is authoritative;
-      // never silently drop it — record it for ops forward-fix.
-      console.error(
-        `[settlement] order ${order.id} paid for target ${targetBidCents} which no longer outranks ${current.bid_cents}; listing untouched (forward-fix required).`,
-      );
-      return;
-    }
-    const socials = socialsIn.length > 0 ? socialsIn : clampSocials(current.socials);
-    const values = valuesIn.length > 0 ? valuesIn : clampValues(current.values);
-    await sql.query(
-      `update listings
-       set bid_cents = $1, title = $2, tagline = $3, team = $4, url = $5, url_key = $6,
-           socials = $7::jsonb, values = $8::jsonb, last_bid_at = now()
-       where id = $9`,
-      [targetBidCents, title, tagline, team, url, key, JSON.stringify(socials), JSON.stringify(values), order.listing_id],
+type BidPayloadFields = {
+  title: string;
+  tagline: string;
+  team: string;
+  socialsIn: ReturnType<typeof clampSocials>;
+  valuesIn: ReturnType<typeof clampValues>;
+  url: string;
+  key: string;
+};
+
+function bidPayloadFields(order: OrderRow, payload: Record<string, unknown>): BidPayloadFields {
+  return {
+    title: String(payload.title ?? "Listing"),
+    tagline: String(payload.tagline ?? ""),
+    team: String(payload.team ?? ""),
+    socialsIn: clampSocials(payload.socials),
+    valuesIn: clampValues(payload.values),
+    url: String(payload.url),
+    key: String(payload.urlKey),
+  };
+}
+
+/** Re-bid on an existing listing (the order carries listing_id). */
+async function rebidEffect(sql: Sql, order: OrderRow, targetBidCents: number, f: BidPayloadFields): Promise<void> {
+  const listingId = order.listing_id as string;
+  const current = await fetchListing(sql, listingId);
+  if (!current) throw new Error(`Order ${order.id}: listing ${order.listing_id} is missing.`);
+  if (targetBidCents <= current.bid_cents) {
+    // The bid no longer outranks the listing. The payment is authoritative;
+    // never silently drop it — record it for ops forward-fix.
+    console.error(
+      `[settlement] order ${order.id} paid for target ${targetBidCents} which no longer outranks ${current.bid_cents}; listing untouched (forward-fix required).`,
     );
-    await recastRanks(sql, order.site);
-    const after = await fetchListing(sql, order.listing_id);
-    await insertActivity(sql, order, "rebid", order.listing_id, after?.rank ?? null, title);
     return;
   }
+  const socials = f.socialsIn.length > 0 ? f.socialsIn : clampSocials(current.socials);
+  const values = f.valuesIn.length > 0 ? f.valuesIn : clampValues(current.values);
+  await sql.query(
+    `update listings
+     set bid_cents = $1, title = $2, tagline = $3, team = $4, url = $5, url_key = $6,
+         socials = $7::jsonb, values = $8::jsonb, last_bid_at = now()
+     where id = $9`,
+    [targetBidCents, f.title, f.tagline, f.team, f.url, f.key, JSON.stringify(socials), JSON.stringify(values), order.listing_id],
+  );
+  await recastRanks(sql, order.site);
+  const after = await fetchListing(sql, listingId);
+  await insertActivity(sql, order, "rebid", listingId, after?.rank ?? null, f.title);
+}
 
+/** First bid: mint the listing row. */
+async function newListingEffect(sql: Sql, order: OrderRow, targetBidCents: number, f: BidPayloadFields): Promise<void> {
   const listingId = makeId("lst");
   const token = order.manage_token ?? makeId("tok");
   await sql.query(
@@ -163,20 +187,20 @@ async function applyBidEffect(sql: Sql, order: OrderRow): Promise<void> {
     [
       listingId,
       order.site,
-      url,
-      key,
-      title,
-      tagline,
-      team,
-      JSON.stringify(socialsIn),
-      JSON.stringify(valuesIn),
+      f.url,
+      f.key,
+      f.title,
+      f.tagline,
+      f.team,
+      JSON.stringify(f.socialsIn),
+      JSON.stringify(f.valuesIn),
       targetBidCents,
       token,
     ],
   );
   await recastRanks(sql, order.site);
   const after = await fetchListing(sql, listingId);
-  await insertActivity(sql, order, "bid", listingId, after?.rank ?? null, title);
+  await insertActivity(sql, order, "bid", listingId, after?.rank ?? null, f.title);
 }
 
 async function applySwapEffect(sql: Sql, order: OrderRow): Promise<void> {

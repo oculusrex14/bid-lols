@@ -94,6 +94,17 @@ export type CreateListingInput = {
 };
 
 export async function createListing(input: CreateListingInput): Promise<{ id: string; slug: string }> {
+  const secretError = listingSecretError(input);
+  if (secretError) throw secretError;
+  const sql = await getSql();
+  const id = makeId("gyl_");
+  const slug = slugFor(input.title, id);
+  await insertListingRow(sql, input, id, slug);
+  return { id, slug };
+}
+
+/** RC3 (S-11): the credential-shape guard, extracted from createListing. */
+function listingSecretError(input: CreateListingInput): AuthzError | null {
   const all = [
     input.title ?? "",
     input.description ?? "",
@@ -102,16 +113,21 @@ export async function createListing(input: CreateListingInput): Promise<{ id: st
     input.historySelfReported ?? "",
     ...(input.includes ?? []),
   ].join("\n");
-  if (looksLikeSecret(all)) {
-    throw new AuthzError(
-      422,
-      "secret_shaped_text",
-      "The listing text contains something that looks like an API key or credential. Secrets must NEVER be posted here — remove it and transfer credentials directly through the provider.",
-    );
-  }
-  const sql = await getSql();
-  const id = makeId("gyl_");
-  const slug = slugFor(input.title, id);
+  if (!looksLikeSecret(all)) return null;
+  return new AuthzError(
+    422,
+    "secret_shaped_text",
+    "The listing text contains something that looks like an API key or credential. Secrets must NEVER be posted here — remove it and transfer credentials directly through the provider.",
+  );
+}
+
+/** RC3 (S-11): the insert itself, kept as one statement. */
+async function insertListingRow(
+  sql: Awaited<ReturnType<typeof getSql>>,
+  input: CreateListingInput,
+  id: string,
+  slug: string,
+): Promise<void> {
   await sql.query(
     `insert into graveyard_listings
       (id, product, seller_user_id, title, slug, description, reason_of_death,
@@ -136,7 +152,6 @@ export async function createListing(input: CreateListingInput): Promise<{ id: st
       input.reserveMinor ?? null,
     ],
   );
-  return { id, slug };
 }
 
 export async function publishListing(opts: {

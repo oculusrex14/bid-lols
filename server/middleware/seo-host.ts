@@ -166,142 +166,162 @@ function iso(v: unknown): string | null {
   return Number.isNaN(d.getTime()) ? null : d.toISOString();
 }
 
+type EntitySql = {
+  query<T>(sql: string, params: unknown[]): Promise<T[]>;
+};
+
 /**
- * Entity-level head for the detail routes (RC2, C3). Returns null when no
- * entity resolves (the route then 404s or falls back to host-level meta).
- * Wrong-host entities never reach this: the route loader redirects first.
+ * RC3 (S-11): one resolver per entity type — each owns its regex, its DB
+ * read, its indexability set, and its title/description shape. The dispatcher
+ * below stays flat; wrong-host entities never reach this (the route loader
+ * redirects first), and a missing entity resolves null (host fallback).
+ */
+
+async function bountyEntityMeta(productKey: string, p: string, id: string, sql: EntitySql): Promise<EntityMeta | null> {
+  const rows = await sql.query<{
+    title: string; category: string; status: string;
+    reward_total_minor: number | null; currency: string; description: string;
+  }>(
+    `select title, category, status, reward_total_minor, currency, coalesce(description, '') as description from bounties where id = $1`,
+    [id],
+  );
+  const b = rows[0];
+  if (!b) return null;
+  const indexable = INDEXABLE_BOUNTY.has(b.status);
+  const reward = indexable && b.reward_total_minor != null ? inr(b.reward_total_minor, b.currency) : null;
+  const brand = productKey === "culturebid" ? "CultureBid" : "FoundersBid";
+  return buildEntityMeta(productKey, p, {
+    title: `${truncateWords(b.title, 52)}${indexable ? "" : " (draft)"} · ${b.category}${reward ? ` · ${reward}` : ""} | ${brand}`,
+    description: truncateWords(b.description, 150) || `Bounty in ${b.category} on ${brand}.`,
+    indexable,
+  });
+}
+
+async function projectEntityMeta(productKey: string, p: string, id: string, sql: EntitySql): Promise<EntityMeta | null> {
+  const rows = await sql.query<{
+    title: string; category: string; status: string; description: string;
+  }>(
+    `select title, category, status, coalesce(description, '') as description from projects where id = $1`,
+    [id],
+  );
+  const pr = rows[0];
+  if (!pr) return null;
+  const indexable = INDEXABLE_PROJECT.has(pr.status);
+  return buildEntityMeta(productKey, p, {
+    title: `${truncateWords(pr.title, 52)} · ${pr.category} | FoundersBid`,
+    description: truncateWords(pr.description, 150) || `A project brief on FoundersBid.`,
+    indexable,
+  });
+}
+
+async function graveyardEntityMeta(productKey: string, p: string, id: string, sql: EntitySql): Promise<EntityMeta | null> {
+  const rows = await sql.query<{
+    title: string; status: string; description: string;
+    asking_price_minor: number | null; currency: string;
+  }>(
+    `select title, status, coalesce(description, '') as description, asking_price_minor, currency from graveyard_listings where id = $1`,
+    [id],
+  );
+  const g = rows[0];
+  if (!g) return null;
+  const indexable = INDEXABLE_GRAVEYARD.has(g.status);
+  const price = indexable && g.asking_price_minor != null ? inr(g.asking_price_minor, g.currency) : null;
+  return buildEntityMeta(productKey, p, {
+    title: `${truncateWords(g.title, 52)} · ${price ?? "Open to offers"} | FoundersBid Graveyard`,
+    description: truncateWords(g.description, 150) || "An abandoned project offered for transfer on FoundersBid.",
+    indexable,
+  });
+}
+
+async function parentEntityMeta(productKey: string, p: string, id: string, sql: EntitySql): Promise<EntityMeta | null> {
+  const rows = await sql.query<{
+    title: string; status: string; objective: string;
+    funded_budget_minor: number | null; currency: string;
+  }>(
+    `select title, status, coalesce(objective, '') as objective, funded_budget_minor, currency from parent_works where id = $1`,
+    [id],
+  );
+  const pw = rows[0];
+  if (!pw) return null;
+  const indexable = INDEXABLE_PARENT.has(pw.status);
+  const budget = indexable && pw.funded_budget_minor != null ? inr(pw.funded_budget_minor, pw.currency) : null;
+  return buildEntityMeta(productKey, p, {
+    title: `${truncateWords(pw.title, 52)} · ${budget ?? "Team project"} | Bidception`,
+    description: truncateWords(pw.objective, 150) || "One funded project, built as a team on Bidception.",
+    indexable,
+  });
+}
+
+async function profileEntityMeta(productKey: string, p: string, handle: string): Promise<EntityMeta | null> {
+  const { getPublicProfile } = await import("@/lib/profiles.server");
+  const profile = await getPublicProfile(handle);
+  if (!profile) return null;
+  const hasContent =
+    profile.bio.length > 0 ||
+    profile.skills.length > 0 ||
+    profile.portfolioLinks.length > 0 ||
+    Boolean(profile.githubUrl || profile.linkedinUrl || profile.websiteUrl);
+  const skills = profile.skills.slice(0, 4).join(", ");
+  const desc = hasContent
+    ? truncateWords(profile.bio || (skills ? `Public profile. Skills: ${skills}.` : "Public profile on the Bid Network."), 150)
+    : "Public profile on the Bid Network.";
+  return buildEntityMeta(productKey, p, {
+    title: `${truncateWords(profile.displayName, 40)} (@${profile.handle}) | Bid Network`,
+    description: desc,
+    ogType: "profile",
+    indexable: hasContent,
+  });
+}
+
+async function blogEntityMeta(productKey: string, p: string, slug: string): Promise<EntityMeta | null> {
+  const { articleBySlug } = await import("@/content/blog/articles");
+  const article = articleBySlug(slug);
+  if (!article) return null;
+  // The loader has already redirected cross-host article reads, so this
+  // branch only runs when article.product === productKey.
+  return buildEntityMeta(productKey, p, {
+    title: article.seoTitle,
+    description: article.description,
+    ogType: "article",
+    extraHeadTags: [
+      `<meta property="article:published_time" content="${article.publishedAt}">`,
+      `<meta property="article:modified_time" content="${article.modifiedAt}">`,
+    ],
+  });
+}
+
+/**
+ * Entity-level head for the detail routes (RC2, C3; RC3 S-11 split).
+ * Returns null when no entity resolves (the route then 404s or falls back
+ * to host-level meta).
  *
  * Exported for the hermetic PGLite test (tests/seo-entity-meta.test.ts).
  */
 export async function entityMetaFor(productKey: string, pathname: string): Promise<EntityMeta | null> {
   const p = pathname;
   try {
+    // Lazy: the DB is only touched when a path actually matches an entity
+    // shape (same semantics as the RC2 per-branch imports).
+    let sql: EntitySql | null = null;
+    const tx = async (): Promise<EntitySql> => {
+      if (!sql) {
+        const { getSql } = await import("@/lib/db.server");
+        sql = await getSql();
+      }
+      return sql;
+    };
     const mBounty = /^\/bounties\/([A-Za-z0-9_-]{4,64})$/.exec(p);
-    if (mBounty) {
-      const { getSql } = await import("@/lib/db.server");
-      const sql = await getSql();
-      const rows = await sql.query<{
-        title: string; category: string; status: string;
-        reward_total_minor: number | null; currency: string; description: string;
-      }>(
-        `select title, category, status, reward_total_minor, currency, coalesce(description, '') as description from bounties where id = $1`,
-        [mBounty[1]],
-      );
-      const b = rows[0];
-      if (!b) return null;
-      const indexable = INDEXABLE_BOUNTY.has(b.status);
-      const reward = indexable && b.reward_total_minor != null ? inr(b.reward_total_minor, b.currency) : null;
-      return buildEntityMeta(productKey, p, {
-        title: `${truncateWords(b.title, 52)}${indexable ? "" : " (draft)"} · ${b.category}${reward ? ` · ${reward}` : ""} | ${productKey === "culturebid" ? "CultureBid" : "FoundersBid"}`,
-        description: truncateWords(b.description, 150) || `Bounty in ${b.category} on ${productKey === "culturebid" ? "CultureBid" : "FoundersBid"}.`,
-        indexable,
-      });
-    }
-
+    if (mBounty) return await bountyEntityMeta(productKey, p, mBounty[1], await tx());
     const mProject = /^\/projects\/([A-Za-z0-9_-]{4,64})$/.exec(p);
-    if (mProject) {
-      const { getSql } = await import("@/lib/db.server");
-      const sql = await getSql();
-      const rows = await sql.query<{
-        title: string; category: string; status: string; description: string;
-      }>(
-        `select title, category, status, coalesce(description, '') as description from projects where id = $1`,
-        [mProject[1]],
-      );
-      const pr = rows[0];
-      if (!pr) return null;
-      const indexable = INDEXABLE_PROJECT.has(pr.status);
-      return buildEntityMeta(productKey, p, {
-        title: `${truncateWords(pr.title, 52)} · ${pr.category} | FoundersBid`,
-        description: truncateWords(pr.description, 150) || `A project brief on FoundersBid.`,
-        indexable,
-      });
-    }
-
+    if (mProject) return await projectEntityMeta(productKey, p, mProject[1], await tx());
     const mGraveyard = /^\/graveyard\/([A-Za-z0-9_-]{4,64})$/.exec(p);
-    if (mGraveyard) {
-      const { getSql } = await import("@/lib/db.server");
-      const sql = await getSql();
-      const rows = await sql.query<{
-        title: string; status: string; description: string;
-        asking_price_minor: number | null; currency: string;
-      }>(
-        `select title, status, coalesce(description, '') as description, asking_price_minor, currency from graveyard_listings where id = $1`,
-        [mGraveyard[1]],
-      );
-      const g = rows[0];
-      if (!g) return null;
-      const indexable = INDEXABLE_GRAVEYARD.has(g.status);
-      const price = indexable && g.asking_price_minor != null ? inr(g.asking_price_minor, g.currency) : null;
-      return buildEntityMeta(productKey, p, {
-        title: `${truncateWords(g.title, 52)} · ${price ?? "Open to offers"} | FoundersBid Graveyard`,
-        description: truncateWords(g.description, 150) || "An abandoned project offered for transfer on FoundersBid.",
-        indexable,
-      });
-    }
-
+    if (mGraveyard) return await graveyardEntityMeta(productKey, p, mGraveyard[1], await tx());
     const mParent = /^\/bidception\/([A-Za-z0-9_-]{4,64})$/.exec(p);
-    if (mParent) {
-      const { getSql } = await import("@/lib/db.server");
-      const sql = await getSql();
-      const rows = await sql.query<{
-        title: string; status: string; objective: string;
-        funded_budget_minor: number | null; currency: string;
-      }>(
-        `select title, status, coalesce(objective, '') as objective, funded_budget_minor, currency from parent_works where id = $1`,
-        [mParent[1]],
-      );
-      const pw = rows[0];
-      if (!pw) return null;
-      const indexable = INDEXABLE_PARENT.has(pw.status);
-      const budget = indexable && pw.funded_budget_minor != null ? inr(pw.funded_budget_minor, pw.currency) : null;
-      return buildEntityMeta(productKey, p, {
-        title: `${truncateWords(pw.title, 52)} · ${budget ?? "Team project"} | Bidception`,
-        description: truncateWords(pw.objective, 150) || "One funded project, built as a team on Bidception.",
-        indexable,
-      });
-    }
-
+    if (mParent) return await parentEntityMeta(productKey, p, mParent[1], await tx());
     const mProfile = /^\/profile\/([A-Za-z0-9_-]{1,64})$/.exec(p);
-    if (mProfile) {
-      const { getPublicProfile } = await import("@/lib/profiles.server");
-      const profile = await getPublicProfile(mProfile[1]);
-      if (!profile) return null;
-      const hasContent =
-        profile.bio.length > 0 ||
-        profile.skills.length > 0 ||
-        profile.portfolioLinks.length > 0 ||
-        Boolean(profile.githubUrl || profile.linkedinUrl || profile.websiteUrl);
-      const skills = profile.skills.slice(0, 4).join(", ");
-      const desc = hasContent
-        ? truncateWords(profile.bio || (skills ? `Public profile. Skills: ${skills}.` : "Public profile on the Bid Network."), 150)
-        : "Public profile on the Bid Network.";
-      return buildEntityMeta(productKey, p, {
-        title: `${truncateWords(profile.displayName, 40)} (@${profile.handle}) | Bid Network`,
-        description: desc,
-        ogType: "profile",
-        indexable: hasContent,
-      });
-    }
-
+    if (mProfile) return await profileEntityMeta(productKey, p, mProfile[1]);
     const mBlog = /^\/blog\/([a-z0-9][a-z0-9-]{0,96})$/.exec(p);
-    if (mBlog) {
-      const { articleBySlug } = await import("@/content/blog/articles");
-      const article = articleBySlug(mBlog[1]);
-      if (!article) return null;
-      // The loader has already redirected cross-host article reads, so this
-      // branch only runs when article.product === productKey.
-      return buildEntityMeta(productKey, p, {
-        title: article.seoTitle,
-        description: article.description,
-        ogType: "article",
-        extraHeadTags: [
-          `<meta property="article:published_time" content="${article.publishedAt}">`,
-          `<meta property="article:modified_time" content="${article.modifiedAt}">`,
-        ],
-      });
-    }
-
+    if (mBlog) return await blogEntityMeta(productKey, p, mBlog[1]);
     return null;
   } catch {
     return null; // entity lookup never breaks the page; host fallback applies

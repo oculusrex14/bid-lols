@@ -102,8 +102,14 @@ for (const file of files) {
 
 const data = rows.filter((r) => r.rule !== "file-lines");
 const sizes = rows.filter((r) => r.rule === "file-lines");
+// The GATE enforces production code only (src/ + server/): test suites and
+// scripts are assertion/data-heavy by nature and would make the threshold
+// theater. They are still MEASURED and reported (non-gate mode) so nobody
+// optimizes against the gate's blind spots.
+const isProd = (file) => file.startsWith("src/") || file.startsWith("server/");
 const byComplexity = data
   .filter((r) => r.rule === "complexity" || r.rule === "fn-lines" || r.rule === "max-depth")
+  .filter((r) => isProd(r.file))
   .filter((r) =>
     r.rule === "complexity" ? r.value > COMPLEXITY_MAX
     : r.rule === "max-depth" ? r.value > MAX_DEPTH_MAX

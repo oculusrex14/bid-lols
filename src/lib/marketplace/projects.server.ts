@@ -181,6 +181,46 @@ export async function submitProposal(
   });
 }
 
+/** RC3 (S-11): milestone-plan integrity, extracted from selectProposal. */
+function proposalMilestoneError(
+  ms: Array<{ amountMinor?: number }>,
+  quotedMinor: number,
+): string | null {
+  const msSum = ms.reduce((t, m) => t + Number(m.amountMinor || 0), 0);
+  if (ms.length === 0 || msSum !== quotedMinor) {
+    return `Proposal milestones sum ${msSum} != quoted ${quotedMinor}.`;
+  }
+  return null;
+}
+
+type SelectProposalError = { ok: false; code: string; message: string };
+
+/** RC3 (S-11): child-of-parent allocation cap check, extracted from selectProposal. */
+async function childAllocationBlocker(
+  tx: { query: <T = unknown>(sql: string, params: unknown[]) => Promise<T[]> },
+  project: { parent_work_id: string | null },
+  projectId: string,
+  quotedMinor: number,
+): Promise<SelectProposalError | null> {
+  if (!project.parent_work_id) return null;
+  const child = await tx.query<{ allocated_minor: number }>(
+    "select allocated_minor from child_works where parent_work_id = $1 and project_id = $2",
+    [project.parent_work_id, projectId],
+  );
+  if (child.length === 0) {
+    return { ok: false, code: "not_child_of_parent", message: "Project is not a linked child of its parent work." };
+  }
+  const cap = Number(child[0]?.allocated_minor ?? 0);
+  if (quotedMinor > cap) {
+    return {
+      ok: false,
+      code: "quote_exceeds_allocation",
+      message: `Quote ₹${(quotedMinor / 100).toFixed(2)} exceeds the child's allocated budget ₹${(cap / 100).toFixed(2)}.`,
+    };
+  }
+  return null;
+}
+
 /**
  * Select ONE proposal: PROPOSAL_SELECTED state + milestone activation from
  * the proposal's milestone plan (amounts sum-checked against the quote).
@@ -216,34 +256,13 @@ export async function selectProposal(opts: {
       return { ok: false, code: "invalid_proposal", message: "Proposal unavailable." };
     }
     const ms = proposal.milestones_proposed ?? [];
-    const msSum = ms.reduce((t, m) => t + Number(m.amountMinor || 0), 0);
-    if (ms.length === 0 || msSum !== Number(proposal.quoted_minor)) {
-      return {
-        ok: false,
-        code: "milestone_sum_mismatch",
-        message: `Proposal milestones sum ${msSum} != quoted ${proposal.quoted_minor}.`,
-      };
-    }
+    const msError = proposalMilestoneError(ms, Number(proposal.quoted_minor));
+    if (msError) return { ok: false, code: "milestone_sum_mismatch", message: msError };
     // Child project (RC1, R6): the parent allocation caps the funding
     // obligation — a quote above the child's allocated amount is refused
     // (the parent fee is already charged; no second sponsor charge happens).
-    if (project.parent_work_id) {
-      const child = await tx.query<{ allocated_minor: number }>(
-        "select allocated_minor from child_works where parent_work_id = $1 and project_id = $2",
-        [project.parent_work_id, opts.projectId],
-      );
-      const cap = Number(child[0]?.allocated_minor ?? 0);
-      if (child.length === 0) {
-        return { ok: false, code: "not_child_of_parent", message: "Project is not a linked child of its parent work." };
-      }
-      if (Number(proposal.quoted_minor) > cap) {
-        return {
-          ok: false,
-          code: "quote_exceeds_allocation",
-          message: `Quote ₹${(Number(proposal.quoted_minor) / 100).toFixed(2)} exceeds the child's allocated budget ₹${(cap / 100).toFixed(2)}.`,
-        };
-      }
-    }
+    const childError = await childAllocationBlocker(tx, project, opts.projectId, Number(proposal.quoted_minor));
+    if (childError) return childError;
     const claimed = await tx.query<{ id: string }>(
       "update projects set status='PROPOSAL_SELECTED', selected_proposal_id=$2, selected_quoted_minor=$3, updated_at=now() where id=$1 and status='OPEN_FOR_PROPOSALS' returning id",
       [opts.projectId, opts.proposalId, Number(proposal.quoted_minor)],

@@ -322,36 +322,11 @@ export async function applyToBounty(opts: {
       await tx.query<BountyRow>("select * from bounties where id = $1 for update", [opts.bountyId])
     )[0];
     if (!bounty) return { ok: false, code: "not_found", message: "Bounty not found." };
-    if (bounty.sponsor_user_id === opts.userId) {
-      return { ok: false, code: "self_apply", message: "You cannot apply to your own bounty." };
-    }
-    if (bounty.status !== "OPEN") {
-      return { ok: false, code: "not_open", message: `Bounty is ${bounty.status}.` };
-    }
-    if (
-      bounty.application_deadline &&
-      new Date() > new Date(bounty.application_deadline)
-    ) {
-      return { ok: false, code: "deadline_passed", message: "The application deadline has passed." };
-    }
-    const existing = await tx.query<{ id: string; status: string }>(
-      "select id, status from bounty_applications where bounty_id=$1 and user_id=$2",
-      [opts.bountyId, opts.userId],
-    );
-    if (existing.length > 0) {
-      return { ok: false, code: "already_applied", message: "You already applied." };
-    }
-    // Bounded entry: cap approved participants + pending applications against
-    // the cap (speculative work is bounded, never unlimited).
-    const counts = await tx.query<{ n: number }>(
-      `select count(*)::int as n from bounty_applications
-       where bounty_id = $1 and status in ('PENDING','APPROVED')`,
-      [opts.bountyId],
-    );
-    const taken = counts[0]?.n ?? 0;
-    if (taken >= bounty.participant_cap) {
-      return { ok: false, code: "cap_reached", message: "The participant cap is full." };
-    }
+    // RC3 (S-11): entry rules extracted so each guard reads on its own.
+    const guard = applicationGuard(bounty, opts.userId, new Date());
+    if (guard) return guard;
+    const blocker = await applicationBlocker(tx, opts.bountyId, opts.userId, bounty.participant_cap);
+    if (blocker) return blocker;
     const autoApprove = bounty.qualification_mode === "APPLICATION_ONLY";
     const appId = makeId("app_");
     await tx.query(
@@ -382,6 +357,51 @@ export async function applyToBounty(opts: {
     });
     return { ok: true, applicationId: appId, state: autoApprove ? ("APPROVED" as const) : ("PENDING" as const) };
   });
+}
+
+type ApplyError = { ok: false; code: string; message: string };
+
+/** Pure entry guards: self-apply, open state, deadline, duplicate. */
+function applicationGuard(bounty: BountyRow, userId: string, now: Date): ApplyError | null {
+  if (bounty.sponsor_user_id === userId) {
+    return { ok: false, code: "self_apply", message: "You cannot apply to your own bounty." };
+  }
+  if (bounty.status !== "OPEN") {
+    return { ok: false, code: "not_open", message: `Bounty is ${bounty.status}.` };
+  }
+  if (bounty.application_deadline && now > new Date(bounty.application_deadline)) {
+    return { ok: false, code: "deadline_passed", message: "The application deadline has passed." };
+  }
+  return null;
+}
+
+/**
+ * Bounded entry: cap approved participants + pending applications against
+ * the cap (speculative work is bounded, never unlimited).
+ */
+async function applicationBlocker(
+  tx: Sql,
+  bountyId: string,
+  userId: string,
+  participantCap: number,
+): Promise<ApplyError | null> {
+  const existing = await tx.query<{ id: string; status: string }>(
+    "select id, status from bounty_applications where bounty_id=$1 and user_id=$2",
+    [bountyId, userId],
+  );
+  if (existing.length > 0) {
+    return { ok: false, code: "already_applied", message: "You already applied." };
+  }
+  const counts = await tx.query<{ n: number }>(
+    `select count(*)::int as n from bounty_applications
+     where bounty_id = $1 and status in ('PENDING','APPROVED')`,
+    [bountyId],
+  );
+  const taken = counts[0]?.n ?? 0;
+  if (taken >= participantCap) {
+    return { ok: false, code: "cap_reached", message: "The participant cap is full." };
+  }
+  return null;
 }
 
 async function addParticipant(tx: Sql, bountyId: string, userId: string): Promise<void> {

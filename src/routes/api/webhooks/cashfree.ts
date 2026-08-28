@@ -11,6 +11,30 @@ import { verifyCashfreeWebhook } from "@/lib/payments/provider";
  * idempotent. Machine-readable envelope { code, message, requestId } on
  * errors (AC-18).
  */
+const statusByCode = {
+  order_not_found: 400,
+  order_not_settlable: 409,
+  not_paid_at_gateway: 409,
+  effect_failed: 500,
+} as const;
+
+const PAID_TYPES = new Set(["PAYMENT_SUCCESS", "ORDER_PAID", "order.paid"]);
+const PAID_STATUSES = new Set(["SUCCESS", "PAID"]);
+
+/** RC3 (S-11): classify the (parsed) payload — event type, paid-or-not, order id. */
+function paidEventType(body: Record<string, unknown>): { type: string; paid: boolean; orderId: string } {
+  const type = String(body.type ?? body.event ?? "");
+  const data = (body.data ?? body) as Record<string, unknown>;
+  const order = (data.order as Record<string, unknown> | undefined) ?? data;
+  const payment = (data.payment as Record<string, unknown> | undefined) ?? {};
+  const status = String(
+    payment.payment_status ?? order.order_status ?? body.order_status ?? "",
+  ).toUpperCase();
+  const paid = PAID_TYPES.has(type) || PAID_STATUSES.has(status);
+  const orderId = String(order.order_id ?? order.orderId ?? body.order_id ?? "");
+  return { type, paid, orderId };
+}
+
 export const Route = createFileRoute("/api/webhooks/cashfree")({
   component: () => null,
   server: {
@@ -38,22 +62,8 @@ export const Route = createFileRoute("/api/webhooks/cashfree")({
           return fail(400, "invalid_json", "Body is not valid JSON.");
         }
 
-        const type = String(body.type ?? body.event ?? "");
-        const data = (body.data ?? body) as Record<string, unknown>;
-        const order =
-          (data.order as Record<string, unknown> | undefined) ?? data;
-        const payment =
-          (data.payment as Record<string, unknown> | undefined) ?? {};
-        const status = String(
-          payment.payment_status ?? order.order_status ?? body.order_status ?? "",
-        ).toUpperCase();
-        const paidEvent =
-          type === "PAYMENT_SUCCESS" ||
-          type === "ORDER_PAID" ||
-          type === "order.paid" ||
-          status === "SUCCESS" ||
-          status === "PAID";
-        if (!paidEvent) {
+        const { type, paid, orderId } = paidEventType(body);
+        if (!paid) {
           // Phase 00.6, WS4-C: every JSON body carrying a requestId must carry
           // the SAME value in x-request-id (the outer request-id middleware
           // only keeps handler-set ids — it must not mint a second one).
@@ -62,8 +72,6 @@ export const Route = createFileRoute("/api/webhooks/cashfree")({
             { status: 200, headers: { "x-request-id": requestId } },
           );
         }
-
-        const orderId = String(order.order_id ?? order.orderId ?? body.order_id ?? "");
         if (!orderId) return fail(400, "missing_order_id", "Paid event has no order id.");
 
         // Server-only module (DB + provider access): the SSR guard keeps it
@@ -77,12 +85,6 @@ export const Route = createFileRoute("/api/webhooks/cashfree")({
             { status: 200, headers: { "x-request-id": requestId } },
           );
         }
-        const statusByCode = {
-          order_not_found: 400,
-          order_not_settlable: 409,
-          not_paid_at_gateway: 409,
-          effect_failed: 500,
-        } as const;
         return fail(statusByCode[result.code], result.code, result.message);
       },
     },

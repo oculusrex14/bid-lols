@@ -40,6 +40,14 @@ export default tseslint.config(
         { argsIgnorePattern: "^_", varsIgnorePattern: "^_" },
       ],
       "@typescript-eslint/no-explicit-any": "off",
+      // Complexity drift detectors (RC3, S-11). These are WARN: they flag a
+      // function once it passes the "review" line so it gets noticed in PRs.
+      // The HARD gate is `scripts/complexity-report.mjs --gate` in CI
+      // (complexity >15, depth >5, function >120 non-blank lines in
+      // src/+server/ = failure), which is stricter where it matters and
+      // scoped to production code so test/scripts data blocks can't game it.
+      "complexity": ["warn", 11],
+      "max-depth": ["warn", 5],
     },
   },
   // Disable rules that conflict with Prettier formatting.

@@ -17,6 +17,14 @@ import { validateRewardAllocations } from "@/lib/marketplace/state";
  * created by nesting.
  */
 
+/** The db transaction surface (same query API as the pooled sql client). */
+type Tx = Awaited<ReturnType<typeof getSql>>;
+
+function slugForChild(title: string, fallback: string): string {
+  const base = title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 50);
+  return base || fallback;
+}
+
 export type ParentWorkRow = {
   id: string;
   product: string;
@@ -304,138 +312,184 @@ export async function allocateChildWork(opts: AllocateChildInput): Promise<
     return { ok: false, code: "invalid_title", message: "Child unit titles need at least 8 characters." };
   }
   const sql = await getSql();
-  return sql.transaction(
-    async (
-      tx,
-    ): Promise<{ ok: true; childWorkId: string; linkedId: string } | { ok: false; code: string; message: string }> => {
-      const parent = (
-        await tx.query<{
-          id: string;
-          sponsor_user_id: string;
-          captain_user_id: string | null;
-          funded_budget_minor: number | null;
-          captain_compensation_minor: number;
-          status: string;
-          product: string;
-        }>(
-          "select id, sponsor_user_id, captain_user_id, funded_budget_minor, captain_compensation_minor, status, product from parent_works where id = $1 for update",
-          [opts.parentWorkId],
-        )
-      )[0];
-      if (!parent || parent.funded_budget_minor == null) {
-        return { ok: false, code: "not_found", message: "Funded parent work not found." };
-      }
-      if (parent.status !== "ACTIVE") {
-        return { ok: false, code: "invalid_state", message: `Parent is ${parent.status}; allocations require an active parent.` };
-      }
-      const isSponsor = parent.sponsor_user_id === opts.actorUserId;
-      const isCaptain = parent.captain_user_id === opts.actorUserId;
-      if (!isSponsor && !isCaptain) {
-        return { ok: false, code: "forbidden", message: "Only the sponsor or the captain can allocate." };
-      }
-      const spent = await tx.query<{ n: number }>(
-        "select coalesce(sum(allocated_minor), 0)::int as n from child_works where parent_work_id = $1",
-        [opts.parentWorkId],
-      );
-      const balance =
-        Number(parent.funded_budget_minor) - Number(spent[0]?.n ?? 0) - Number(parent.captain_compensation_minor);
-      if (opts.allocatedMinor > balance) {
-        return {
-          ok: false,
-          code: "insufficient_balance",
-          message: `Allocation exceeds the available balance (₹${(balance / 100).toFixed(2)}).`,
-        };
-      }
-      const id = makeId("cwk_");
-      const seq = await tx.query<{ n: number }>(
-        "select coalesce(max(seq), 0)::int + 1 as n from child_works where parent_work_id = $1",
-        [opts.parentWorkId],
-      );
+  // RC3 (S-11): the atomic transition is unchanged, but its responsibilities
+  // (parent lock+guard, balance check, child materialization, ledger row)
+  // are named helpers so each guard is readable on its own.
+  return sql.transaction(async (tx) => {
+    const parent = await loadAllocatableParent(tx, opts.parentWorkId);
+    if (!parent) {
+      return { ok: false, code: "not_found", message: "Funded parent work not found." };
+    }
+    if (parent.status !== "ACTIVE") {
+      return { ok: false, code: "invalid_state", message: `Parent is ${parent.status}; allocations require an active parent.` };
+    }
+    if (!childAuthorizer(opts.actorUserId, parent.sponsor_user_id, parent.captain_user_id)) {
+      return { ok: false, code: "forbidden", message: "Only the sponsor or the captain can allocate." };
+    }
+    const balance = await parentAllocationBalance(tx, parent);
+    if (opts.allocatedMinor > balance) {
+      return {
+        ok: false,
+        code: "insufficient_balance",
+        message: `Allocation exceeds the available balance (₹${(balance / 100).toFixed(2)}).`,
+      };
+    }
+    const id = makeId("cwk_");
+    const seq = await nextChildSeq(tx, opts.parentWorkId);
+    const materialized =
+      opts.kind === "BOUNTY"
+        ? await materializeBountyChild(tx, parent, opts)
+        : await materializeProjectChild(tx, parent, opts);
+    if ("error" in materialized) {
+      return { ok: false, code: "invalid_allocations", message: materialized.error };
+    }
+    await insertChildWorkRow(tx, id, opts, materialized.linkedId, seq);
+    return { ok: true, childWorkId: id, linkedId: materialized.linkedId };
+  });
+}
 
-      let linkedId: string;
-      if (opts.kind === "BOUNTY") {
-        // Materialize a REAL bounty, funded by the parent allocation. The
-        // fee was charged at the parent level, so the full allocation is the
-        // advertised reward pool. Status OPEN: the funded-before-open rule is
-        // satisfied by the parent's funding + this allocation record.
-        const structure = (opts.bountySpec?.rewardStructure ?? "WINNER_TAKES_ALL") as string;
-        const allocations = [{ place: 1, amountMinor: opts.allocatedMinor, label: "Winner" }];
-        const specCheck = validateRewardAllocations(structure as never, opts.allocatedMinor, [
-          { place: 1, amountMinor: opts.allocatedMinor },
-        ]);
-        if (!specCheck.ok) return { ok: false, code: "invalid_allocations", message: specCheck.reason };
-        linkedId = makeId("bnt_");
-        const base = opts.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 50);
-        await tx.query(
-          `insert into bounties
-            (id, product, sponsor_user_id, title, slug, description, category, skills,
-             reward_total_minor, currency, reward_structure, reward_allocations,
-             submission_deadline, participant_cap, qualification_mode,
-             status, parent_work_id, published_at)
-           values ($1,$2,$3,$4,$5,$6,$7,'[]'::jsonb,$8,$9,$10,$11::jsonb,$12,$13,$14,'OPEN',$15,now())`,
-          [
-            linkedId,
-            parent.product,
-            parent.sponsor_user_id,
-            opts.title,
-            `${base || "child"}-${linkedId.slice(-6)}`,
-            `Child unit of parent work ${opts.parentWorkId}: ${opts.title}. Deliverables, acceptance criteria and IP rules are managed on the parent work page and apply to this child unit.`,
-            opts.bountySpec?.category ?? "development",
-            opts.allocatedMinor,
-            "INR",
-            structure,
-            JSON.stringify([{ place: 1, amount_minor: opts.allocatedMinor, label: opts.title }]),
-            new Date(opts.bountySpec?.submissionDeadline ?? Date.now() + 14 * 86400_000),
-            opts.bountySpec?.participantCap ?? 5,
-            opts.bountySpec?.qualificationMode ?? "APPLICATION_ONLY",
-            opts.parentWorkId,
-          ],
-        );
-      } else {
-        // PROJECT child: budget cap = allocation; proposals open immediately.
-        linkedId = makeId("prj_");
-        const base = opts.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 50);
-        await tx.query(
-          `insert into projects
-            (id, product, sponsor_user_id, title, slug, description, category,
-             budget_max_minor, currency, ip_and_confidentiality, status, parent_work_id, published_at)
-           values ($1,$2,$3,$4,$5,$6,$7,$8,'INR',$9,'OPEN_FOR_PROPOSALS',$10,now())`,
-          [
-            linkedId,
-            parent.product,
-            parent.sponsor_user_id,
-            opts.title,
-            `${base || "child-project"}-${linkedId.slice(-6)}`,
-            `Child unit of parent work ${opts.parentWorkId}: ${opts.title}. Budget is capped at the parent allocation; funding flows from the parent, so no separate sponsor charge is taken.`,
-            opts.projectSpec?.category ?? "development",
-            opts.allocatedMinor,
-            opts.projectSpec?.ipAndConfidentiality ?? "",
-            opts.parentWorkId,
-          ],
-        );
-      }
+type AllocatableParent = {
+  id: string;
+  sponsor_user_id: string;
+  captain_user_id: string | null;
+  funded_budget_minor: number;
+  captain_compensation_minor: number;
+  status: string;
+  product: string;
+};
 
-      // Linked children start READY (their engine row is live); children with
-      // declared dependencies start BLOCKED until those complete.
-      const initialState = (opts.dependsOn ?? []).length > 0 ? "BLOCKED" : "READY";
-      await tx.query(
-        `insert into child_works (id, parent_work_id, kind, bounty_id, project_id, title, allocated_minor, depends_on, seq, state)
-         values ($1,$2,$3,$4,$5,$6,$7,$8::jsonb,$9,$10)`,
-        [
-          id,
-          opts.parentWorkId,
-          opts.kind,
-          opts.kind === "BOUNTY" ? linkedId : null,
-          opts.kind === "PROJECT" ? linkedId : null,
-          opts.title,
-          opts.allocatedMinor,
-          JSON.stringify(opts.dependsOn ?? []),
-          seq[0]?.n ?? 1,
-          (opts.dependsOn ?? []).length > 0 ? "BLOCKED" : "READY",
-        ],
-      );
-      return { ok: true, childWorkId: id, linkedId };
-    },
+async function loadAllocatableParent(
+  tx: Tx,
+  parentWorkId: string,
+): Promise<AllocatableParent | null> {
+  const rows = await tx.query<AllocatableParent>(
+    "select id, sponsor_user_id, captain_user_id, funded_budget_minor, captain_compensation_minor, status, product from parent_works where id = $1 and funded_budget_minor is not null for update",
+    [parentWorkId],
+  );
+  return rows[0] ?? null;
+}
+
+/** funded budget - already allocated - captain compensation (recomputed inside the tx). */
+async function parentAllocationBalance(tx: Tx, parent: AllocatableParent): Promise<number> {
+  const spent = await tx.query<{ n: number }>(
+    "select coalesce(sum(allocated_minor), 0)::int as n from child_works where parent_work_id = $1",
+    [parent.id],
+  );
+  return Number(parent.funded_budget_minor) - Number(spent[0]?.n ?? 0) - Number(parent.captain_compensation_minor);
+}
+
+async function nextChildSeq(tx: Tx, parentWorkId: string): Promise<number> {
+  const seq = await tx.query<{ n: number }>(
+    "select coalesce(max(seq), 0)::int + 1 as n from child_works where parent_work_id = $1",
+    [parentWorkId],
+  );
+  return seq[0]?.n ?? 1;
+}
+
+/**
+ * Materialize a REAL bounty funded by the parent allocation. The fee was
+ * charged at the parent level, so the full allocation is the advertised
+ * reward pool. Status OPEN: the funded-before-open rule is satisfied by the
+ * parent's funding + this allocation record.
+ */
+type Materialized = { linkedId: string } | { error: string };
+
+async function materializeBountyChild(
+  tx: Tx,
+  parent: AllocatableParent,
+  opts: AllocateChildInput,
+): Promise<Materialized> {
+  const structure = (opts.bountySpec?.rewardStructure ?? "WINNER_TAKES_ALL") as string;
+  const specCheck = validateRewardAllocations(structure as never, opts.allocatedMinor, [
+    { place: 1, amountMinor: opts.allocatedMinor },
+  ]);
+  if (!specCheck.ok) return { error: specCheck.reason };
+  const linkedId = makeId("bnt_");
+  const base = slugForChild(opts.title, "child");
+  await tx.query(
+    `insert into bounties
+      (id, product, sponsor_user_id, title, slug, description, category, skills,
+       reward_total_minor, currency, reward_structure, reward_allocations,
+       submission_deadline, participant_cap, qualification_mode,
+       status, parent_work_id, published_at)
+     values ($1,$2,$3,$4,$5,$6,$7,'[]'::jsonb,$8,$9,$10,$11::jsonb,$12,$13,$14,'OPEN',$15,now())`,
+    [
+      linkedId,
+      parent.product,
+      parent.sponsor_user_id,
+      opts.title,
+      `${base}-${linkedId.slice(-6)}`,
+      `Child unit of parent work ${opts.parentWorkId}: ${opts.title}. Deliverables, acceptance criteria and IP rules are managed on the parent work page and apply to this child unit.`,
+      opts.bountySpec?.category ?? "development",
+      opts.allocatedMinor,
+      "INR",
+      structure,
+      JSON.stringify([{ place: 1, amount_minor: opts.allocatedMinor, label: opts.title }]),
+      new Date(opts.bountySpec?.submissionDeadline ?? Date.now() + 14 * 86400_000),
+      opts.bountySpec?.participantCap ?? 5,
+      opts.bountySpec?.qualificationMode ?? "APPLICATION_ONLY",
+      opts.parentWorkId,
+    ],
+  );
+  return { linkedId };
+}
+
+/** PROJECT child: budget cap = allocation; proposals open immediately. */
+async function materializeProjectChild(
+  tx: Tx,
+  parent: AllocatableParent,
+  opts: AllocateChildInput,
+): Promise<Materialized> {
+  const linkedId = makeId("prj_");
+  const base = slugForChild(opts.title, "child-project");
+  await tx.query(
+    `insert into projects
+      (id, product, sponsor_user_id, title, slug, description, category,
+       budget_max_minor, currency, ip_and_confidentiality, status, parent_work_id, published_at)
+     values ($1,$2,$3,$4,$5,$6,$7,$8,'INR',$9,'OPEN_FOR_PROPOSALS',$10,now())`,
+    [
+      linkedId,
+      parent.product,
+      parent.sponsor_user_id,
+      opts.title,
+      `${base}-${linkedId.slice(-6)}`,
+      `Child unit of parent work ${opts.parentWorkId}: ${opts.title}. Budget is capped at the parent allocation; funding flows from the parent, so no separate sponsor charge is taken.`,
+      opts.projectSpec?.category ?? "development",
+      opts.allocatedMinor,
+      opts.projectSpec?.ipAndConfidentiality ?? "",
+      opts.parentWorkId,
+    ],
+  );
+  return { linkedId };
+}
+
+/**
+ * Linked children start READY (their engine row is live); children with
+ * declared dependencies start BLOCKED until those complete.
+ */
+async function insertChildWorkRow(
+  tx: Tx,
+  id: string,
+  opts: AllocateChildInput,
+  linkedId: string,
+  seq: number,
+): Promise<void> {
+  const dependsOn = opts.dependsOn ?? [];
+  await tx.query(
+    `insert into child_works (id, parent_work_id, kind, bounty_id, project_id, title, allocated_minor, depends_on, seq, state)
+     values ($1,$2,$3,$4,$5,$6,$7,$8::jsonb,$9,$10)`,
+    [
+      id,
+      opts.parentWorkId,
+      opts.kind,
+      opts.kind === "BOUNTY" ? linkedId : null,
+      opts.kind === "PROJECT" ? linkedId : null,
+      opts.title,
+      opts.allocatedMinor,
+      JSON.stringify(dependsOn),
+      seq,
+      dependsOn.length > 0 ? "BLOCKED" : "READY",
+    ],
   );
 }
 
@@ -450,6 +504,37 @@ type ChildRow = {
   bounty_id: string | null;
   project_id: string | null;
 };
+
+/**
+ * RC3 (S-11): the "is the linked engine work terminal?" rule, extracted from
+ * completeChild. Returns the user-facing block message, or null when the
+ * child may complete.
+ */
+async function linkedCompletionBlocker(tx: Tx, child: ChildRow): Promise<string | null> {
+  if (child.kind === "BOUNTY" && child.bounty_id) {
+    const b = await tx.query<{ s: string }>(
+      "select status as s from bounties where id = $1",
+      [child.bounty_id],
+    );
+    const st = String(b[0]?.s ?? "");
+    if (!["AWARDED", "SETTLING", "COMPLETED"].includes(st)) {
+      return `The linked bounty is ${st || "unknown"} — judge it (winner selected) before completing the child unit.`;
+    }
+    return null;
+  }
+  if (child.kind === "PROJECT" && child.project_id) {
+    const pr = await tx.query<{ s: string }>(
+      "select status as s from projects where id = $1",
+      [child.project_id],
+    );
+    const st = String(pr[0]?.s ?? "");
+    if (st !== "COMPLETED") {
+      return `The linked project is ${st || "unknown"} — it must complete first.`;
+    }
+    return null;
+  }
+  return null;
+}
 
 function childAuthorizer(actorUserId: string, sponsorUserId: string, captainUserId: string | null): boolean {
   return actorUserId === sponsorUserId || actorUserId === captainUserId;
@@ -567,34 +652,8 @@ export async function completeChild(opts: {
     }
     // Linked children (RC1, R6) complete ONLY when the underlying engine work
     // reached its real terminal state — no click-through completion.
-    if (loaded.child.kind === "BOUNTY" && loaded.child.bounty_id) {
-      const b = await tx.query<{ s: string }>(
-        "select status as s from bounties where id = $1",
-        [loaded.child.bounty_id],
-      );
-      const st = String(b[0]?.s ?? "");
-      if (!["AWARDED", "SETTLING", "COMPLETED"].includes(st)) {
-        return {
-          ok: false,
-          code: "underlying_work_incomplete",
-          message: `The linked bounty is ${st || "unknown"} — judge it (winner selected) before completing the child unit.`,
-        };
-      }
-    }
-    if (loaded.child.kind === "PROJECT" && loaded.child.project_id) {
-      const pr = await tx.query<{ s: string }>(
-        "select status as s from projects where id = $1",
-        [loaded.child.project_id],
-      );
-      const st = String(pr[0]?.s ?? "");
-      if (st !== "COMPLETED") {
-        return {
-          ok: false,
-          code: "underlying_work_incomplete",
-          message: `The linked project is ${st || "unknown"} — it must complete first.`,
-        };
-      }
-    }
+    const blocker = await linkedCompletionBlocker(tx, loaded.child);
+    if (blocker) return { ok: false, code: "underlying_work_incomplete", message: blocker };
     await tx.query("update child_works set state='COMPLETE', updated_at=now() where id=$1", [opts.childWorkId]);
     // Reputation seed: the captain's team delivered this child unit.
     if (loaded.captain_user_id) {

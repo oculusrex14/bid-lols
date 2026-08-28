@@ -110,6 +110,38 @@ function messageFor(status: number): string {
   return "Request failed.";
 }
 
+function logError(requestId: string, event: RequestIdEvent, status: number): void {
+  console.error(
+    `[request ${requestId}] ${event.req.method ?? "GET"} ${event.url.pathname} -> ${status}`,
+  );
+}
+
+/** True when a JSON body carries handler-authored { code, requestId } fields. */
+function hasSpecificEnvelope(body: string): boolean {
+  try {
+    const parsed: unknown = JSON.parse(body);
+    return parsed !== null && typeof parsed === "object" && "requestId" in parsed && "code" in parsed;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Fresh response carrying a CONSUMED body (Phase 00.6 WS4 regression:
+ * returning the original after reading it would send an empty body).
+ */
+function responseWithConsumedBody(body: string, result: Response, status: number, headers: Headers): Response {
+  return new Response(body, { status, statusText: result.statusText, headers });
+}
+
+/** RC3 (S-11): the generic machine-readable envelope, header id === body id. */
+function genericEnvelopeResponse(envelope: string, result: Response, status: number, headers: Headers): Response {
+  const jsonHeaders = new Headers(headers);
+  jsonHeaders.set("content-type", "application/json; charset=utf-8");
+  jsonHeaders.delete("content-length");
+  return new Response(envelope, { status, statusText: result.statusText, headers: jsonHeaders });
+}
+
 export default async function requestIdMiddleware(
   event: RequestIdEvent,
   next: () => unknown | Promise<unknown>,
@@ -137,71 +169,26 @@ export default async function requestIdMiddleware(
     status = 404;
   }
 
-  if (status >= 400 && wantsJson) {
-    const envelope = JSON.stringify({
-      code: codeFor(status),
-      message: messageFor(status),
-      requestId,
-    });
-    const isJson = headers.get("content-type")?.includes("application/json") === true;
+  if (status === 404 || status >= 500) logError(requestId, event, status);
 
+  if (status >= 400 && wantsJson) {
+    const isJson = headers.get("content-type")?.includes("application/json") === true;
     if (isJson) {
       // Keep handler-authored envelopes (they carry their own specific code
       // and requestId, e.g. the webhook 401/400/409 shapes); normalize any
       // generic JSON error body (e.g. the router's "Only HTML requests" 500)
       // to the standard envelope so header id === body id always.
-      let specific = false;
-      let specificText: string | null = null;
-      try {
-        specificText = await result.text(); // consumes the body — see below
-        const parsed: unknown = JSON.parse(specificText);
-        if (
-          parsed !== null &&
-          typeof parsed === "object" &&
-          "requestId" in parsed &&
-          "code" in parsed
-        ) {
-          specific = true;
-        }
-      } catch {
-        specific = false;
-      }
-      if (specific) {
-        if (status === 404 || status >= 500) {
-          console.error(
-            `[request ${requestId}] ${event.req.method ?? "GET"} ${event.url.pathname} -> ${status}`,
-          );
-        }
-        // The specific-envelope check consumed `result`'s body — return a
-        // FRESH response carrying the same body (returning the consumed
-        // original would send an empty body, Phase 00.6 WS4 regression).
-        return new Response(specificText, {
-          status,
-          statusText: result.statusText,
-          headers,
-        });
+      const text = await result.text(); // consumes the body — see below
+      if (hasSpecificEnvelope(text)) {
+        return responseWithConsumedBody(text, result, status, headers);
       }
     }
-
-    if (status === 404 || status >= 500) {
-      console.error(
-        `[request ${requestId}] ${event.req.method ?? "GET"} ${event.url.pathname} -> ${status}`,
-      );
-    }
-    const jsonHeaders = new Headers(headers);
-    jsonHeaders.set("content-type", "application/json; charset=utf-8");
-    jsonHeaders.delete("content-length");
-    return new Response(envelope, {
-      status,
-      statusText: result.statusText,
-      headers: jsonHeaders,
+    const envelope = JSON.stringify({
+      code: codeFor(status),
+      message: messageFor(status),
+      requestId,
     });
-  }
-
-  if (status >= 400 && (status === 404 || status >= 500)) {
-    console.error(
-      `[request ${requestId}] ${event.req.method ?? "GET"} ${event.url.pathname} -> ${status}`,
-    );
+    return genericEnvelopeResponse(envelope, result, status, headers);
   }
 
   return new Response(result.body, {
