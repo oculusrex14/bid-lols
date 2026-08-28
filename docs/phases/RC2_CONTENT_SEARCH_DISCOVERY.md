@@ -156,6 +156,8 @@ Entity naming (consistent everywhere):
 | 10 | server messages (bounties.server / bidception.server) | "Join founding access to be notified…" | Stale naming: the form is Launch updates | Rewritten |
 | 11 | legal.ts (privacy) | "has no account system and accepts no payment" | Contradiction: accounts exist (Phase 01) | Factual update: accounts + profile + waitlist data now described; payment-absence statement kept (still true) |
 | 12 | legal.ts (terms "The service today") | surface list omits graveyard, bidception, leaderboards, bid index | Contradiction: those surfaces exist | Surface list updated; all legal/payment/IP semantics untouched |
+| 13 | bid-index loader + `bidIndexFor` | the Bidthrone surface queried `product = 'bidthrone'`, which holds no bounties: the Bid Index could never publish data, on any network | Read-model scoping defect (surfaced during the claim audit of "what the market pays" can actually show) | `bidIndexFor(null, …)` = network-wide sample; loader aggregates across products. Documented as the same network-wide choice as the leaderboards (RC1 R8.3). No money, auth, or write-path change. |
+| 14 | leaderboards page | `top_captains` board existed in the engine but was absent from the client `BOARD_NAMES` enum, so the page never showed it (RC1 R8.1 required the TOP CAPTAINS board) | Enum omission, not an engine gap | `top_captains` added to the client enum; the page now renders all eight boards with their own metric labels. |
 
 ## Deferred to post-RC2 (recorded, NOT in this release)
 
