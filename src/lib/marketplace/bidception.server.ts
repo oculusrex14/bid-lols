@@ -66,7 +66,7 @@ export async function publishParentForFunding(opts: {
     return {
       ok: false,
       code: "funding_disabled",
-      message: "Funding is not live yet. Join founding access to be notified when Bidception opens.",
+      message: "Funding is not live yet, so this project stays a draft. Join the launch updates list to be notified when funding opens on Bidception.",
     };
   }
   const budgetMinor = Math.round(opts.budgetRupees * 100);

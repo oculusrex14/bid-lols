@@ -35,7 +35,7 @@ function SettingsProfilePage() {
         </h1>
         <p className="mt-2 max-w-xl text-sm leading-relaxed text-muted">
           Your public identity across the Bid Network marketplaces. Money-facing
-          actions additionally require a verified email — shown on your profile
+          actions additionally require a verified email, shown on your profile
           once verified.
         </p>
         <div className="mt-6">

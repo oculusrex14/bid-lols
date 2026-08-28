@@ -24,7 +24,7 @@ export const Route = createRootRoute({
       // Static, umbrella-level defaults (React-managed, hydration-safe).
       // On deployed runtimes the host-aware SEO middleware replaces these
       // per-domain (scripts/host-seo-shared.mjs); in dev they stand as-is.
-      { title: "The Bid Network — an internet bounty network" },
+      { title: "The Bid Network: an internet bounty network" },
       {
         name: "description",
         content:

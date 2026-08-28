@@ -62,11 +62,11 @@ function NewParentPage() {
     <ProductShell site={d.product} me={d.me}>
       <div className="mx-auto max-w-3xl px-4 py-10">
         <p className="text-xs font-medium uppercase tracking-kicker text-subtle">Sponsor</p>
-        <h1 className="mt-1 font-display-site text-2xl tracking-tight sm:text-3xl">Post parent work</h1>
+        <h1 className="mt-1 font-display-site text-2xl tracking-tight sm:text-3xl">Start a team project</h1>
         <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted">
           One funded problem. You set the total budget; a captain you select
           decomposes it into funded child units. Allocations, the captain's
-          fee and any reserve always add up to the funded budget — never more.
+          fee and any reserve always add up to the funded budget. Never more.
         </p>
         <form onSubmit={onSubmit} noValidate className="mt-6 rounded-lg border-2 border-fg/20 bg-surface p-5" data-testid="create-parent-form">
           <div className="grid gap-4">

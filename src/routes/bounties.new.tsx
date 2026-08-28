@@ -131,16 +131,17 @@ function NewBountyPage() {
         <p className="text-xs font-medium uppercase tracking-kicker text-subtle">Sponsor</p>
         <h1 className="mt-1 font-display-site text-2xl tracking-tight sm:text-3xl">Post a bounty</h1>
         <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted">
-          Funded problems only. Your bounty becomes open to applications only
-          after the reward is funded — and the advertised reward is exactly
-          what winners receive. The platform fee is charged to you on top and
-          disclosed here.
+          A bounty is bounded work with a fixed reward. It opens to
+          applications only once the reward is funded, and the advertised
+          reward is exactly what the winner receives. The platform fee is
+          charged to you on top of the reward, and the split is shown here
+          before you commit to anything.
         </p>
 
         {!d.emailVerified ? (
           <div className="mt-6 rounded-md border-2 border-warn/40 bg-raised/40 p-4 text-sm" data-testid="unverified-note">
             Money-facing actions need a verified email. Verification email
-            delivery is not configured yet — an admin can verify manually.
+            delivery is not configured yet. An admin can verify manually.
             You can draft the bounty now and fund it after verification.
           </div>
         ) : null}
@@ -181,7 +182,7 @@ function NewBountyPage() {
           </div>
 
           <div className="mt-4 rounded-lg border-2 border-fg/20 bg-surface p-5">
-            <p className="text-xs font-medium uppercase tracking-kicker text-subtle">Money — explicit and honest</p>
+            <p className="text-xs font-medium uppercase tracking-kicker text-subtle">Money, explicit and honest</p>
             <div className="mt-3 grid gap-4 sm:grid-cols-2">
               <div>
                 <label htmlFor="bn-reward" className={label}>Advertised reward (₹)</label>
@@ -286,8 +287,9 @@ function NewBountyPage() {
             {status.state === "creating" ? "Creating…" : "Create bounty (draft)"}
           </button>
           <p className="mt-2 text-xs text-subtle">
-            Drafts publish only after funding. While funding is not live, your
-            draft is saved and you can fund it the moment payments open.
+            Creating a draft is free. A bounty publishes only after its reward
+            is funded. Funding is not enabled yet, so your draft is saved here
+            and opens the moment funding turns on.
           </p>
         </form>
       </div>

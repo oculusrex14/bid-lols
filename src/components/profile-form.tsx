@@ -171,7 +171,7 @@ export function ProfileForm({ initial }: { initial: MyProfileView }) {
       ) : null}
       {status.state === "saved" ? (
         <p role="status" aria-live="polite" className="mt-3 flex items-center gap-2 text-sm font-medium text-up">
-          <Check className="size-4" aria-hidden="true" /> Saved — your profile lives at /profile/{status.handle}
+          <Check className="size-4" aria-hidden="true" /> Saved. Your profile lives at /profile/{status.handle}
         </p>
       ) : null}
 

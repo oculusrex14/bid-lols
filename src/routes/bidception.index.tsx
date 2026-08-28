@@ -1,18 +1,20 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
-import { currentProductKey } from "@/lib/host";
-import { shellContext } from "@/lib/shell-context";
+import { currentProductKey, product, seoOrigin, type ProductKey } from "@/lib/host";
 import { ProductShell } from "@/components/product-shell";
 import { getSql } from "@/lib/db.server";
 import { formatMinor } from "@/lib/money";
+import { JsonLd } from "@/components/seo";
+import { itemListSchema } from "@/lib/schema";
 
 /**
- * /bidception — parent works (Phase 03). One funded problem; a team forms
- * around the money. Public surface shows funded/active parents honestly.
+ * /bidception — team projects (Phase 03). One funded parent, a captain who
+ * splits it into funded work packages, specialists who take the parts. The
+ * public list shows only projects that exist as funded or active work.
  */
 const loadList = createServerFn({ method: "GET" }).handler(async () => {
   const sql = await getSql();
-  const product = await currentProductKey();
+  const productKey = await currentProductKey();
   const { me } = await (await import("@/lib/shell-context")).getShellContext();
   const items = await sql.query<{
     id: string; title: string; slug: string; status: string;
@@ -24,9 +26,9 @@ const loadList = createServerFn({ method: "GET" }).handler(async () => {
      from parent_works pw
      where pw.product = $1 and pw.status in ('FUNDED','ACTIVE','COMPLETING','COMPLETED')
      order by pw.created_at desc limit 50`,
-    [product],
+    [productKey],
   );
-  return { product, me, items };
+  return { product: productKey, me, items };
 });
 
 export const Route = createFileRoute("/bidception/")({
@@ -36,25 +38,42 @@ export const Route = createFileRoute("/bidception/")({
 
 function BidceptionPage() {
   const d = Route.useLoaderData();
+  const pKey = d.product as ProductKey;
+
   return (
-    <ProductShell site={d.product} me={d.me}>
+    <ProductShell site={pKey} me={d.me}>
       <div className="mx-auto max-w-5xl px-4 py-10">
-        <p className="text-xs font-medium uppercase tracking-kicker text-subtle">Bidception</p>
-        <h1 className="mt-1 font-display-site text-2xl tracking-tight sm:text-3xl">Funded parent work</h1>
-        <p className="mt-1 max-w-2xl text-sm text-muted">
-          One funded problem. A captain decomposes it into funded child units —
-          allocated + reserved + captain compensation can never exceed the
-          funded budget. Money cannot be created by nesting.
+        <p className="text-xs font-medium uppercase tracking-kicker text-subtle">
+          {product(pKey).name}
+        </p>
+        <h1 className="mt-1 font-display-site text-2xl tracking-tight sm:text-3xl">
+          Team projects
+        </h1>
+        <p className="mt-1 max-w-2xl text-sm leading-relaxed text-muted">
+          One funded project, one budget, a captain, and work packages drawn
+          from that budget. Allocations, the captain's fee, and any reserve
+          always add up to the funded total; the engine refuses to go past it.
         </p>
 
         {d.items.length === 0 ? (
           <div className="mt-10 rounded-lg border-2 border-dashed border-fg/20 bg-surface p-10 text-center">
-            <h2 className="font-display-site text-xl tracking-tight">No funded parent work yet.</h2>
-            <p className="mx-auto mt-2 max-w-md text-sm text-muted">
-              Parent work appears here once it is funded. This is the team
-              marketplace — a sponsor funds, a captain decomposes, the team
-              delivers. Nothing padded.
+            <h2 className="font-display-site text-xl tracking-tight">
+              No funded team projects yet.
+            </h2>
+            <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-muted">
+              A team project appears here once its full budget is funded: a
+              sponsor sets the total, a captain splits it into work packages,
+              and specialists take the parts they are good at. Drafts stay
+              private until funding happens.
             </p>
+            <div className="mt-5 flex flex-wrap justify-center gap-3">
+              <Link to="/bidception/new" className="inline-flex h-10 items-center rounded-md bg-accent px-4 text-sm font-semibold text-accent-fg">
+                Start a project
+              </Link>
+              <Link to="/blog/$slug" params={{ slug: "building-a-project-with-multiple-freelancers" }} className="inline-flex h-10 items-center rounded-md border-2 border-fg/20 px-4 text-sm font-medium">
+                How a funded team project works
+              </Link>
+            </div>
           </div>
         ) : (
           <ul className="mt-6 space-y-3">
@@ -69,7 +88,9 @@ function BidceptionPage() {
                     <div>
                       <p className="text-xs font-medium uppercase tracking-kicker text-subtle">{p.status}</p>
                       <h2 className="mt-1 font-display-site text-lg tracking-tight">{p.title}</h2>
-                      <p className="mt-1 text-sm text-muted">{p.child_count} funded child units</p>
+                      <p className="mt-1 text-sm text-muted">
+                        {p.child_count} work package{p.child_count === 1 ? "" : "s"} funded from the parent budget
+                      </p>
                     </div>
                     {p.funded_budget_minor != null ? (
                       <p className="font-display-site text-lg tracking-tight text-accent">
@@ -82,6 +103,18 @@ function BidceptionPage() {
             ))}
           </ul>
         )}
+
+        {d.items.length > 0 ? (
+          <JsonLd
+            data={itemListSchema(
+              pKey,
+              d.items.map((p) => ({
+                name: p.title,
+                url: `${seoOrigin(pKey)}/bidception/${p.id}`,
+              })),
+            )}
+          />
+        ) : null}
       </div>
     </ProductShell>
   );

@@ -93,24 +93,24 @@ function NewListingPage() {
         <p className="text-xs font-medium uppercase tracking-kicker text-subtle">Graveyard</p>
         <h1 className="mt-1 font-display-site text-2xl tracking-tight sm:text-3xl">List an abandoned startup</h1>
         <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted">
-          Be honest about what died and what is included. Never paste API keys,
-          tokens, or customer data into the listing — credentials are
-          transferred directly through their providers, never through this
-          platform.
+          Describe the project, why it was paused, and what is included.
+          Never paste API keys, tokens, or customer data into the listing.
+          Credentials are transferred directly through their providers,
+          never through this platform.
         </p>
         <form onSubmit={onSubmit} noValidate className="mt-6 rounded-lg border-2 border-fg/20 bg-surface p-5" data-testid="create-listing-form">
           <div className="grid gap-4">
             <div>
               <label htmlFor="gy-title" className="mb-1.5 block text-sm font-medium">Project name</label>
-              <input id="gy-title" name="title" required minLength={8} maxLength={140} placeholder="Pointhatch — invoicing for freelancers" className={field} />
+              <input id="gy-title" name="title" required minLength={8} maxLength={140} placeholder="Pointhatch, invoicing for freelancers" className={field} />
             </div>
             <div>
               <label htmlFor="gy-desc" className="mb-1.5 block text-sm font-medium">What is it?</label>
               <textarea id="gy-desc" name="description" rows={5} required minLength={20} maxLength={20000} className={field} />
             </div>
             <div>
-              <label htmlFor="gy-death" className="mb-1.5 block text-sm font-medium">Why did it die?</label>
-              <textarea id="gy-death" name="reasonOfDeath" rows={3} maxLength={2000} placeholder="Be honest — buyers expect it." className={field} />
+              <label htmlFor="gy-death" className="mb-1.5 block text-sm font-medium">Why was it paused?</label>
+              <textarea id="gy-death" name="reasonOfDeath" rows={3} maxLength={2000} placeholder="Be honest. Buyers expect it." className={field} />
             </div>
             <div>
               <p className="mb-1.5 block text-sm font-medium">What is included?</p>
@@ -147,7 +147,7 @@ function NewListingPage() {
             </div>
             <div>
               <label htmlFor="gy-hist" className="mb-1.5 block text-sm font-medium">Revenue / user history (self-reported)</label>
-              <textarea id="gy-hist" name="historySelfReported" rows={2} maxLength={4000} placeholder="Self-declared history — buyers should verify anything material." className={field} />
+              <textarea id="gy-hist" name="historySelfReported" rows={2} maxLength={4000} placeholder="Self-declared history. Buyers should verify anything material." className={field} />
             </div>
             <div>
               <label htmlFor="gy-check" className="mb-1.5 block text-sm font-medium">Transfer checklist (one item per line)</label>

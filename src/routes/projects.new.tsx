@@ -71,7 +71,7 @@ function NewProjectPage() {
         <h1 className="mt-1 font-display-site text-2xl tracking-tight sm:text-3xl">Post a project</h1>
         <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted">
           Describe the work and constraints. Providers respond with an approach,
-          evidence and a milestone plan — not with finished deliverables.
+          evidence and a milestone plan, not with finished deliverables.
         </p>
         <form onSubmit={onSubmit} noValidate className="mt-6 rounded-lg border-2 border-fg/20 bg-surface p-5" data-testid="create-project-form">
           <div className="grid gap-4">

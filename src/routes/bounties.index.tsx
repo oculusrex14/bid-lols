@@ -1,17 +1,20 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { currentProductKey } from "@/lib/host";
+import { currentProductKey, product, seoOrigin, type ProductKey } from "@/lib/host";
 import { shellContext } from "@/lib/shell-context";
 import { ProductShell } from "@/components/product-shell";
 import { getSql } from "@/lib/db.server";
 import { listOpenBounties } from "@/lib/marketplace/queries.server";
 import { formatMinor } from "@/lib/money";
+import { JsonLd } from "@/components/seo";
+import { itemListSchema } from "@/lib/schema";
 
 /**
- * /bounties — the public marketplace listing (Phase 01, FR-3). Server-side
- * filtering + cursor pagination over indexed queries; honest empty state.
- * Marketplace routes are FoundersBid surfaces; other hosts 302 (middleware).
+ * /bounties — the public marketplace listing (Phase 01, FR-3). Serves two
+ * surfaces from one route: FoundersBid bounties and CultureBid creative
+ * bounties (RC1, R4 capability matrix). The product context comes from the
+ * request host, so the kicker, H1, and links match the domain.
  */
 const loadBounties = createServerFn({ method: "GET" })
   .validator((input: { category?: string; sort?: string; cursor?: string | null; rewardMin?: number }) =>
@@ -26,16 +29,16 @@ const loadBounties = createServerFn({ method: "GET" })
   )
   .handler(async ({ data }) => {
     const sql = await getSql();
-    const product = await currentProductKey();
+    const productKey = await currentProductKey();
     const { me } = await (await import("@/lib/shell-context")).getShellContext();
-    const result = await listOpenBounties(sql, product, {
+    const result = await listOpenBounties(sql, productKey, {
       category: data.category,
       sort: data.sort as "newest" | "ending_soon" | "reward",
       cursor: data.cursor,
       rewardMinMinor: data.rewardMin,
       limit: 20,
     });
-    return { ...result, product, me };
+    return { ...result, product: productKey, me };
   });
 
 export const Route = createFileRoute("/bounties/")({
@@ -56,25 +59,33 @@ function BountiesPage() {
   const navigate = useNavigate();
   const appliedSort = search.sort ?? "newest";
   const hasFilters = Boolean(search.category || (search.sort && search.sort !== "newest"));
+  const pKey = data.product as ProductKey;
+  const isCulture = pKey === "culturebid";
+  const listTitle = isCulture ? "Creative bounties" : "Open bounties";
+  const articleSlug = isCulture ? "fair-creative-bounty" : "bounty-or-project";
 
   return (
-    <ProductShell site={data.product} me={data.me}>
+    <ProductShell site={pKey} me={data.me}>
       <div className="mx-auto max-w-5xl px-4 py-10">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <p className="text-xs font-medium uppercase tracking-kicker text-subtle">FoundersBid</p>
-            <h1 className="mt-1 font-display-site text-2xl tracking-tight sm:text-3xl">Open bounties</h1>
-            <p className="mt-1 max-w-2xl text-sm text-muted">
-              Funded problems, real rewards. Every listing here is funded before
-              it can be open — the advertised reward is exactly what winners
-              receive.
+            <p className="text-xs font-medium uppercase tracking-kicker text-subtle">
+              {product(pKey).name}
+            </p>
+            <h1 className="mt-1 font-display-site text-2xl tracking-tight sm:text-3xl">
+              {listTitle}
+            </h1>
+            <p className="mt-1 max-w-2xl text-sm leading-relaxed text-muted">
+              {isCulture
+                ? "Paid creative briefs with a published reward, a deadline, and a capped number of creator slots. Every brief states the rules before anyone starts."
+                : "Bounded work with a fixed reward and a deadline. A bounty opens only once its reward is funded, and the advertised reward is exactly what the winner receives."}
             </p>
           </div>
           <Link
             to="/bounties/new"
             className="inline-flex h-10 items-center rounded-md bg-accent px-4 text-sm font-semibold text-accent-fg"
           >
-            Post a bounty
+            {isCulture ? "Post a brief" : "Post a bounty"}
           </Link>
         </div>
 
@@ -109,19 +120,21 @@ function BountiesPage() {
         {data.items.length === 0 ? (
           <div className="mt-10 rounded-lg border-2 border-dashed border-fg/20 bg-surface p-10 text-center">
             <h2 className="font-display-site text-xl tracking-tight">
-              {hasFilters ? "No open bounties match those filters yet." : "No open bounties yet."}
+              {hasFilters ? "No bounties match those filters yet." : `No open ${isCulture ? "creative bounties" : "bounties"} yet.`}
             </h2>
-            <p className="mx-auto mt-2 max-w-md text-sm text-muted">
-              FoundersBid just opened its marketplace — the first funded bounties
-              will appear here as sponsors post them. Nothing on this page is
-              fabricated; empty means empty.
+            <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-muted">
+              {isCulture
+                ? "Brands post creative briefs with a reward, a deadline, and a capped field of creators. The first live briefs will appear here."
+                : "A bounty is bounded work with a fixed reward: the sponsor posts it, a capped set of people compete, and the winner is paid the advertised amount. The first live bounties will appear here."}
             </p>
             <div className="mt-5 flex flex-wrap justify-center gap-3">
               <Link to="/bounties/new" className="inline-flex h-10 items-center rounded-md bg-accent px-4 text-sm font-semibold text-accent-fg">
-                Post the first bounty
+                {isCulture ? "Post a brief" : "Post a bounty"}
               </Link>
-              <Link to="/" className="inline-flex h-10 items-center rounded-md border-2 border-fg/20 px-4 text-sm font-medium">
-                How FoundersBid works
+              <Link to="/blog/$slug" params={{ slug: articleSlug }} className="inline-flex h-10 items-center rounded-md border-2 border-fg/20 px-4 text-sm font-medium">
+                {isCulture
+                  ? "How a fair creative bounty works"
+                  : "Bounty or project: how the two modes differ"}
               </Link>
             </div>
           </div>
@@ -173,6 +186,18 @@ function BountiesPage() {
               Older bounties →
             </button>
           </div>
+        ) : null}
+
+        {data.items.length > 0 ? (
+          <JsonLd
+            data={itemListSchema(
+              pKey,
+              data.items.map((b) => ({
+                name: b.title,
+                url: `${seoOrigin(pKey)}/bounties/${b.id}`,
+              })),
+            )}
+          />
         ) : null}
       </div>
     </ProductShell>

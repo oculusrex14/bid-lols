@@ -24,8 +24,8 @@ export function NotFoundPage() {
     // The deployed middleware already set the correct per-domain title for
     // SSR'd 404s — only fix it when that pass did not happen (dev server, or
     // a client-side navigation to an unknown route).
-    if (!document.title.startsWith("Page not found — ")) {
-      document.title = `Page not found — ${product(key).name}`;
+    if (!document.title.startsWith("Page not found: ")) {
+      document.title = `Page not found: ${product(key).name}`;
     }
     const theme = product(key).theme;
     if (theme && document.documentElement.getAttribute("data-theme") !== theme) {

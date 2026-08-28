@@ -205,7 +205,7 @@ export async function publishBountyForFunding(opts: {
       ok: false,
       code: "funding_disabled",
       message:
-        "Funding is not live yet. Join founding access to be notified when FoundersBid starts taking real work.",
+        "Funding is not live yet, so this bounty stays a draft. Join the launch updates list to be notified when funding opens on FoundersBid.",
     };
   }
 

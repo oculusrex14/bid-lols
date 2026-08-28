@@ -1,12 +1,14 @@
 import { useState } from "react";
-import { createFileRoute, Link , redirect } from "@tanstack/react-router";
+import { createFileRoute, notFound, redirect } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { currentProductKey } from "@/lib/host";
+import { currentProductKey, product as productInfo, seoOrigin, type ProductKey } from "@/lib/host";
 import { shellContext } from "@/lib/shell-context";
 import { ProductShell } from "@/components/product-shell";
 import { getSql } from "@/lib/db.server";
 import { entityRedirectFor } from "@/lib/marketplace/capabilities.server";
+import { JsonLd } from "@/components/seo";
+import { breadcrumbSchema } from "@/lib/schema";
 import {
   publishProjectFn,
   submitProposalFn,
@@ -47,7 +49,7 @@ const loadDetail = createServerFn({ method: "GET" })
       [data.id],
     );
     const project = rows[0];
-    if (!project) return null;
+    if (!project) throw notFound();
     const product = await currentProductKey();
     const entityUrl = entityRedirectFor(String(project.product), product, `/projects/${data.id}`);
     if (entityUrl) throw redirect({ to: entityUrl });
@@ -91,16 +93,6 @@ export const Route = createFileRoute("/projects/$id")({
 
 function ProjectDetailPage() {
   const data = Route.useLoaderData();
-  if (!data) {
-    return (
-      <ProductShell site="foundersbid">
-        <div className="mx-auto max-w-2xl px-4 py-16 text-center">
-          <h1 className="font-display-site text-2xl tracking-tight">Project not found</h1>
-          <Link to="/projects" className="mt-4 inline-block text-sm underline underline-offset-2">← Back to projects</Link>
-        </div>
-      </ProductShell>
-    );
-  }
   return <ProjectDetailBody key={String(data.project.id)} data={data} />;
 }
 
@@ -130,10 +122,21 @@ function ProjectDetailBody({ data }: { data: Data }) {
 
   const status = String(p.status);
 
+  const origin = seoOrigin(data.product as ProductKey);
+  const canonicalUrl = `${origin}/projects/${String(p.id)}`;
+
   return (
-    <ProductShell site={data.product} me={data.me}>
+    <ProductShell site={data.product as ProductKey} me={data.me}>
       <div className="mx-auto max-w-4xl px-4 py-10">
-        <Link to="/projects" className="text-sm text-subtle underline underline-offset-2">← All projects</Link>
+        <nav aria-label="Breadcrumb" className="text-sm text-subtle">
+          <a href="/" className="underline-offset-4 hover:underline">
+            {productInfo(data.product as ProductKey).name}
+          </a>
+          <span aria-hidden="true"> / </span>
+          <a href="/projects" className="underline-offset-4 hover:underline">
+            Open projects
+          </a>
+        </nav>
         <div className="mt-4 flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0">
             <p className="text-xs font-medium uppercase tracking-kicker text-subtle">
@@ -170,7 +173,7 @@ function ProjectDetailBody({ data }: { data: Data }) {
                           type="button"
                           disabled={busy}
                           onClick={async () => {
-                            await run(() => selectProposalFn({ data: { projectId: String(p.id), proposalId: pr.id } }), "Proposal selected — funding is next.");
+                            await run(() => selectProposalFn({ data: { projectId: String(p.id), proposalId: pr.id } }), "Proposal selected. Funding is next.");
                           }}
                           className="mt-2 inline-flex h-9 items-center rounded-md bg-accent px-3 text-sm font-semibold text-accent-fg"
                         >
@@ -269,6 +272,14 @@ function ProjectDetailBody({ data }: { data: Data }) {
         </div>
 
         {showPropose && !data.isSponsor ? <ProposalBox projectId={String(p.id)} onDone={(m) => { setMessage(m); setShowPropose(false); }} /> : null}
+
+        <JsonLd
+          data={breadcrumbSchema(data.product as ProductKey, [
+            { name: productInfo(data.product as ProductKey).name, url: origin },
+            { name: "Open projects", url: `${origin}/projects` },
+            { name: String(p.title), url: canonicalUrl },
+          ])}
+        />
       </div>
     </ProductShell>
   );

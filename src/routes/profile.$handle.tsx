@@ -1,15 +1,17 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, notFound } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { currentProductKey } from "@/lib/host";
 import { ProductShell } from "@/components/product-shell";
+import { JsonLd } from "@/components/seo";
+import { profileSchema } from "@/lib/schema";
 import type { PublicProfile } from "@/lib/profiles.server";
 
 /**
  * Public profile (Phase 01, FR-2): /profile/:handle. SSR-fetched; shows only
- * public fields (no email, no admin state). Missing/suspended profiles get a
- * honest not-found state. Head tags are owned by the SEO middleware (single
- * head authority across runtimes — profile pages are noindex,follow there).
+ * public fields (no email, no admin state). Missing or suspended profiles are
+ * real 404s (RC2, C3.5). Head tags are owned by the SEO middleware (single
+ * head authority across runtimes; thin profiles get noindex,follow there).
  */
 const loadProfile = createServerFn({ method: "GET" })
   .validator((input: { handle: string }) =>
@@ -26,10 +28,8 @@ const loadProfile = createServerFn({ method: "GET" })
         return getShellContext();
       })(),
     ]);
-    let reputation = null;
-    if (profile) {
-      reputation = await reputationFor(profile.userId).catch(() => null);
-    }
+    if (!profile) throw notFound();
+    const reputation = await reputationFor(profile.userId).catch(() => null);
     return { profile, product, handle: data.handle, reputation, me: shell.me };
   });
 
@@ -40,23 +40,12 @@ export const Route = createFileRoute("/profile/$handle")({
 
 function ProfilePage() {
   const d = Route.useLoaderData();
-  if (!d.profile) {
-    return (
-      <ProductShell site={d.product} me={d.me}>
-        <div className="mx-auto max-w-2xl px-4 py-16 text-center">
-          <h1 className="font-display-site text-2xl tracking-tight">Profile not found</h1>
-          <p className="mt-2 text-sm text-muted">
-            No public profile lives at @{d.handle}. It may not exist yet, or the
-            member has left the network.
-          </p>
-          <Link to="/" className="mt-4 inline-block text-sm font-medium underline underline-offset-2">
-            Back to home
-          </Link>
-        </div>
-      </ProductShell>
-    );
-  }
   const p: PublicProfile = d.profile;
+  const hasContent =
+    p.bio.length > 0 ||
+    p.skills.length > 0 ||
+    p.portfolioLinks.length > 0 ||
+    Boolean(p.githubUrl || p.linkedinUrl || p.websiteUrl);
   return (
     <ProductShell site={d.product} me={d.me}>
       <div className="mx-auto max-w-3xl px-4 py-10">
@@ -140,7 +129,7 @@ function ProfilePage() {
             {d.reputation.experience === 0 ? (
               <p className="mt-2 text-sm text-muted">
                 No verified marketplace outcomes yet. This profile will fill in
-                with real wins, completions and reviews — nothing is padded.
+                with real wins, completions, and reviews.
               </p>
             ) : (
               <>
@@ -148,7 +137,7 @@ function ProfilePage() {
                   {[
                     ["Experience", d.reputation.experience],
                     ["Reliability", `${Math.round(d.reputation.reliability * 100)}%`],
-                    ["Quality", d.reputation.quality ? d.reputation.quality.toFixed(1) : "—"],
+                    ["Quality", d.reputation.quality ? d.reputation.quality.toFixed(1) : "n/a"],
                     ["Reviews", d.reputation.reviewsReceived],
                   ].map(([label, value]) => (
                     <div key={String(label)}>
@@ -165,6 +154,20 @@ function ProfilePage() {
               </>
             )}
           </div>
+        ) : null}
+
+        {hasContent ? (
+          <JsonLd
+            data={profileSchema(d.product as import("@/lib/host").ProductKey, {
+              displayName: p.displayName,
+              handle: p.handle,
+              bio: p.bio,
+              skills: p.skills,
+              websiteUrl: p.websiteUrl,
+              githubUrl: p.githubUrl,
+              linkedinUrl: p.linkedinUrl,
+            })}
+          />
         ) : null}
       </div>
     </ProductShell>

@@ -1,12 +1,13 @@
 import { useState } from "react";
-import { createFileRoute, Link , redirect } from "@tanstack/react-router";
+import { createFileRoute, notFound, redirect } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { currentProductKey } from "@/lib/host";
-import { shellContext } from "@/lib/shell-context";
+import { currentProductKey, product as productInfo, seoOrigin, type ProductKey } from "@/lib/host";
 import { ProductShell } from "@/components/product-shell";
 import { getSql } from "@/lib/db.server";
 import { formatMinor } from "@/lib/money";
+import { JsonLd } from "@/components/seo";
+import { breadcrumbSchema } from "@/lib/schema";
 import { getSession } from "@/lib/authz";
 import { entityRedirectFor } from "@/lib/marketplace/capabilities.server";
 import { submitOfferFn, decideOfferFn, retractOfferFn, markTransferredFn, withdrawListingFn, publishListingFn } from "@/lib/marketplace/graveyard";
@@ -34,7 +35,7 @@ const loadDetail = createServerFn({ method: "GET" })
         [data.id],
       )
     )[0];
-    if (!listing) return null;
+    if (!listing) throw notFound();
     const product = await currentProductKey();
     const entityUrl = entityRedirectFor(listing.product, product, `/graveyard/${data.id}`);
     if (entityUrl) throw redirect({ to: entityUrl });
@@ -74,16 +75,6 @@ export const Route = createFileRoute("/graveyard/$id")({
 
 function GraveyardDetailPage() {
   const data = Route.useLoaderData();
-  if (!data) {
-    return (
-      <ProductShell site="foundersbid">
-        <div className="mx-auto max-w-2xl px-4 py-16 text-center">
-          <h1 className="font-display-site text-2xl tracking-tight">Listing not found</h1>
-          <Link to="/graveyard" className="mt-4 inline-block text-sm underline underline-offset-2">← Back to the graveyard</Link>
-        </div>
-      </ProductShell>
-    );
-  }
   return <GraveyardDetailBody key={data.listing.id} data={data} />;
 }
 
@@ -114,7 +105,15 @@ function GraveyardDetailBody({ data }: { data: NonNullable<Awaited<ReturnType<ty
   return (
     <ProductShell site={data.product} me={data.me}>
       <div className="mx-auto max-w-4xl px-4 py-10">
-        <Link to="/graveyard" className="text-sm text-subtle underline underline-offset-2">← The graveyard</Link>
+        <nav aria-label="Breadcrumb" className="text-sm text-subtle">
+          <a href="/" className="underline-offset-4 hover:underline">
+            {productInfo(data.product as ProductKey).name}
+          </a>
+          <span aria-hidden="true"> / </span>
+          <a href="/graveyard" className="underline-offset-4 hover:underline">
+            The Graveyard
+          </a>
+        </nav>
 
         <div className="mt-4 flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0">
@@ -141,7 +140,7 @@ function GraveyardDetailBody({ data }: { data: NonNullable<Awaited<ReturnType<ty
               <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed">{l.description}</p>
               {l.reason_of_death ? (
                 <>
-                  <h2 className="mt-5 text-xs font-medium uppercase tracking-kicker text-subtle">Why it died</h2>
+                  <h2 className="mt-5 text-xs font-medium uppercase tracking-kicker text-subtle">Why it was paused</h2>
                   <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed">{l.reason_of_death}</p>
                 </>
               ) : null}
@@ -257,7 +256,7 @@ function GraveyardDetailBody({ data }: { data: NonNullable<Awaited<ReturnType<ty
                             type="button"
                             disabled={busy}
                             onClick={async () => {
-                              await run(() => decideOfferFn({ data: { offerId: String(o.id), decision: "ACCEPT" } }), "Offer accepted — coordinate the handover directly.");
+                              await run(() => decideOfferFn({ data: { offerId: String(o.id), decision: "ACCEPT" } }), "Offer accepted. Coordinate the handover directly.");
                             }}
                             className="inline-flex h-8 items-center rounded-md bg-accent px-3 text-xs font-semibold text-accent-fg"
                           >
@@ -282,6 +281,14 @@ function GraveyardDetailBody({ data }: { data: NonNullable<Awaited<ReturnType<ty
             ) : null}
           </div>
         </div>
+
+        <JsonLd
+          data={breadcrumbSchema(data.product as ProductKey, [
+            { name: productInfo(data.product as ProductKey).name, url: seoOrigin(data.product as ProductKey) },
+            { name: "The Graveyard", url: `${seoOrigin(data.product as ProductKey)}/graveyard` },
+            { name: l.title, url: `${seoOrigin(data.product as ProductKey)}/graveyard/${l.id}` },
+          ])}
+        />
       </div>
     </ProductShell>
   );

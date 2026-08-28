@@ -1,12 +1,13 @@
 import { useState } from "react";
-import { createFileRoute, Link , redirect } from "@tanstack/react-router";
+import { createFileRoute, notFound, redirect } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { currentProductKey } from "@/lib/host";
-import { shellContext } from "@/lib/shell-context";
+import { currentProductKey, product as productInfo, seoOrigin, type ProductKey } from "@/lib/host";
 import { ProductShell } from "@/components/product-shell";
 import { getSql } from "@/lib/db.server";
 import { formatMinor } from "@/lib/money";
+import { JsonLd } from "@/components/seo";
+import { breadcrumbSchema } from "@/lib/schema";
 import { getSession } from "@/lib/authz";
 import { entityRedirectFor } from "@/lib/marketplace/capabilities.server";
 import {
@@ -44,7 +45,7 @@ const loadDetail = createServerFn({ method: "GET" })
         [data.id],
       )
     )[0];
-    if (!row) return null;
+    if (!row) throw notFound();
     const product = await currentProductKey();
     const entityUrl = entityRedirectFor(String(row.product), product, `/bidception/${data.id}`);
     if (entityUrl) throw redirect({ to: entityUrl });
@@ -75,16 +76,6 @@ export const Route = createFileRoute("/bidception/$id")({
 
 function BidceptionDetailPage() {
   const data = Route.useLoaderData();
-  if (!data) {
-    return (
-      <ProductShell site="foundersbid">
-        <div className="mx-auto max-w-2xl px-4 py-16 text-center">
-          <h1 className="font-display-site text-2xl tracking-tight">Parent work not found</h1>
-          <Link to="/bidception" className="mt-4 inline-block text-sm underline underline-offset-2">← Back</Link>
-        </div>
-      </ProductShell>
-    );
-  }
   return <BidceptionDetailBody data={data} />;
 }
 
@@ -121,7 +112,15 @@ function BidceptionDetailBody({
   return (
     <ProductShell site={data.product} me={data.me}>
       <div className="mx-auto max-w-5xl px-4 py-10">
-        <Link to="/bidception" className="text-sm text-subtle underline underline-offset-2">← Parent work</Link>
+        <nav aria-label="Breadcrumb" className="text-sm text-subtle">
+          <a href="/" className="underline-offset-4 hover:underline">
+            {productInfo(data.product as ProductKey).name}
+          </a>
+          <span aria-hidden="true"> / </span>
+          <a href="/bidception" className="underline-offset-4 hover:underline">
+            Team projects
+          </a>
+        </nav>
 
         <div className="mt-4 flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0">
@@ -132,7 +131,7 @@ function BidceptionDetailBody({
           <div className="text-right">
             <p className="text-xs text-subtle">Funded budget</p>
             <p className="font-display-site text-2xl tracking-tight text-accent">
-              {p.funded_budget_minor != null ? formatMinor(Number(p.funded_budget_minor), p.currency) : "—"}
+              {p.funded_budget_minor != null ? formatMinor(Number(p.funded_budget_minor), p.currency) : "unset"}
             </p>
           </div>
         </div>
@@ -141,7 +140,7 @@ function BidceptionDetailBody({
           <p role="status" aria-live="polite" className="mt-4 rounded-md border-2 border-fg/15 bg-surface p-3 text-sm" data-testid="action-message">{message}</p>
         ) : null}
 
-        {/* Budget ledger — the invariant, made visible */}
+        {/* Budget ledger: the invariant, made visible */}
         <div className="mt-6 grid gap-3 sm:grid-cols-4">
           <div className="rounded-md border-2 border-fg/15 bg-surface p-3">
             <p className="text-xs uppercase tracking-kicker text-subtle">Allocated</p>
@@ -169,7 +168,7 @@ function BidceptionDetailBody({
                 type="button"
                 disabled={busy}
                 onClick={async () => {
-                  await run(() => activateParentWorkFn({ data: { parentWorkId: p.id } }), "Parent work activated — allocate the child units below.");
+                  await run(() => activateParentWorkFn({ data: { parentWorkId: p.id } }), "Parent work activated. Allocate the child units below.");
                 }}
                 className="inline-flex h-10 items-center rounded-md bg-accent px-4 text-sm font-semibold text-accent-fg"
               >
@@ -216,7 +215,7 @@ function BidceptionDetailBody({
                 onClick={async () => {
                   await run(
                     () => settleParentWorkFn({ data: { parentWorkId: p.id, action: "REFUND_RESERVE" } }),
-                    "Settled — the remaining reserve was refunded (recorded in the money ledger).",
+                    "Settled. The remaining reserve was refunded (recorded in the money ledger).",
                   );
                 }}
                 className="text-sm font-medium underline underline-offset-2"
@@ -320,7 +319,7 @@ function BidceptionDetailBody({
                   }
                   return r;
                 },
-                "Funding checkout started — the parent activates once the payment verifies.",
+                "Funding checkout started. The parent activates once the payment verifies.",
               );
             }}
           >
@@ -337,6 +336,14 @@ function BidceptionDetailBody({
             {!data.emailVerified ? <p className="mt-2 text-xs text-muted">Email verification required for money-facing actions (admin can verify while mail delivery is unconfigured).</p> : null}
           </form>
         ) : null}
+
+        <JsonLd
+          data={breadcrumbSchema(data.product as ProductKey, [
+            { name: productInfo(data.product as ProductKey).name, url: seoOrigin(data.product as ProductKey) },
+            { name: "Team projects", url: `${seoOrigin(data.product as ProductKey)}/bidception` },
+            { name: p.title, url: `${seoOrigin(data.product as ProductKey)}/bidception/${p.id}` },
+          ])}
+        />
       </div>
     </ProductShell>
   );

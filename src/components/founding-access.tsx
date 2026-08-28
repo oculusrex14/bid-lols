@@ -22,20 +22,20 @@ type RoleOption = { value: WaitlistRole; label: string };
 
 const ROLE_OPTIONS: Record<ProductKey, RoleOption[]> = {
   bidthrone: [
-    { value: "sponsor", label: "Sponsor — I'd fund work" },
-    { value: "builder", label: "Builder — I'd do work" },
+    { value: "sponsor", label: "Sponsor: I fund work" },
+    { value: "builder", label: "Builder: I do work" },
   ],
   foundersbid: [
     { value: "sponsor", label: "I need work done (sponsor)" },
     { value: "builder", label: "I want to build" },
   ],
   culturebid: [
-    { value: "brand", label: "I'm a brand (I fund briefs)" },
-    { value: "creator", label: "I'm a creator (I compete)" },
+    { value: "brand", label: "Brand: I fund briefs" },
+    { value: "creator", label: "Creator: I make the work" },
   ],
   bidception: [
     { value: "captain", label: "Interested in captaining" },
-    { value: "sponsor", label: "I'd fund a nested project" },
+    { value: "sponsor", label: "I'd fund a team project" },
     { value: "builder", label: "I'd join a team" },
   ],
 };
@@ -143,8 +143,8 @@ export function FoundingAccess({
         </h2>
         <p className="mt-2 max-w-xl text-sm leading-relaxed text-muted">
           {intro ??
-            `We email people on this list about ${cfg.name} — funding opening, ` +
-              `new categories, launch moments. One email per update, no payment, no spam.`}
+            `We email people on this list about ${cfg.name}: funding opening, ` +
+              `new categories, launch updates. One email per change, no marketing list.`}
         </p>
 
         {status.state === "success" ? (
@@ -160,7 +160,7 @@ export function FoundingAccess({
               </p>
               <p className="mt-1 text-sm text-muted">
                 We'll write to {status.email} when {cfg.name} opens. No counts,
-                no promises of timing — just one email when it's real.
+                no promises of timing. One email when it is real.
               </p>
             </div>
           </div>

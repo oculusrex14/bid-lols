@@ -55,7 +55,7 @@ export function legalDoc(productKey: ProductKey, slug: LegalSlug): {
 } {
   const cfg = product(productKey);
   const email = contactEmail(productKey);
-  const updated = "26 August 2026";
+  const updated = "28 August 2026";
 
   if (slug === "terms") {
     return {
@@ -66,16 +66,16 @@ export function legalDoc(productKey: ProductKey, slug: LegalSlug): {
         {
           heading: "The service today",
           body: [
-            `${cfg.name} is part of the Bid Network — an internet bounty network. Today the site offers: public marketplace pages (bounties and projects), member accounts, public profiles, the founding-access request form, and internal page analytics.`,
+            `${cfg.name} is part of the Bid Network, an internet bounty network. Today the site offers: public marketplace pages (bounties, projects, the graveyard, and team projects), the blog, member accounts, public profiles, leaderboards, the Bid Index, the launch-updates request form, and internal page analytics.`,
             productIntent(productKey),
-            "Members can create accounts, build profiles, and prepare a bounty or project in draft. Drafting is free. Publishing a draft to the open marketplace requires funding, and funding is NOT yet enabled: no payment of any kind is accepted on this site today, and no bounty or project can become publicly open while payments are disabled.",
+            "Members can create accounts, build profiles, and prepare a bounty, project, or team project in draft. Drafting is free. Publishing a draft to the open marketplace requires funding, and funding is NOT yet enabled: no payment of any kind is accepted on this site today, and no bounty or project can become publicly open while payments are disabled.",
             "Content marked EXAMPLE or DEMO is illustrative. It is not an offer, not a real transaction, and not evidence of any activity.",
           ],
         },
         {
-          heading: "Founding access",
+          heading: "Launch updates form",
           body: [
-            "The founding-access form collects your email address, your role or intention, which site of the network you submitted from, and your consent to be contacted. We use it only to contact you about early access. We do not sell or share it.",
+            "The launch-updates form (labeled \"Launch updates\" on the site; internally the founding-access capture) collects your email address, your role or intention, which site of the network you submitted from, and your consent to be contacted. We use it only to contact you about early access. We do not sell or share it.",
             "Submitting the form creates no account and grants no entitlement. When access opens, it is at our discretion and may be limited in size or scope.",
           ],
         },
@@ -146,19 +146,22 @@ export function legalDoc(productKey: ProductKey, slug: LegalSlug): {
     return {
       title: "Privacy policy",
       updated,
-      intro: `${cfg.apex} has no account system and accepts no payment. This policy describes the limited data the current pre-launch site actually collects.`,
+      intro: `${cfg.apex} is part of the Bid Network and accepts no payment of any kind today. This policy describes the data the site actually collects.`,
       blocks: [
         {
           heading: "What we collect",
           body: [
+            "Accounts: if you create an account, we store your email address, a password hash (handled by our authentication provider; we never see or store your raw password), your display name, and your session identifiers so you stay signed in.",
+            "Public profile: if you set one up, we store the fields you choose to publish: handle, bio, skills, categories, links, availability, and optional company details. These appear on your public profile page.",
+            "Marketplace data: the drafts, applications, proposals, submissions, and (once funding is enabled) payment records you create are stored with the marketplace features.",
             "Page analytics: we count page views, visits, and outbound link clicks per site. These are aggregate counts. We do not store device identifiers or anything that identifies you personally in the analytics.",
-            `Founding access: if you submit the form, we store your email address; your role or intention; which site of the network you submitted from (derived from the domain you were on, not from anything you type); when you submitted; and the consent you gave. We use this only to contact you about founding access.`,
+            `Launch updates: if you submit the form, we store your email address; your role or intention; which site of the network you submitted from (derived from the domain you were on, not from anything you type); when you submitted; and the consent you gave. We use this only to contact you about early access.`,
             "On your device: your browser may keep your appearance choice (light/dark) and a per-session flag so a visit is counted once. That data stays on your device.",
             "Hosting: the site runs on Vercel. Vercel may independently process request information (such as hosting logs and performance data) as hosting infrastructure, under its own privacy policy.",
           ],
         },
         {
-          heading: "Transient IP processing (founding access form)",
+          heading: "Transient IP processing (launch updates form)",
           body: [
             "When you submit the founding-access form, the app may temporarily process your IP address in memory for abuse prevention and rate limiting. It is not persisted to our application database, and it is not used for advertising or profiling.",
           ],
@@ -166,7 +169,7 @@ export function legalDoc(productKey: ProductKey, slug: LegalSlug): {
         {
           heading: "What we do not collect",
           body: [
-            "No names, no phone numbers, no passwords, no payment data, no advertising cookies, no third-party analytics or tracking scripts, and no IP addresses in our database.",
+            "No phone numbers, no raw passwords (the authentication provider stores a hash, we never see the password itself), no payment data, no advertising cookies, no third-party analytics or tracking scripts, and no IP addresses in our application database. Your display name and profile details are collected only because you choose to set them.",
           ],
         },
         {

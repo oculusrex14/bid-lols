@@ -1,13 +1,15 @@
 import { useState } from "react";
-import { createFileRoute, Link, useNavigate , redirect } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate, notFound, redirect } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { currentProductKey } from "@/lib/host";
+import { currentProductKey, product as productInfo, seoOrigin, type ProductKey } from "@/lib/host";
 import { shellContext } from "@/lib/shell-context";
 import { ProductShell } from "@/components/product-shell";
 import { getSql } from "@/lib/db.server";
 import { getBountyDetail, listApplicationsForSponsor } from "@/lib/marketplace/queries.server";
 import { formatMinor } from "@/lib/money";
+import { JsonLd } from "@/components/seo";
+import { breadcrumbSchema } from "@/lib/schema";
 import {
   applyToBountyFn,
   startWorkFn,
@@ -31,7 +33,7 @@ const loadDetail = createServerFn({ method: "GET" })
     const sql = await getSql();
     const session = await getSession();
     const detail = await getBountyDetail(sql, data.id, session?.user.id ?? null);
-    if (!detail) return null;
+    if (!detail) throw notFound();
     // Entity-aware capability redirect (RC1, R4): a bounty belongs to the
     // product that hosts it; the wrong host 301s to its origin.
     const product = await currentProductKey();
@@ -58,23 +60,11 @@ export const Route = createFileRoute("/bounties/$id")({
 
 function BountyDetailPage() {
   const data = Route.useLoaderData();
-  if (!data) {
-    return (
-      <ProductShell site="foundersbid">
-        <div className="mx-auto max-w-2xl px-4 py-16 text-center">
-          <h1 className="font-display-site text-2xl tracking-tight">Bounty not found</h1>
-          <Link to="/bounties" className="mt-4 inline-block text-sm underline underline-offset-2">
-            ← Back to bounties
-          </Link>
-        </div>
-      </ProductShell>
-    );
-  }
   return <BountyDetailBody key={data.detail.bounty.id as string} data={data} />;
 }
 
 type DetailData = {
-  product: "bidthrone" | "foundersbid" | "culturebid" | "bidception";
+  product: ProductKey;
   me: import("@/lib/shell-context").ShellMe;
   detail: NonNullable<Awaited<ReturnType<typeof loadDetail>>>["detail"];
   applications: Array<{ id: string; status: string; message: string; created_at: string; handle: string | null; display_name: string | null }>;
@@ -122,13 +112,26 @@ function BountyDetailBody({ data }: { data: DetailData }) {
         window.location.assign(r.checkout.checkoutUrl);
       }
       return r;
-    }, "Funding checkout started — the bounty opens once the payment verifies.");
+    }, "Funding checkout started. The bounty opens once the payment verifies.");
   }
+
+  const isCulture = product === "culturebid";
+  const origin = seoOrigin(product);
+  const listTitle = isCulture ? "Creative bounties" : "Open bounties";
+  const canonicalUrl = `${origin}/bounties/${String(b.id)}`;
 
   return (
     <ProductShell site={product} me={me}>
       <div className="mx-auto max-w-4xl px-4 py-10">
-        <Link to="/bounties" className="text-sm text-subtle underline underline-offset-2">← All bounties</Link>
+        <nav aria-label="Breadcrumb" className="text-sm text-subtle">
+          <a href="/" className="underline-offset-4 hover:underline">
+            {productInfo(product).name}
+          </a>
+          <span aria-hidden="true"> / </span>
+          <a href="/bounties" className="underline-offset-4 hover:underline">
+            {listTitle}
+          </a>
+        </nav>
 
         <div className="mt-4 flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0">
@@ -145,7 +148,7 @@ function BountyDetailBody({ data }: { data: DetailData }) {
             <p className="font-display-site text-2xl tracking-tight text-accent" data-testid="reward-amount">
               {formatMinor(Number(b.reward_total_minor), String(b.currency))}
             </p>
-            <p className="text-xs text-subtle">advertised reward — paid in full</p>
+            <p className="text-xs text-subtle">advertised reward, paid in full</p>
           </div>
         </div>
 
@@ -154,7 +157,7 @@ function BountyDetailBody({ data }: { data: DetailData }) {
           <div className="rounded-md border-2 border-fg/15 bg-surface p-3">
             <p className="text-xs uppercase tracking-kicker text-subtle">Funding</p>
             <p className="mt-1 text-sm font-medium" data-testid="funding-state">
-              {b.funding_payment_id ? "Funded" : status === "DRAFT" ? "Not funded yet" : "Funded"}
+              {b.funding_payment_id ? "Funded" : status === "DRAFT" ? "Not funded yet" : "Funding pending"}
             </p>
           </div>
           <div className="rounded-md border-2 border-fg/15 bg-surface p-3">
@@ -241,7 +244,7 @@ function BountyDetailBody({ data }: { data: DetailData }) {
                     <li key={s.id} className="rounded-md border-2 border-fg/10 p-4">
                       <div className="flex flex-wrap items-baseline justify-between gap-2">
                         <p className="text-sm font-medium">
-                          {s.place ? `#${s.place} — ` : ""}{s.title}
+                          {s.place ? `#${s.place} ` : ""}{s.title}
                         </p>
                         <p className="text-xs text-subtle">
                           {s.display_name ?? "member"}{s.handle ? ` (@${s.handle})` : ""}
@@ -288,7 +291,7 @@ function BountyDetailBody({ data }: { data: DetailData }) {
                           await run(async () => {
                             const r = await startWorkFn({ data: { bountyId: String(b.id) } });
                             return r;
-                          }, "Work started — deliver before the deadline.");
+                          }, "Work started. Deliver before the deadline.");
                         }}
                         className="mt-3 inline-flex h-10 items-center rounded-md bg-accent px-4 text-sm font-semibold text-accent-fg"
                       >
@@ -407,6 +410,14 @@ function BountyDetailBody({ data }: { data: DetailData }) {
             }}
           />
         ) : null}
+
+        <JsonLd
+          data={breadcrumbSchema(product, [
+            { name: productInfo(product).name, url: origin },
+            { name: listTitle, url: `${origin}/bounties` },
+            { name: String(b.title), url: canonicalUrl },
+          ])}
+        />
       </div>
     </ProductShell>
   );

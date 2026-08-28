@@ -62,7 +62,7 @@ function DashboardPage() {
                   </Link>
                 </>
               ) : (
-                "Not set up yet — add a handle so sponsors and builders can find you."
+                "Not set up yet. Add a handle so sponsors and builders can find you."
               )}
             </p>
             <Link
@@ -77,16 +77,17 @@ function DashboardPage() {
             <p className="text-xs font-medium uppercase tracking-kicker text-subtle">Email status</p>
             <p className="mt-2 text-sm">
               {d.emailVerified
-                ? "Verified — you're clear for money-facing actions."
+                ? "Verified. You are clear for money-facing actions."
                 : "Unverified. Verification email delivery is not configured yet; money-facing actions are held until it is (an admin can verify manually)."}
             </p>
           </div>
 
           <div className="rounded-lg border-2 border-fg/20 bg-surface p-4" data-testid="card-work">
             <p className="text-xs font-medium uppercase tracking-kicker text-subtle">Marketplace</p>
-            <p className="mt-2 text-sm">
-              Bounties and projects arrive with the FoundersBid launch. Nothing
-              here yet — and nothing fake will be.
+            <p className="mt-2 text-sm leading-relaxed">
+              Your drafts, applications, proposals, and funding actions live
+              here on this account, on every domain of the network. Funding is
+              not enabled yet, so money-facing actions are held until it is.
             </p>
           </div>
         </div>

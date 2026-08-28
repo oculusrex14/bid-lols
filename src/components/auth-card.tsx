@@ -22,7 +22,7 @@ function toFriendly(message: string | undefined): string {
     return "An account with this email already exists. Try signing in instead.";
   if (/password/i.test(message) && /least|short|length/i.test(message))
     return "Passwords need at least 10 characters.";
-  if (/rate/i.test(message)) return "Too many attempts — wait a minute and try again.";
+  if (/rate/i.test(message)) return "Too many attempts. Wait a minute and try again.";
   if (/banned/i.test(message)) return "This account is suspended. Contact support.";
   return message;
 }
@@ -60,7 +60,7 @@ export function AuthCard({
       }
       window.location.assign(redirectTo);
     } catch {
-      setStatus({ state: "error", message: "Network error — please try again." });
+      setStatus({ state: "error", message: "Network error. Please try again." });
     }
   }
 

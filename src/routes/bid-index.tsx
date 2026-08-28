@@ -26,19 +26,21 @@ void 0;
 const loadIndex = createServerFn({ method: "GET" }).handler(async () => {
   const product = await currentProductKey();
   const { me } = await (await import("@/lib/shell-context")).getShellContext();
+  // Network-wide: the Bidthrone host owns this surface but holds no
+  // bounties of its own, so categories and samples span the whole network
+  // (same choice as the network-wide leaderboards, RC1 R8.3).
   const cats = await (await import("@/lib/db.server")).getSql().then((sql) =>
     sql.query<{ category: string }>(
       `select distinct category from (
-         select category from bounties where product = $1
+         select category from bounties
          union
-         select category from projects where product = $1
+         select category from projects
        ) x order by category limit 40`,
-      [product],
     ),
   );
   const rows: Row[] = [];
   for (const c of cats) {
-    const sample = await bidIndexFor(product, c.category);
+    const sample = await bidIndexFor(null, c.category);
     rows.push({
       category: c.category,
       sampleSize: sample.sampleSize,
@@ -65,11 +67,11 @@ function BidIndexPage() {
         <p className="text-xs font-medium uppercase tracking-kicker text-subtle">Bidthrone · Bid Index</p>
         <h1 className="mt-1 font-display-site text-2xl tracking-tight sm:text-3xl">What the market pays</h1>
         <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted">
-          Anonymized, aggregated benchmarks across verified {d.product} work.
+          Aggregated market rates across verified work on the Bid Network.
           A benchmark publishes only from{" "}
-          <strong>{BID_INDEX_MIN_SAMPLE} or more</strong> completed work items —
-          smaller samples are shown as "insufficient" rather than guessed at.
-          No individual deal is ever identified.
+          <strong>{BID_INDEX_MIN_SAMPLE} or more</strong> completed work items
+          in a category. Smaller samples show as "insufficient" rather than
+          guessed at, and no individual deal is ever exposed.
         </p>
 
         {sufficient.length === 0 ? (
@@ -77,8 +79,7 @@ function BidIndexPage() {
             <h2 className="font-display-site text-xl tracking-tight">Not enough verified data yet.</h2>
             <p className="mx-auto mt-2 max-w-md text-sm text-muted">
               The Bid Index appears as real work completes across the network.
-              Until then we publish nothing — a benchmark built on a thin sample
-              would be misleading.
+              Until then we publish nothing. A benchmark built on a thin sample would be misleading.
             </p>
           </div>
         ) : null}
@@ -106,7 +107,7 @@ function BidIndexPage() {
                         <span className="text-muted">insufficient sample</span>
                       )}
                     </td>
-                    <td className="p-2">{r.sufficient ? formatMinor(r.medianMinor!, "INR") : "—"}</td>
+                    <td className="p-2">{r.sufficient ? formatMinor(r.medianMinor!, "INR") : "no data"}</td>
                   </tr>
                 ))}
               </tbody>
