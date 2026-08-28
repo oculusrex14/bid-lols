@@ -8,38 +8,53 @@
  *    path on the apex (Phase 00.6, AC-3.5; culturebid excluded — DNS note).
  *
  * For GET requests:
- *  - `/robots.txt`   -> host-aware robots.txt (Sitemap: this domain).
- *  - `/sitemap.xml`  -> host-aware sitemap: this domain's own public URLs
- *    only (Phase 00.5, AC-6.2).
- *  - legacy board paths (`/founders*`, `/culture*`, `/bidception*`, `/spec*`)
- *    -> 308 to the same-host root (Phase 00 replaced the boards).
+ *  - `/robots.txt`   -> host-aware robots.txt (Sitemap: this domain's
+ *    CANONICAL origin, which is www for culturebid while its apex DNS is
+ *    broken — RC2, C2).
+ *  - `/<indexnow-key>key.txt` -> IndexNow verification key (public token).
+ *  - `/sitemap.xml`  -> host-aware sitemap: home, evergreen routes, blog
+ *    articles, live public entities (with truthful lastmod from
+ *    updated_at), and indexable public profiles.
+ *  - legacy board paths (`/founders*`, `/culture*`, `/spec*`) -> 308 to the
+ *    same-host root (Phase 00 replaced the boards).
  *  - any other HTML document -> status-aware head injected at `</head>`:
- *    200/3xx get host-aware `<title>`, description, canonical, and Open
- *    Graph tags; 404 gets the not-found set — branded title, `noindex,follow`,
- *    and NO canonical for the missing path (AC-6.4). The app routes render
- *    the product-neutral head, so nothing is duplicated.
+ *    200/3xx get entity-aware head when a real entity resolves for the path
+ *    (RC2, C3: entity metadata wins), else the host-level fallback; 404 gets
+ *    the not-found set — branded title, `noindex,follow`, and NO canonical
+ *    for the missing path.
  *
  * Everything else passes through untouched. The dev server gets the same
- * behaviour from scripts/host-seo-plugin.mjs; the shared logic lives in
- * scripts/host-seo-shared.mjs so prod and dev can never disagree.
+ * robots/sitemap/redirect behaviour from scripts/host-seo-plugin.mjs; the
+ * shared logic lives in scripts/host-seo-shared.mjs so prod and dev can
+ * never disagree. (Dev deliberately does not transform the SSR head — see
+ * that plugin — so deployed runtimes are the head authority.)
  */
 import {
   DEFAULT_PRODUCT,
+  INDEXNOW_KEY,
+  buildEntityMeta,
+  capabilityReadRedirectFor,
+  evergreenPaths,
   injectNotFoundTheme,
   injectSeoHead,
+  isIndexnowKeyPath,
   legacyRedirectFor,
   normalizeHost,
   productForHost,
   robotsTextFor,
   sitemapXml,
+  truncateWords,
   wwwRedirectFor,
-  capabilityReadRedirectFor,
 } from "../../scripts/host-seo-shared.mjs";
+import { formatMinor } from "@/lib/money";
 
 interface SeoHostEvent {
   url: URL;
   req: { method?: string; headers: Headers };
 }
+
+type SitemapEntry = { path: string; lastmod?: string | null };
+type EntityMeta = ReturnType<typeof buildEntityMeta>;
 
 function requestHost(event: SeoHostEvent): string {
   return (
@@ -56,41 +71,239 @@ function looksLikeHtml(result: unknown): boolean {
   return contentType.includes("text/html") && !encoded;
 }
 
+/** Statuses whose detail pages are real public content (indexable). */
+const INDEXABLE_BOUNTY = new Set([
+  "OPEN",
+  "APPLICATION_CLOSED",
+  "SUBMISSION",
+  "JUDGING",
+  "AWARDED",
+  "SETTLING",
+  "COMPLETED",
+]);
+const INDEXABLE_PROJECT = new Set([
+  "OPEN_FOR_PROPOSALS",
+  "PROPOSAL_SELECTED",
+  "AWAITING_FUNDING",
+  "ACTIVE",
+  "MILESTONE_REVIEW",
+  "COMPLETION_REVIEW",
+  "COMPLETED",
+]);
+const INDEXABLE_GRAVEYARD = new Set(["LISTED", "UNDER_OFFER", "TRANSFERRED"]);
+const INDEXABLE_PARENT = new Set(["FUNDED", "ACTIVE", "COMPLETING", "COMPLETED"]);
+
+/** money.ts is pure (no imports) — safe to use here without the DB chain. */
+function inr(minor: number | null, currency: string): string | null {
+  if (minor == null) return null;
+  return formatMinor(Number(minor), currency || "INR");
+}
+
 /**
- * Live public marketplace paths for this product, for the sitemap. Each query
- * is product-scoped so a host only ever lists its own content. Failures are
- * swallowed to [] — the sitemap must still serve (home URL) and never 500 a
- * crawler because a DB blip hit the listing queries.
- * @param {string} productKey
+ * Live public paths + real lastmod for this product, for the sitemap. Each
+ * query is product-scoped so a host only ever lists its own content.
+ * Profiles pass the RC2 indexability gate (C8). Failures return [] — the
+ * sitemap must still serve and never 500 a crawler because of a DB blip.
+ *
+ * Exported for the hermetic PGLite test (tests/seo-entity-meta.test.ts).
  */
-async function liveSitemapPaths(productKey: string): Promise<string[]> {
+export async function liveSitemapEntries(productKey: string): Promise<SitemapEntry[]> {
   try {
     const { getSql } = await import("@/lib/db.server");
     const sql = await getSql();
-    const paths: string[] = [];
-    const bounties = await sql.query<{ id: string }>(
-      `select id from bounties where product = $1 and status in ('OPEN','APPLICATION_CLOSED','SUBMISSION','JUDGING','AWARDED') order by created_at desc limit 200`,
+    const entries: SitemapEntry[] = [];
+    const bounties = await sql.query<{ id: string; updated_at: string }>(
+      `select id, updated_at from bounties where product = $1 and status in ('OPEN','APPLICATION_CLOSED','SUBMISSION','JUDGING','AWARDED','SETTLING','COMPLETED') order by updated_at desc limit 200`,
       [productKey],
     );
-    for (const b of bounties) paths.push(`/bounties/${b.id}`);
-    const projects = await sql.query<{ id: string }>(
-      `select id from projects where product = $1 and status in ('OPEN_FOR_PROPOSALS','ACTIVE','MILESTONE_REVIEW') order by created_at desc limit 200`,
+    for (const b of bounties) entries.push({ path: `/bounties/${b.id}`, lastmod: iso(b.updated_at) });
+    const projects = await sql.query<{ id: string; updated_at: string }>(
+      `select id, updated_at from projects where product = $1 and status in ('OPEN_FOR_PROPOSALS','PROPOSAL_SELECTED','AWAITING_FUNDING','ACTIVE','MILESTONE_REVIEW','COMPLETION_REVIEW','COMPLETED') order by updated_at desc limit 200`,
       [productKey],
     );
-    for (const p of projects) paths.push(`/projects/${p.id}`);
-    const graveyard = await sql.query<{ id: string }>(
-      `select id from graveyard_listings where product = $1 and status in ('LISTED','UNDER_OFFER') order by created_at desc limit 200`,
+    for (const p of projects) entries.push({ path: `/projects/${p.id}`, lastmod: iso(p.updated_at) });
+    const graveyard = await sql.query<{ id: string; updated_at: string }>(
+      `select id, updated_at from graveyard_listings where product = $1 and status in ('LISTED','UNDER_OFFER','TRANSFERRED') order by updated_at desc limit 200`,
       [productKey],
     );
-    for (const g of graveyard) paths.push(`/graveyard/${g.id}`);
-    const parents = await sql.query<{ id: string }>(
-      `select id from parent_works where product = $1 and status in ('FUNDED','ACTIVE','COMPLETING','COMPLETED') order by created_at desc limit 200`,
+    for (const g of graveyard) entries.push({ path: `/graveyard/${g.id}`, lastmod: iso(g.updated_at) });
+    const parents = await sql.query<{ id: string; updated_at: string }>(
+      `select id, updated_at from parent_works where product = $1 and status in ('FUNDED','ACTIVE','COMPLETING','COMPLETED') order by updated_at desc limit 200`,
       [productKey],
     );
-    for (const pw of parents) paths.push(`/bidception/${pw.id}`);
-    return paths;
+    for (const pw of parents) entries.push({ path: `/bidception/${pw.id}`, lastmod: iso(pw.updated_at) });
+    // Public profiles (C8 gate: handle + real public content).
+    const profiles = await sql.query<{ handle: string; updated_at: string }>(
+      `select p.handle, p.updated_at
+       from profiles p join users u on u.id = p.user_id
+       where u.status = 'active' and u.banned = false and p.handle is not null and p.handle <> ''
+         and (length(p.bio) > 0
+              or coalesce(jsonb_array_length(p.skills), 0) > 0
+              or coalesce(jsonb_array_length(p.portfolio_links), 0) > 0
+              or p.github_url is not null
+              or p.linkedin_url is not null
+              or p.website_url is not null
+              or (select count(*)::int from bounty_awards where user_id = p.user_id and place = 1) > 0)`,
+    );
+    for (const pr of profiles) {
+      entries.push({ path: `/profile/${pr.handle}`, lastmod: iso(pr.updated_at) });
+    }
+    // Blog articles (static, real modifiedAt).
+    const { articlesForProduct } = await import("@/content/blog/articles");
+    for (const a of articlesForProduct(productKey as never)) {
+      entries.push({ path: `/blog/${a.slug}`, lastmod: a.modifiedAt });
+    }
+    return entries;
   } catch {
     return [];
+  }
+}
+
+function iso(v: unknown): string | null {
+  if (!v) return null;
+  const d = new Date(String(v));
+  return Number.isNaN(d.getTime()) ? null : d.toISOString();
+}
+
+/**
+ * Entity-level head for the detail routes (RC2, C3). Returns null when no
+ * entity resolves (the route then 404s or falls back to host-level meta).
+ * Wrong-host entities never reach this: the route loader redirects first.
+ *
+ * Exported for the hermetic PGLite test (tests/seo-entity-meta.test.ts).
+ */
+export async function entityMetaFor(productKey: string, pathname: string): Promise<EntityMeta | null> {
+  const p = pathname;
+  try {
+    const mBounty = /^\/bounties\/([A-Za-z0-9_-]{4,64})$/.exec(p);
+    if (mBounty) {
+      const { getSql } = await import("@/lib/db.server");
+      const sql = await getSql();
+      const rows = await sql.query<{
+        title: string; category: string; status: string;
+        reward_total_minor: number | null; currency: string; description: string;
+      }>(
+        `select title, category, status, reward_total_minor, currency, coalesce(description, '') as description from bounties where id = $1`,
+        [mBounty[1]],
+      );
+      const b = rows[0];
+      if (!b) return null;
+      const indexable = INDEXABLE_BOUNTY.has(b.status);
+      const reward = indexable && b.reward_total_minor != null ? inr(b.reward_total_minor, b.currency) : null;
+      return buildEntityMeta(productKey, p, {
+        title: `${truncateWords(b.title, 52)}${indexable ? "" : " (draft)"} · ${b.category}${reward ? ` · ${reward}` : ""} | ${productKey === "culturebid" ? "CultureBid" : "FoundersBid"}`,
+        description: truncateWords(b.description, 150) || `Bounty in ${b.category} on ${productKey === "culturebid" ? "CultureBid" : "FoundersBid"}.`,
+        indexable,
+      });
+    }
+
+    const mProject = /^\/projects\/([A-Za-z0-9_-]{4,64})$/.exec(p);
+    if (mProject) {
+      const { getSql } = await import("@/lib/db.server");
+      const sql = await getSql();
+      const rows = await sql.query<{
+        title: string; category: string; status: string; description: string;
+      }>(
+        `select title, category, status, coalesce(description, '') as description from projects where id = $1`,
+        [mProject[1]],
+      );
+      const pr = rows[0];
+      if (!pr) return null;
+      const indexable = INDEXABLE_PROJECT.has(pr.status);
+      return buildEntityMeta(productKey, p, {
+        title: `${truncateWords(pr.title, 52)} · ${pr.category} | FoundersBid`,
+        description: truncateWords(pr.description, 150) || `A project brief on FoundersBid.`,
+        indexable,
+      });
+    }
+
+    const mGraveyard = /^\/graveyard\/([A-Za-z0-9_-]{4,64})$/.exec(p);
+    if (mGraveyard) {
+      const { getSql } = await import("@/lib/db.server");
+      const sql = await getSql();
+      const rows = await sql.query<{
+        title: string; status: string; description: string;
+        asking_price_minor: number | null; currency: string;
+      }>(
+        `select title, status, coalesce(description, '') as description, asking_price_minor, currency from graveyard_listings where id = $1`,
+        [mGraveyard[1]],
+      );
+      const g = rows[0];
+      if (!g) return null;
+      const indexable = INDEXABLE_GRAVEYARD.has(g.status);
+      const price = indexable && g.asking_price_minor != null ? inr(g.asking_price_minor, g.currency) : null;
+      return buildEntityMeta(productKey, p, {
+        title: `${truncateWords(g.title, 52)} · ${price ?? "Open to offers"} | FoundersBid Graveyard`,
+        description: truncateWords(g.description, 150) || "An abandoned project offered for transfer on FoundersBid.",
+        indexable,
+      });
+    }
+
+    const mParent = /^\/bidception\/([A-Za-z0-9_-]{4,64})$/.exec(p);
+    if (mParent) {
+      const { getSql } = await import("@/lib/db.server");
+      const sql = await getSql();
+      const rows = await sql.query<{
+        title: string; status: string; objective: string;
+        funded_budget_minor: number | null; currency: string;
+      }>(
+        `select title, status, coalesce(objective, '') as objective, funded_budget_minor, currency from parent_works where id = $1`,
+        [mParent[1]],
+      );
+      const pw = rows[0];
+      if (!pw) return null;
+      const indexable = INDEXABLE_PARENT.has(pw.status);
+      const budget = indexable && pw.funded_budget_minor != null ? inr(pw.funded_budget_minor, pw.currency) : null;
+      return buildEntityMeta(productKey, p, {
+        title: `${truncateWords(pw.title, 52)} · ${budget ?? "Team project"} | Bidception`,
+        description: truncateWords(pw.objective, 150) || "One funded project, built as a team on Bidception.",
+        indexable,
+      });
+    }
+
+    const mProfile = /^\/profile\/([A-Za-z0-9_-]{1,64})$/.exec(p);
+    if (mProfile) {
+      const { getPublicProfile } = await import("@/lib/profiles.server");
+      const profile = await getPublicProfile(mProfile[1]);
+      if (!profile) return null;
+      const hasContent =
+        profile.bio.length > 0 ||
+        profile.skills.length > 0 ||
+        profile.portfolioLinks.length > 0 ||
+        Boolean(profile.githubUrl || profile.linkedinUrl || profile.websiteUrl);
+      const skills = profile.skills.slice(0, 4).join(", ");
+      const desc = hasContent
+        ? truncateWords(profile.bio || (skills ? `Public profile. Skills: ${skills}.` : "Public profile on the Bid Network."), 150)
+        : "Public profile on the Bid Network.";
+      return buildEntityMeta(productKey, p, {
+        title: `${truncateWords(profile.displayName, 40)} (@${profile.handle}) | Bid Network`,
+        description: desc,
+        ogType: "profile",
+        indexable: hasContent,
+      });
+    }
+
+    const mBlog = /^\/blog\/([a-z0-9][a-z0-9-]{0,96})$/.exec(p);
+    if (mBlog) {
+      const { articleBySlug } = await import("@/content/blog/articles");
+      const article = articleBySlug(mBlog[1]);
+      if (!article) return null;
+      // The loader has already redirected cross-host article reads, so this
+      // branch only runs when article.product === productKey.
+      return buildEntityMeta(productKey, p, {
+        title: article.seoTitle,
+        description: article.description,
+        ogType: "article",
+        extraHeadTags: [
+          `<meta property="article:published_time" content="${article.publishedAt}">`,
+          `<meta property="article:modified_time" content="${article.modifiedAt}">`,
+        ],
+      });
+    }
+
+    return null;
+  } catch {
+    return null; // entity lookup never breaks the page; host fallback applies
   }
 }
 
@@ -142,11 +355,26 @@ export default async function seoHostMiddleware(
     });
   }
 
+  // IndexNow verification key (RC2, C10): public token, one file per host.
+  if (isIndexnowKeyPath(path)) {
+    return new Response(INDEXNOW_KEY, {
+      headers: {
+        "content-type": "text/plain; charset=utf-8",
+        "cache-control": "public, max-age=86400",
+      },
+    });
+  }
+
   if (path === "/sitemap.xml") {
-    // Host-aware inventory: this host's own public URLs (AC-6.2) — home plus
-    // the live marketplace listings scoped to this product.
-    const extraPaths = await liveSitemapPaths(productKey);
-    return new Response(sitemapXml(productKey, extraPaths), {
+    // Host-aware inventory: home + evergreen + blog + live public entities
+    // (truthful lastmod) + indexable profiles. All on this host's CANONICAL
+    // origin (www for culturebid while its apex DNS is broken).
+    const live = await liveSitemapEntries(productKey);
+    const entries: SitemapEntry[] = [
+      ...evergreenPaths(productKey).map((path2) => ({ path: path2, lastmod: null })),
+      ...live,
+    ];
+    return new Response(sitemapXml(productKey, entries), {
       headers: {
         "content-type": "application/xml; charset=utf-8",
         "cache-control": "public, max-age=3600",
@@ -164,12 +392,15 @@ export default async function seoHostMiddleware(
 
   const original = result as Response;
   let html = await original.text();
-  // 404: theme the <html> for the branded not-found page (AC-6.4).
+  // 404: theme the <html> for the branded not-found page.
   if (original.status === 404) html = injectNotFoundTheme(html, productKey);
-  // Status-aware head: 404 gets the not-found set (noindex,follow, no
-  // canonical for the missing path — AC-6.4); everything else gets the
-  // host-aware SEO set.
-  const transformed = injectSeoHead(html, productKey, path, original.status);
+  // Entity-aware head when a real entity resolves (RC2, C3); otherwise the
+  // host-level fallback. 404s get the not-found set.
+  let entityMeta: EntityMeta | null = null;
+  if (original.status === 200) {
+    entityMeta = await entityMetaFor(productKey, path);
+  }
+  const transformed = injectSeoHead(html, productKey, path, original.status, entityMeta);
   const headers = new Headers(original.headers);
   headers.delete("content-length");
   headers.set("content-type", "text/html; charset=utf-8");

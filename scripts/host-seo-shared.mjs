@@ -1,8 +1,8 @@
 // @ts-check
 /**
  * Single source of truth for host <-> product mapping and SEO content
- * (title, description, canonical, OG), robots/sitemap bodies, legacy-path
- * redirects, and HTML head injection.
+ * (title, description, canonical, OG), robots/sitemap bodies, entity-level
+ * metadata, legacy-path redirects, and HTML head injection.
  *
  * Consumed by:
  *  - server/middleware/seo-host.ts   (Nitro, prod + preview)
@@ -12,6 +12,11 @@
  *
  * Keep this dependency-free plain ESM: it is imported from the browser
  * bundle, Nitro functions, and Vite plugins alike.
+ *
+ * Metadata precedence (RC2, C3): entity-level head wins when the middleware
+ * resolves a real entity for a detail path; host-level head is the fallback
+ * for everything else. The canonical origin per product is `seoOrigin`,
+ * which is the only host search engines should treat as canonical.
  */
 
 /** Canonical product keys, in sitemap order. */
@@ -45,11 +50,11 @@ export const PRODUCTS = {
     theme: null,
     name: "Bidthrone",
     wordmark: "bidthrone",
-    kicker: "Public profiles and reputation for the Bid Network",
-    title: "bidthrone.lol — Public profiles and reputation",
+    kicker: "Public work records for the Bid Network",
+    title: "Freelancer Proof of Work & Reputation | Bidthrone",
     description:
-      "Public profiles and honest leaderboards for people who do real work on the Bid Network. Reputation comes from completed projects — not from paying for placement.",
-    oneLine: "Public profiles and leaderboards for people who do real work.",
+      "Public profiles and leaderboards built from completed work on the Bid Network. Bounties won, projects delivered, teams captained. When a category has enough settled outcomes, see what the market pays.",
+    oneLine: "Reputation from completed work, not self-promotion.",
     contactEmail: "contact@bidthrone.lol",
   },
   foundersbid: {
@@ -58,11 +63,11 @@ export const PRODUCTS = {
     theme: "founders",
     name: "FoundersBid",
     wordmark: "foundersbid",
-    kicker: "Where founders find people to build with",
-    title: "foundersbid.lol — Post work, find builders",
+    kicker: "Startup work, funded and bounded",
+    title: "Startup Freelance Bounties & Projects | FoundersBid",
     description:
-      "FoundersBid connects founders with people who can build. Post a bounty or a project, review applications, and pay for completed work. Development, design, research, marketing, and more.",
-    oneLine: "Post work you need done. Review proposals. Pay for results.",
+      "Post startup work with a clear budget and a deadline. Use a bounty when several people can compete on the result. Use a project when you choose one provider before the work begins. Development, design, research, marketing.",
+    oneLine: "Get startup work done without hiring a whole team.",
     contactEmail: "contact@foundersbid.lol",
   },
   culturebid: {
@@ -71,11 +76,11 @@ export const PRODUCTS = {
     theme: "culture",
     name: "CultureBid",
     wordmark: "culturebid",
-    kicker: "Creative briefs for photographers, writers, designers and more",
-    title: "culturebid.lol — Creative work, fairly run",
+    kicker: "Paid creative briefs with fair rules",
+    title: "Creative Bounties for Brands & Creators | CultureBid",
     description:
-      "CultureBid is a place where brands post creative briefs — video, photography, design, writing, naming — and creators respond with real work. Clear rules, capped entries, and the brand picks the winner.",
-    oneLine: "Post a creative brief. Creators submit. You pick the winner.",
+      "Brands post paid creative briefs with a clear reward, a deadline, and a capped number of creator slots. Creators know the rules before they start. Video, photography, design, writing, naming.",
+    oneLine: "A better way to commission creative work.",
     contactEmail: "contact@culturebid.lol",
   },
   bidception: {
@@ -84,11 +89,11 @@ export const PRODUCTS = {
     theme: "bidception",
     name: "Bidception",
     wordmark: "bidception",
-    kicker: "Break big projects into funded pieces a team can build",
-    title: "bidception.lol — Fund one project, build it as a team",
+    kicker: "One project, one budget, a team of specialists",
+    title: "Build Projects With Freelance Teams | Bidception",
     description:
-      "Bidception is coming next: nested and team bounties, where a funded problem is decomposed into smaller funded sub-bounties and teams captain their way to the win.",
-    oneLine: "Fund one project. A captain breaks it up. A team builds it together.",
+      "Fund one big project with a single budget. A captain you choose splits it into work packages, each with its own budget and deadline. Specialists take the parts they are good at. Every rupee reconciles to the parent budget.",
+    oneLine: "Big project. One budget. The right people for each part.",
     contactEmail: "contact@bidception.lol",
   },
 };
@@ -137,7 +142,7 @@ export function productForHost(host) {
  * records — see docs/ops/DEPLOYMENT.md "DNS note"), so www is the only
  * working origin; a www→apex redirect would break the site. After the
  * external DNS fix, remove "culturebid" from this set and the redirect
- * applies there too.
+ * applies there too (and from SEO_CANONICAL_WWW, below).
  *
  * Returns the apex Location for a www host that should be normalized,
  * otherwise null.
@@ -164,85 +169,46 @@ export function wwwRedirectFor(host, pathname = "/", search = "") {
 }
 
 /**
- * @param {string} key
- * @returns {Product}
+ * RC2 (C2): the CANONICAL origin for declarative URLs. Search engines must
+ * only be pointed at origins that actually resolve and serve the app.
+ *
+ * culturebid.lol apex DNS is broken (private 10.x records; verified
+ * unreachable from the internet), so www.culturebid.lol is the canonical
+ * CultureBid origin for: canonical, og:url, og:image, sitemap URLs, the
+ * robots Sitemap line, JSON-LD @id / url / mainEntityOfPage, and IndexNow.
+ *
+ * Rollback (when the apex is verified reachable): remove "culturebid" from
+ * this set AND from WWW_NORMALIZE_EXCLUDED. Both sets must stay in sync.
  */
-export function product(key) {
-  return PRODUCTS[key] ?? PRODUCTS[DEFAULT_PRODUCT];
-}
-
-/** Page titles for the non-home routes (same content on every product host). */
-/** @type {Record<string, string>} */
-const PATH_TITLES = {
-  "/terms": "Terms of service",
-  "/privacy": "Privacy policy",
-  "/refund": "Refund & payment policy",
-  "/contact": "Contact",
-  "/signin": "Sign in",
-  "/signup": "Create an account",
-  "/dashboard": "Dashboard",
-  "/settings/profile": "Profile settings",
-  "/admin": "Admin",
-  "/bounties": "Open bounties",
-  "/projects": "Open projects",
-};
-
-/** Private surfaces: never indexed (authenticated or operational). */
-const PRIVATE_PATHS = new Set([
-  "/dashboard",
-  "/settings/profile",
-  "/admin",
-  // Gated aggregate (Phase 04, FR-4): only indexable once a sample threshold
-  // is met — which the static middleware cannot know per category, so the
-  // aggregate page itself stays noindex; individual data is not deal-level.
-  "/bid-index",
-]);
+const SEO_CANONICAL_WWW = new Set(["culturebid"]);
 
 /**
- * @param {string} pathname
- * @returns {boolean}
- */
-function isPrivatePath(pathname) {
-  if (PRIVATE_PATHS.has(pathname)) return true;
-  if (pathname.startsWith("/settings/")) return true;
-  if (pathname.startsWith("/admin")) return true;
-  if (pathname.startsWith("/test/")) return true;
-  if (pathname.startsWith("/api/")) return true;
-  if (pathname.startsWith("/signin") || pathname.startsWith("/signup")) return true;
-  return false;
-}
-
-/**
- * Public marketplace detail pages (bounty/project) are product content and
- * indexable; titles are generic at the middleware layer (the DB-backed exact
- * title is a Phase-04-grade refinement, recorded in the phase notes).
- * @param {string} pathname
- * @returns {null | { suffix: string }}
- */
-function marketplacePathMeta(pathname) {
-  if (pathname === "/bounties" || pathname.startsWith("/bounties/")) return { suffix: "Open bounties" };
-  if (pathname === "/projects" || pathname.startsWith("/projects/")) return { suffix: "Open projects" };
-  if (pathname === "/graveyard" || pathname.startsWith("/graveyard/")) return { suffix: "The Graveyard" };
-  if (pathname === "/bidception" || pathname.startsWith("/bidception/")) return { suffix: "Funded parent work" };
-  if (pathname === "/leaderboards") return { suffix: "Leaderboards" };
-  if (pathname === "/bid-index") return { suffix: "The Bid Index" };
-  if (pathname.startsWith("/profile/")) return { suffix: "Member profile" };
-  if (pathname.startsWith("/test/")) return { suffix: "Test" };
-  return null;
-}
-
-/**
- * Clickable origin for cross-product links. culturebid.lol's apex DNS is
- * misconfigured (private 10.x A records — see docs/ops/DEPLOYMENT.md, DNS
- * note), so visitors must go through www.culturebid.lol until the apex is
- * verified reachable. Declarative URLs (canonical, OG, sitemap) keep using
- * the apex origin; only <a href> navigation uses this helper (AC-5.2).
+ * Clickable origin for cross-product links (and, in the current DNS mode,
+ * identical to the canonical origin).
  * @param {string} key
  * @returns {string}
  */
 export function linkOrigin(key) {
   const p = product(key);
   return key === "culturebid" ? `https://www.${p.apex}` : `https://${p.apex}`;
+}
+
+/**
+ * The canonical origin for metadata, sitemaps, robots, and schema.
+ * @param {string} key
+ * @returns {string}
+ */
+export function seoOrigin(key) {
+  const p = product(key);
+  return SEO_CANONICAL_WWW.has(key) ? `https://www.${p.apex}` : `https://${p.apex}`;
+}
+
+/**
+ * @param {string} key
+ * @returns {Product}
+ */
+export function product(key) {
+  return PRODUCTS[key] ?? PRODUCTS[DEFAULT_PRODUCT];
 }
 
 /**
@@ -325,6 +291,77 @@ export function capabilityReadRedirectFor(hostProduct, pathname) {
   return `${linkOrigin(canonical)}${pathname}`;
 }
 
+/** Page titles for the static routes (same content on every product host,
+ *  except /bounties which is product-aware). */
+/** @type {Record<string, string>} */
+const PATH_TITLES = {
+  "/terms": "Terms of service",
+  "/privacy": "Privacy policy",
+  "/refund": "Refund & payment policy",
+  "/contact": "Contact",
+  "/signin": "Sign in",
+  "/signup": "Create an account",
+  "/dashboard": "Dashboard",
+  "/settings/profile": "Profile settings",
+  "/admin": "Admin",
+  "/projects": "Open projects",
+  "/blog": "Blog",
+};
+
+/** Product-aware suffix for /bounties (FoundersBid vs CultureBid surface). */
+/** @type {Record<string, string>} */
+const BOUNTIES_PATH_TITLE = {
+  foundersbid: "Open bounties",
+  culturebid: "Creative bounties",
+};
+
+/** Private surfaces: never indexed (authenticated or operational). */
+const PRIVATE_PATHS = new Set([
+  "/dashboard",
+  "/settings/profile",
+  "/admin",
+  // Gated aggregate (Phase 04, FR-4): only publishable once a sample
+  // threshold is met per category, which the static middleware cannot know,
+  // so the aggregate page itself stays noindex; no deal-level data exposed.
+  "/bid-index",
+]);
+
+/**
+ * @param {string} pathname
+ * @returns {boolean}
+ */
+function isPrivatePath(pathname) {
+  if (PRIVATE_PATHS.has(pathname)) return true;
+  if (pathname.startsWith("/settings/")) return true;
+  if (pathname.startsWith("/admin")) return true;
+  if (pathname.startsWith("/test/")) return true;
+  if (pathname.startsWith("/api/")) return true;
+  if (pathname.startsWith("/signin") || pathname.startsWith("/signup")) return true;
+  return false;
+}
+
+/**
+ * Public marketplace paths and their page-title suffixes. Detail pages get
+ * entity-level head from the middleware when a real entity resolves (RC2,
+ * C3); these suffixes are the fallback for anything else under the prefix.
+ * @param {string} productKey
+ * @param {string} pathname
+ * @returns {null | { suffix: string }}
+ */
+function marketplacePathMeta(productKey, pathname) {
+  if (pathname === "/bounties" || pathname.startsWith("/bounties/")) {
+    return { suffix: BOUNTIES_PATH_TITLE[productKey] ?? "Open bounties" };
+  }
+  if (pathname === "/projects" || pathname.startsWith("/projects/")) return { suffix: "Open projects" };
+  if (pathname === "/graveyard" || pathname.startsWith("/graveyard/")) return { suffix: "Graveyard" };
+  if (pathname === "/bidception" || pathname.startsWith("/bidception/")) return { suffix: "Team projects" };
+  if (pathname === "/leaderboards") return { suffix: "Leaderboards" };
+  if (pathname === "/bid-index") return { suffix: "Bid Index" };
+  if (pathname.startsWith("/profile/")) return { suffix: "Member profile" };
+  if (pathname.startsWith("/test/")) return { suffix: "Test" };
+  return null;
+}
+
 /**
  * @param {string} productKey
  * @param {string} pathname
@@ -332,24 +369,27 @@ export function capabilityReadRedirectFor(hostProduct, pathname) {
  */
 function pageTitleFor(productKey, pathname) {
   const p = product(productKey);
-  const suffix = PATH_TITLES[pathname] ?? marketplacePathMeta(pathname)?.suffix;
-  return suffix ? `${suffix} — ${p.name}` : p.title;
+  const suffix = PATH_TITLES[pathname] ?? marketplacePathMeta(productKey, pathname)?.suffix;
+  return suffix ? `${suffix} | ${p.name}` : p.title;
 }
 export { pageTitleFor };
 
 /**
- * Host-aware SEO meta for one (product, path) pair.
+ * Host-aware SEO meta for one (product, path) pair. This is the FALLBACK
+ * head: entity detail paths override it via buildEntityMeta when the
+ * middleware resolves a real entity.
  * @param {string} productKey
  * @param {string} pathname
  * @returns {{
  *   title: string, description: string, canonical: string,
  *   ogTitle: string, ogDescription: string, ogUrl: string,
- *   ogImage: string, ogType: string
+ *   ogImage: string, ogType: string, robots: string
  * }}
  */
 export function seoMeta(productKey, pathname) {
   const p = product(productKey);
-  const canonical = `https://${p.apex}${pathname}`;
+  const origin = seoOrigin(productKey);
+  const canonical = `${origin}${pathname}`;
   const title = pageTitleFor(productKey, pathname);
   return {
     title,
@@ -358,8 +398,9 @@ export function seoMeta(productKey, pathname) {
     ogTitle: title,
     ogDescription: p.description,
     ogUrl: canonical,
-    ogImage: `https://${p.apex}/og.jpg`,
+    ogImage: `${origin}/og.jpg`,
     ogType: "website",
+    robots: robotsMetaFor(productKey, pathname),
   };
 }
 
@@ -372,27 +413,39 @@ function esc(s) {
 }
 
 /**
- * Deliberate indexing policy (Phase 00.6, WS6 / AC-6.1):
- *  - home: indexable — the product surface is the network's public face;
- *  - legal pages (terms/privacy/refund/contact): `noindex,follow` — generic
- *    boilerplate per product with little search value; links still flow;
- *  - unknown routes: `noindex,follow` (Phase 00.5, via notFoundHeadTags).
- * Sitemaps therefore list home URLs only (AC-6.2) — the inventory is
- * product-content focused and matches what we ask crawlers to index.
+ * Collapse whitespace and truncate at a word boundary. No ellipsis: a cut
+ * title still reads as a title. Empty input gives "".
+ * @param {string} s
+ * @param {number} maxChars
+ * @returns {string}
+ */
+export function truncateWords(s, maxChars) {
+  const flat = String(s ?? "").replace(/\s+/g, " ").trim();
+  if (flat.length <= maxChars) return flat;
+  const cut = flat.slice(0, Math.max(1, maxChars));
+  const space = cut.lastIndexOf(" ");
+  return space > 0 ? cut.slice(0, space) : cut;
+}
+
+/**
+ * Deliberate indexing policy:
+ *  - home + public surfaces: indexable;
+ *  - legal pages (terms/privacy/refund/contact): `noindex,follow`;
+ *  - private/operational surfaces (accounts, settings, admin, gated
+ *    aggregate, forms, API, test routes): `noindex,follow`;
+ *  - unknown routes: `noindex,follow` via notFoundHeadTags.
+ * Pages marked noindex must NOT be robots-blocked (crawlers need to read
+ * the meta). RC2 (C9).
  * @param {string} productKey
  * @param {string} pathname
  * @returns {string}
  */
 function robotsMetaFor(productKey, pathname) {
-  void productKey; // policy is uniform across products today; keep the shape
-  // Private/operational surfaces are never indexed.
+  void productKey; // policy is uniform across products; keep the shape
   if (isPrivatePath(pathname)) return "noindex,follow";
-  // Legal pages keep the 00.6 noindex,follow policy.
-  if (pathname in PATH_TITLES && ["/terms", "/privacy", "/refund", "/contact"].includes(pathname)) {
+  if (["/terms", "/privacy", "/refund", "/contact"].includes(pathname)) {
     return "noindex,follow";
   }
-  // Marketplace listing/detail pages are product content (index,follow) —
-  // real marketplace content is what appears here; an empty page is honest.
   return "index,follow";
 }
 export { robotsMetaFor };
@@ -405,34 +458,95 @@ export { robotsMetaFor };
  */
 export function renderSeoHeadTags(productKey, pathname) {
   const m = seoMeta(productKey, pathname);
+  return renderHeadTags(productKey, m);
+}
+
+/**
+ * Render the head tag set from a meta object (fallback OR entity).
+ * @param {string} productKey
+ * @param {import("./host-seo-shared.mjs").SeoMeta} m
+ * @returns {string}
+ */
+export function renderHeadTags(productKey, m) {
+  void productKey;
+  const extra = Array.isArray(m.extraHeadTags) ? m.extraHeadTags : [];
   return [
     `<title>${esc(m.title)}</title>`,
-    `<meta name="robots" content="${robotsMetaFor(productKey, pathname)}">`,
+    `<meta name="robots" content="${m.robots}">`,
     `<meta name="description" content="${esc(m.description)}">`,
     `<link rel="canonical" href="${esc(m.canonical)}">`,
     `<meta property="og:title" content="${esc(m.ogTitle)}">`,
     `<meta property="og:description" content="${esc(m.ogDescription)}">`,
     `<meta property="og:url" content="${esc(m.ogUrl)}">`,
     `<meta property="og:image" content="${esc(m.ogImage)}">`,
-    `<meta property="og:type" content="${m.ogType}">`,
+    `<meta property="og:type" content="${esc(m.ogType)}">`,
     `<meta name="twitter:card" content="summary_large_image">`,
+    ...extra.map((t) => (t.startsWith("<") ? t : `<meta property="${esc(t)}">`)),
   ].join("\n");
+}
+
+/**
+ * @typedef {Object} SeoMeta
+ * @property {string} title
+ * @property {string} description
+ * @property {string} canonical
+ * @property {string} ogTitle
+ * @property {string} ogDescription
+ * @property {string} ogUrl
+ * @property {string} ogImage
+ * @property {string} ogType
+ * @property {string} robots
+ * @property {string[]} [extraHeadTags]
+ */
+
+/**
+ * Entity-level head (RC2, C3). The middleware resolves the real entity
+ * (DB row or blog module) and calls this; user content is escaped and
+ * truncated. `indexable` is false for drafts / cancelled / thin profiles:
+ * the page still renders, but search engines are told so via robots.
+ *
+ * @param {string} productKey
+ * @param {string} pathname
+ * @param {{
+ *   title: string, description: string, ogType?: string,
+ *   indexable?: boolean, extraHeadTags?: string[]
+ * }} e
+ * @returns {SeoMeta}
+ */
+export function buildEntityMeta(productKey, pathname, e) {
+  const p = product(productKey);
+  const origin = seoOrigin(productKey);
+  const canonical = `${origin}${pathname}`;
+  return {
+    title: e.title,
+    description: e.description,
+    canonical,
+    ogTitle: e.title,
+    ogDescription: e.description,
+    ogUrl: canonical,
+    ogImage: `${origin}/og.jpg`,
+    ogType: e.ogType ?? "website",
+    robots: e.indexable === false ? "noindex,follow" : "index,follow",
+    extraHeadTags: e.extraHeadTags ?? [],
+  };
 }
 
 /**
  * Strip any pre-existing title/description/canonical/og:/robots tags, then
  * insert before `</head>`:
- *  - normal statuses: the host-aware SEO set;
+ *  - normal statuses: the provided head set (entity when available, host
+ *    fallback otherwise);
  *  - 404: the not-found set — branded title, `noindex,follow`, and NO
- *    canonical/OG for the missing path (AC-6.4).
+ *    canonical/OG for the missing path.
  * Returns the input unchanged when it is not an HTML document.
  * @param {string} html
  * @param {string} productKey
  * @param {string} pathname
  * @param {number} [status]
+ * @param {SeoMeta | null} [entityMeta]
  * @returns {string}
  */
-export function injectSeoHead(html, productKey, pathname, status = 200) {
+export function injectSeoHead(html, productKey, pathname, status = 200, entityMeta = null) {
   let out = String(html ?? "");
   if (!out.includes("</head>")) return out;
   const strip = [
@@ -444,7 +558,11 @@ export function injectSeoHead(html, productKey, pathname, status = 200) {
   ];
   for (const re of strip) out = out.replace(re, "");
   const tags =
-    status === 404 ? notFoundHeadTags(productKey) : renderSeoHeadTags(productKey, pathname);
+    status === 404
+      ? notFoundHeadTags(productKey)
+      : entityMeta
+        ? renderHeadTags(productKey, entityMeta)
+        : renderSeoHeadTags(productKey, pathname);
   return out.replace("</head>", `${tags}\n</head>`);
 }
 
@@ -454,38 +572,57 @@ export function injectSeoHead(html, productKey, pathname, status = 200) {
  */
 export function robotsTextFor(productKey) {
   const p = product(productKey);
-  return `User-agent: *\nAllow: /\nSitemap: https://${p.apex}/sitemap.xml\n`;
+  // Keep every public surface crawlable. OAI-SearchBot (ChatGPT Search) and
+  // GPTBot (model training) are both allowed under the wildcard: the
+  // training-policy decision is recorded in docs/ops/SEARCH_VISIBILITY.md
+  // and must be changed deliberately, not accidentally.
+  return `User-agent: *\nAllow: /\nSitemap: ${seoOrigin(productKey)}/sitemap.xml\n`;
 }
 
 /**
- * Host-aware, product-content-focused sitemap (Phase 00.6, WS6 / AC-6.2):
- * each domain inventories only its OWN home URL on its apex. Legal pages are
- * noindex,follow boilerplate (see robotsMetaFor) and are deliberately NOT in
- * the inventory; no fake/demo URLs exist as independent routes. A product
- * host does not present another product's origin in its inventory.
+ * Evergreen indexable paths per product (RC2, C7). Static content: no
+ * lastmod (there is no stored modified timestamp for a product page, and
+ * generating one from request time would be a lie). Blog article paths are
+ * added by the caller from the content module (they have real modifiedAt).
  * @param {string} productKey
- * @returns {string}
+ * @returns {string[]}
  */
-/**
- * Host-aware sitemap. `extraPaths` are same-origin public paths (live bounties,
- * projects, graveyard assets, bidception parent works) to include alongside the
- * home URL. Only this host's own URLs are ever listed (AC-6.2).
- * @param {string} productKey
- * @param {string[]} extraPaths
- */
-export function sitemapXml(productKey, extraPaths = []) {
-  const p = product(productKey);
-  const urls = [`  <url>\n    <loc>https://${p.apex}/</loc>\n  </url>`];
-  for (const path of extraPaths) {
-    urls.push(`  <url>\n    <loc>https://${p.apex}${path}</loc>\n  </url>`);
+export function evergreenPaths(productKey) {
+  switch (productKey) {
+    case "foundersbid":
+      return ["/bounties", "/projects", "/graveyard", "/blog"];
+    case "culturebid":
+      return ["/bounties", "/blog"];
+    case "bidception":
+      return ["/bidception", "/blog"];
+    case "bidthrone":
+      return ["/leaderboards", "/blog"];
+    default:
+      return ["/blog"];
   }
+}
+
+/**
+ * Host-aware sitemap. `entries` are same-origin public paths; each may carry
+ * a real lastmod (ISO 8601) from a stored timestamp. Only this host's own
+ * URLs are ever listed (AC-6.2). The home URL is always first.
+ * @param {string} productKey
+ * @param {{ path: string, lastmod?: string | null }[]} [entries]
+ */
+export function sitemapXml(productKey, entries = []) {
+  const origin = seoOrigin(productKey);
+  const all = [{ path: "/", lastmod: null }, ...entries.filter((e) => e && e.path)];
+  const urls = all.map((e) => {
+    const lastmod = e.lastmod ? `\n    <lastmod>${esc(e.lastmod)}</lastmod>` : "";
+    return `  <url>\n    <loc>${esc(`${origin}${e.path}`)}</loc>${lastmod}\n  </url>`;
+  });
   return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.join("\n")}\n</urlset>\n`;
 }
 
 /**
  * 404 body theming: put the product's data-theme on the <html> tag so the
- * branded not-found page (which renders outside any themed wrapper) picks up
- * the right palette. No-op for products without a theme override.
+ * branded not-found page (which renders outside any themed wrapper) picks
+ * up the right palette. No-op for products without a theme override.
  * @param {string} html
  * @param {string} productKey
  * @returns {string}
@@ -497,16 +634,15 @@ export function injectNotFoundTheme(html, productKey) {
 }
 
 /**
- * Head tags for unknown routes (Phase 00.5, AC-6.4/6.5): branded title,
- * `noindex,follow`, and deliberately NO canonical / OG for a path that does
- * not exist — a canonical for a missing path would mislead crawlers.
+ * Head tags for unknown routes: branded title, `noindex,follow`, and
+ * deliberately NO canonical / OG for a path that does not exist.
  * @param {string} productKey
  * @returns {string}
  */
 export function notFoundHeadTags(productKey) {
   const p = product(productKey);
   return [
-    `<title>Page not found — ${esc(p.name)}</title>`,
+    `<title>Page not found: ${esc(p.name)}</title>`,
     `<meta name="robots" content="noindex,follow">`,
     `<meta name="description" content="This page does not exist on ${esc(p.apex)}.">`,
   ].join("\n");
@@ -519,11 +655,26 @@ export function notFoundHeadTags(productKey) {
  * @returns {string | null}
  */
 export function legacyRedirectFor(pathname) {
-  // NOTE: `/bidception` is NO LONGER a legacy board path — it is the Phase 03
-  // nested-marketplace root (list / new / :id). It is deliberately omitted here
-  // so bidception.lol/bidception serves the product instead of 308-ing to /.
+  // NOTE: `/bidception` is NOT a legacy board path — it is the Phase 03
+  // team-project root (list / new / :id). Deliberately omitted here so
+  // bidception.lol/bidception serves the product instead of 308-ing to /.
   for (const prefix of ["/founders", "/culture", "/spec"]) {
     if (pathname === prefix || pathname.startsWith(`${prefix}/`)) return "/";
   }
   return null;
+}
+
+/**
+ * IndexNow (RC2, C10). The key is a PUBLIC verification token (not a
+ * secret): search providers fetch `<origin>/<key>key.txt` to verify the
+ * publisher controls the host. Stable across releases by design.
+ */
+export const INDEXNOW_KEY = "007a94fe-3404-482d-b88c-cef5d087511c";
+
+/**
+ * @param {string} pathname
+ * @returns {boolean}
+ */
+export function isIndexnowKeyPath(pathname) {
+  return pathname === `/${INDEXNOW_KEY}key.txt`;
 }

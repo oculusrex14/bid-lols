@@ -6,6 +6,9 @@ import {
   normalizeHost,
   pageTitleFor,
   productForHost,
+  seoOrigin,
+  truncateWords,
+  evergreenPaths,
 } from "../../scripts/host-seo-shared.mjs";
 
 /**
@@ -25,6 +28,11 @@ export {
   productForHost,
   pageTitleFor,
   linkOrigin,
+  /** RC2, C2: the canonical origin for declarative URLs (www for culturebid
+   *  while its apex DNS is broken; see host-seo-shared.mjs). */
+  seoOrigin,
+  truncateWords,
+  evergreenPaths,
 };
 
 /** @param {ProductKey} key */

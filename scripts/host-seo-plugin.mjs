@@ -12,6 +12,9 @@
  */
 import {
   DEFAULT_PRODUCT,
+  INDEXNOW_KEY,
+  evergreenPaths,
+  isIndexnowKeyPath,
   legacyRedirectFor,
   normalizeHost,
   productForHost,
@@ -86,8 +89,16 @@ export function hostSeoDevPlugin() {
           if (path === "/robots.txt") {
             return send(res, 200, "text/plain; charset=utf-8", robotsTextFor(productKey));
           }
-          // Host-aware inventory: this host's own URLs only (Phase 00.5, AC-6.2).
-return send(res, 200, "application/xml; charset=utf-8", sitemapXml(productKey));
+          // Host-aware inventory: this host's own URLs only (Phase 00.5,
+          // AC-6.2) + evergreen routes (RC2, C7). Dev omits live entities and
+          // blog articles (the deployed runtime serves the full inventory);
+          // the static shape stays identical so dev and prod never disagree.
+          const entries = evergreenPaths(productKey).map((q) => ({ path: q, lastmod: null }));
+          return send(res, 200, "application/xml; charset=utf-8", sitemapXml(productKey, entries));
+        }
+        // IndexNow verification key (RC2, C10) — same behaviour as prod.
+        if (isIndexnowKeyPath(path)) {
+          return send(res, 200, "text/plain; charset=utf-8", INDEXNOW_KEY);
         }
         if (legacyRedirectFor(path) !== null) {
           res.statusCode = 308;
