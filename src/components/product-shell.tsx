@@ -20,7 +20,7 @@ import { signOut } from "@/lib/auth-client";
  */
 
 /** Paths whose tab title the shell may manage; everything else leaves it alone. */
-const TITLE_OWNED_PATHS = new Set(["", "/", "/terms", "/privacy", "/refund", "/contact"]);
+const TITLE_OWNED_PATHS = new Set(["", "/", "/blog", "/terms", "/privacy", "/refund", "/contact"]);
 
 export type ShellMe = {
   id: string;
@@ -30,7 +30,9 @@ export type ShellMe = {
   role: string;
 };
 
-/** Product nav entries, from the capability matrix (RC1, R4). */
+/** Product nav entries, from the capability matrix (RC1, R4). Blog is a
+ *  secondary public surface on every host (RC2, C4.6): listed last so it
+ *  never competes with the marketplace actions. */
 function navFor(site: ProductKey): { label: string; href: string }[] {
   switch (site) {
     case "foundersbid":
@@ -38,16 +40,39 @@ function navFor(site: ProductKey): { label: string; href: string }[] {
         { label: "Bounties", href: "/bounties" },
         { label: "Projects", href: "/projects" },
         { label: "Graveyard", href: "/graveyard" },
+        { label: "Blog", href: "/blog" },
       ];
     case "culturebid":
-      return [{ label: "Creative bounties", href: "/bounties" }];
+      return [
+        { label: "Creative bounties", href: "/bounties" },
+        { label: "Blog", href: "/blog" },
+      ];
     case "bidception":
-      return [{ label: "Parent work", href: "/bidception" }];
+      return [
+        { label: "Team projects", href: "/bidception" },
+        { label: "Blog", href: "/blog" },
+      ];
     case "bidthrone":
       return [
         { label: "Leaderboards", href: "/leaderboards" },
         { label: "Bid Index", href: "/bid-index" },
+        { label: "Blog", href: "/blog" },
       ];
+  }
+}
+
+/** Header CTA per product (RC2, C4.6): the action matches the surface. */
+function ctaFor(site: ProductKey): { label: string; href: string } {
+  switch (site) {
+    case "bidthrone":
+      return { label: "Create account", href: "/signup" };
+    case "bidception":
+      return { label: "Start a project", href: "/bidception/new" };
+    case "culturebid":
+      return { label: "Post a brief", href: "/bounties/new" };
+    case "foundersbid":
+    default:
+      return { label: "Post work", href: "/bounties/new" };
   }
 }
 
@@ -133,11 +158,11 @@ export function ProductShell({
               </a>
             )}
             <a
-              href={site === "foundersbid" ? "/bounties/new" : site === "culturebid" ? "/bounties/new" : site === "bidception" ? "/bidception/new" : "/signup"}
+              href={ctaFor(site).href}
               className="inline-flex h-9 items-center rounded-md bg-accent px-3 text-sm font-semibold text-accent-fg"
               data-testid="primary-cta"
             >
-              {site === "bidthrone" ? "Create account" : "Post work"}
+              {ctaFor(site).label}
             </a>
             <ModeToggle variant="icon" />
             {/* mobile menu toggle */}
@@ -210,6 +235,12 @@ export function ProductShell({
                 {product(key).name}
               </a>
             ))}
+            <a
+              href="/blog"
+              className="inline-flex items-center gap-1 underline-offset-4 hover:text-muted hover:underline"
+            >
+              {cfg.name} blog
+            </a>
           </div>
           <div className="border-t border-border pt-5">
             <p className="text-sm text-muted">
