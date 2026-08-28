@@ -1,12 +1,21 @@
 # SEARCH_DISCOVERY_REPORT.md — RC2 content + search discovery
 
-**Release SHA (code):** `fb25a93cbe08bacda3052b2e7f250787165e81ea`
-**GitHub Actions:** run `33150057407` on `fb25a93` — SUCCESS (lint, typecheck,
-1202 mjs + 200 ts tests, build).
-**Vercel PREVIEW:** `dpl_8cgy1tSyoZpYsdV37yE9vJTBqbkP` at
-`https://bidthrone-mzwk7a18g-oculusrex14s-projects.vercel.app` (READY; redeployed
-once to pick up the preview `DATABASE_URL`). **NO production deployment in this
-release.** Production remains the RC1 copy pass (`949a095` lineage).
+**Final pushed SHA (main):** `558a006cdbebb9844409d1a08c0e3fb18a6af3df`
+(code in `fb25a93` + docs-only `558a006`)
+**GitHub Actions:** run `33150057407` on `fb25a93` and run `33152804124` on
+`558a006` — both SUCCESS (lint, typecheck, 1202 mjs + 200 ts tests, build).
+**Vercel PREVIEW (final):** `dpl_G6Xj5WcTK6zm6rkMB3QYQYQ7bwkB` at
+`https://bidthrone-41f6wm3zd-oculusrex14s-projects.vercel.app` (READY, from the
+exact pushed SHA). An earlier preview `dpl_8cgy1tSyoZpYsdV37yE9vJTBqbkP`
+(code-identical `fb25a93`) was the first cloud verification pass; it was
+redeployed once to pick up the preview `DATABASE_URL`.
+**NO production deployment in this release.** Production remains the RC1 copy
+pass (`949a095` lineage).
+**Preview environment note:** the team's Vercel project had no preview
+`DATABASE_URL`; it was set via the API to the shared production Neon URL
+(read-only verification, no writes on the preview). `BETTER_AUTH_SECRET`
+requires no preview entry (only `VERCEL_ENV=production` demands it; previews
+use the dev fallback).
 **Funding:** `MARKETPLACE_MONEY_LIVE` OFF everywhere, as before; no money path
 changed.
 
@@ -107,12 +116,13 @@ Wrong-domain article reads 301 to the article's product canonical origin.
   JSON-LD in raw initial HTML, no JS needed), marketplace lists, capability
   301s, entity/profile 404s (real status, noindex, no canonical), culturebid
   www canonical, sitemaps, robots, IndexNow key, CSP + request-id headers.
-- Vercel preview (cloud runtime, production Neon): head/canonical, blog SSR +
-  JSON-LD, sitemap, robots, IndexNow key, cross-domain article 301, unknown
-  route 404, 0 x 5xx in deployment logs. Note: team SSO gates anonymous browser
-  access to the `.vercel.app` preview URL, and the Vercel edge rejects
-  Host-header overrides; per-product host contexts were therefore verified on
-  the identical local built preview, and the Vercel preview on the umbrella
+- Vercel preview (cloud runtime, production Neon; final deployment
+  `dpl_G6Xj5WcTK6zm6rkMB3QYQYQ7bwkB`): head/canonical, blog SSR + JSON-LD,
+  sitemap, robots, IndexNow key, cross-domain article 301, unknown route 404,
+  0 x 5xx in deployment logs. Note: team SSO gates anonymous browser access to
+  the `.vercel.app` preview URL, and the Vercel edge rejects Host-header
+  overrides; per-product host contexts were therefore verified on the
+  identical local built preview, and the Vercel preview on the umbrella
   (bidthrone) context plus HTTP level.
 - Crawler-style raw-HTML fetches of all four flagship articles (Googlebot UA):
   full article text + structured data present in the served HTML.
