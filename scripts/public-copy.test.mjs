@@ -41,9 +41,15 @@ const copyFiles = [
 ];
 
 // [label, regex] — legacy product concepts that no longer exist on this network.
+//
+// RC2 defect note: the original "rank as a paid product" guard was
+// /\brand(ed|ing|ings|s)?\b/i — the leading \b consumes the "b", so it matched
+// "rand…" and almost nothing. It has been replaced with the affirmative
+// legacy phrasing it was meant to catch. "brand(s)" is now legitimate
+// CultureBid vocabulary and must stay allowed.
 const LEGACY_TERMS = [
   ["pay-to-rank", /pay-to-rank/i],
-  ["rank as a paid product", /\brand(ed|ing|ings|s)?\b/i],
+  ["pay to rank (legacy concept)", /\bpay to rank\b|\bpurchase a rank\b/i],
   ["$5 minimum", /\$5\b/i],
   ["minimum bid", /minimum bid/i],
   ["re-bid", /\bre-?bid/i],
@@ -54,6 +60,8 @@ const LEGACY_TERMS = [
   ["Oracle (legacy product)", /\boracle\b/i],
   ["Crown (legacy product)", /\bcrown\b/i],
   ["hype scaling", /\bhype\b/i],
+  ["stale pre-launch meta", /\bcoming next\b/i],
+  ["stale staged-opens copy", /\bopens in stages\b/i],
 ];
 
 // Internal engineering status that belongs in docs/STATE.md, not on the web (AC-2.5).
@@ -69,9 +77,29 @@ test("public copy files exist (scan is not vacuous)", () => {
   assert.ok(copyFiles.length >= 10, `expected many copy files, found ${copyFiles.length}`);
 });
 
+/**
+ * Strip /* ... *\/ block comments and whole-line // comments so the em-dash
+ * check targets rendered copy, not source comments. (Heuristic: full-line
+ * comments only, which is where comment dashes live in this repo; URL
+ * strings like "https://…" never sit on a comment line here.)
+ * @param {string} text
+ */
+function stripComments(text) {
+  let out = text.replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, " "));
+  out = out.replace(/(^|\n)[ \t]*\/\/.*$/gm, "$1");
+  return out;
+}
+
+/** Legal prose keeps its own punctuation conventions (RC2 voice guide: do
+ *  not mechanically apply marketing style to legal language). */
+const EM_DASH_EXEMPT = new Set([join(root, "src", "lib", "legal.ts")]);
+
 for (const file of copyFiles) {
-  const text = readFileSync(file, "utf8");
+  const raw = readFileSync(file, "utf8");
   const rel = file.slice(root.length + 1);
+  // Scan the rendered copy: source comments never reach a visitor or a
+  // crawler, so they are excluded from every check (RC2).
+  const text = stripComments(raw);
 
   for (const [label, re] of LEGACY_TERMS) {
     test(`${rel}: no legacy term "${label}"`, () => {
@@ -84,6 +112,13 @@ for (const file of copyFiles) {
     test(`${rel}: no internal status phrase "${label}"`, () => {
       const m = text.match(re);
       assert.ok(!m, `found ${JSON.stringify(m?.[0])} (internal status "${label}")`);
+    });
+  }
+
+  if (!EM_DASH_EXEMPT.has(file)) {
+    test(`${rel}: no em-dashes in public copy (RC2 voice)`, () => {
+      const m = text.match(/—/);
+      assert.ok(!m, "em-dash found in rendered copy (use a period, comma, colon, or parentheses)");
     });
   }
 

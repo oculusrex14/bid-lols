@@ -327,7 +327,8 @@ export async function leaderboard(
  * deals; only anonymized aggregates with the sample size disclosed.
  */
 export type BidIndexSample = {
-  product: string;
+  /** null = network-wide sample. */
+  product: string | null;
   category: string;
   sampleSize: number;
   minMinor: number | null;
@@ -338,8 +339,13 @@ export type BidIndexSample = {
 
 export const BID_INDEX_MIN_SAMPLE = 10;
 
+/**
+ * `product` null = network-wide aggregation (the Bidthrone surface, which
+ * hosts no bounties of its own). A product key keeps the RC1 R9
+ * product/category isolation for engine tests.
+ */
 export async function bidIndexFor(
-  product: string,
+  product: string | null,
   category: string,
   threshold = BID_INDEX_MIN_SAMPLE,
 ): Promise<BidIndexSample> {
@@ -347,13 +353,18 @@ export async function bidIndexFor(
   // verified = completed/settled outcomes only (RC1, R9): a merely-created or
   // unfunded opportunity is not a price point; awarded-but-unsettled work is
   // not yet a verified transaction either.
+  const params = product ? [product, category] : [category];
   const bounties = await sql.query<{ amount: number }>(
-    "select reward_total_minor::bigint as amount from bounties where product = $1 and category = $2 and status in ('COMPLETED')",
-    [product, category],
+    product
+      ? "select reward_total_minor::bigint as amount from bounties where product = $1 and category = $2 and status in ('COMPLETED')"
+      : "select reward_total_minor::bigint as amount from bounties where category = $1 and status in ('COMPLETED')",
+    params,
   );
   const projects = await sql.query<{ amount: number }>(
-    "select coalesce(selected_quoted_minor,0)::bigint as amount from projects where product = $1 and category = $2 and status in ('COMPLETED') and selected_quoted_minor is not null",
-    [product, category],
+    product
+      ? "select coalesce(selected_quoted_minor,0)::bigint as amount from projects where product = $1 and category = $2 and status in ('COMPLETED') and selected_quoted_minor is not null"
+      : "select coalesce(selected_quoted_minor,0)::bigint as amount from projects where category = $1 and status in ('COMPLETED') and selected_quoted_minor is not null",
+    params,
   );
   const amounts = [
     ...bounties.map((b) => Number(b.amount)),

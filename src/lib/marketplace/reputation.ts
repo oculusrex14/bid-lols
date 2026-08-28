@@ -21,10 +21,11 @@ const BOARD_NAMES = [
   "most_experience",
   "most_wins",
   "most_complete",
+  "top_captains",
+  "top_sponsors",
   "most_quality",
   "most_reliable",
   "rising",
-  "top_sponsors",
 ] as const;
 
 export const myReputationFn = createServerFn({ method: "GET" })
