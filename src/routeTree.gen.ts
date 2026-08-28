@@ -24,6 +24,8 @@ import { Route as ApiFaviconRouteImport } from './routes/api/favicon'
 import { Route as BidceptionIndexRouteImport } from './routes/bidception.index'
 import { Route as BidceptionIdRouteImport } from './routes/bidception.$id'
 import { Route as BidceptionNewRouteImport } from './routes/bidception.new'
+import { Route as BlogIndexRouteImport } from './routes/blog.index'
+import { Route as BlogSlugRouteImport } from './routes/blog.$slug'
 import { Route as BountiesIndexRouteImport } from './routes/bounties.index'
 import { Route as BountiesIdRouteImport } from './routes/bounties.$id'
 import { Route as BountiesNewRouteImport } from './routes/bounties.new'
@@ -114,6 +116,16 @@ const BidceptionIdRoute = BidceptionIdRouteImport.update({
 const BidceptionNewRoute = BidceptionNewRouteImport.update({
   id: '/bidception/new',
   path: '/bidception/new',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BlogIndexRoute = BlogIndexRouteImport.update({
+  id: '/blog/',
+  path: '/blog/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BlogSlugRoute = BlogSlugRouteImport.update({
+  id: '/blog/$slug',
+  path: '/blog/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
 const BountiesIndexRoute = BountiesIndexRouteImport.update({
@@ -212,6 +224,7 @@ export interface FileRoutesByFullPath {
   '/api/favicon': typeof ApiFaviconRoute
   '/bidception/$id': typeof BidceptionIdRoute
   '/bidception/new': typeof BidceptionNewRoute
+  '/blog/$slug': typeof BlogSlugRoute
   '/bounties/$id': typeof BountiesIdRoute
   '/bounties/new': typeof BountiesNewRoute
   '/graveyard/$id': typeof GraveyardIdRoute
@@ -221,6 +234,7 @@ export interface FileRoutesByFullPath {
   '/projects/new': typeof ProjectsNewRoute
   '/settings/profile': typeof SettingsProfileRoute
   '/bidception/': typeof BidceptionIndexRoute
+  '/blog/': typeof BlogIndexRoute
   '/bounties/': typeof BountiesIndexRoute
   '/graveyard/': typeof GraveyardIndexRoute
   '/projects/': typeof ProjectsIndexRoute
@@ -245,6 +259,7 @@ export interface FileRoutesByTo {
   '/api/favicon': typeof ApiFaviconRoute
   '/bidception/$id': typeof BidceptionIdRoute
   '/bidception/new': typeof BidceptionNewRoute
+  '/blog/$slug': typeof BlogSlugRoute
   '/bounties/$id': typeof BountiesIdRoute
   '/bounties/new': typeof BountiesNewRoute
   '/graveyard/$id': typeof GraveyardIdRoute
@@ -254,6 +269,7 @@ export interface FileRoutesByTo {
   '/projects/new': typeof ProjectsNewRoute
   '/settings/profile': typeof SettingsProfileRoute
   '/bidception': typeof BidceptionIndexRoute
+  '/blog': typeof BlogIndexRoute
   '/bounties': typeof BountiesIndexRoute
   '/graveyard': typeof GraveyardIndexRoute
   '/projects': typeof ProjectsIndexRoute
@@ -279,6 +295,7 @@ export interface FileRoutesById {
   '/api/favicon': typeof ApiFaviconRoute
   '/bidception/$id': typeof BidceptionIdRoute
   '/bidception/new': typeof BidceptionNewRoute
+  '/blog/$slug': typeof BlogSlugRoute
   '/bounties/$id': typeof BountiesIdRoute
   '/bounties/new': typeof BountiesNewRoute
   '/graveyard/$id': typeof GraveyardIdRoute
@@ -288,6 +305,7 @@ export interface FileRoutesById {
   '/projects/new': typeof ProjectsNewRoute
   '/settings/profile': typeof SettingsProfileRoute
   '/bidception/': typeof BidceptionIndexRoute
+  '/blog/': typeof BlogIndexRoute
   '/bounties/': typeof BountiesIndexRoute
   '/graveyard/': typeof GraveyardIndexRoute
   '/projects/': typeof ProjectsIndexRoute
@@ -314,6 +332,7 @@ export interface FileRouteTypes {
     | '/api/favicon'
     | '/bidception/$id'
     | '/bidception/new'
+    | '/blog/$slug'
     | '/bounties/$id'
     | '/bounties/new'
     | '/graveyard/$id'
@@ -323,6 +342,7 @@ export interface FileRouteTypes {
     | '/projects/new'
     | '/settings/profile'
     | '/bidception/'
+    | '/blog/'
     | '/bounties/'
     | '/graveyard/'
     | '/projects/'
@@ -347,6 +367,7 @@ export interface FileRouteTypes {
     | '/api/favicon'
     | '/bidception/$id'
     | '/bidception/new'
+    | '/blog/$slug'
     | '/bounties/$id'
     | '/bounties/new'
     | '/graveyard/$id'
@@ -356,6 +377,7 @@ export interface FileRouteTypes {
     | '/projects/new'
     | '/settings/profile'
     | '/bidception'
+    | '/blog'
     | '/bounties'
     | '/graveyard'
     | '/projects'
@@ -380,6 +402,7 @@ export interface FileRouteTypes {
     | '/api/favicon'
     | '/bidception/$id'
     | '/bidception/new'
+    | '/blog/$slug'
     | '/bounties/$id'
     | '/bounties/new'
     | '/graveyard/$id'
@@ -389,6 +412,7 @@ export interface FileRouteTypes {
     | '/projects/new'
     | '/settings/profile'
     | '/bidception/'
+    | '/blog/'
     | '/bounties/'
     | '/graveyard/'
     | '/projects/'
@@ -414,6 +438,7 @@ export interface RootRouteChildren {
   ApiFaviconRoute: typeof ApiFaviconRoute
   BidceptionIdRoute: typeof BidceptionIdRoute
   BidceptionNewRoute: typeof BidceptionNewRoute
+  BlogSlugRoute: typeof BlogSlugRoute
   BountiesIdRoute: typeof BountiesIdRoute
   BountiesNewRoute: typeof BountiesNewRoute
   GraveyardIdRoute: typeof GraveyardIdRoute
@@ -423,6 +448,7 @@ export interface RootRouteChildren {
   ProjectsNewRoute: typeof ProjectsNewRoute
   SettingsProfileRoute: typeof SettingsProfileRoute
   BidceptionIndexRoute: typeof BidceptionIndexRoute
+  BlogIndexRoute: typeof BlogIndexRoute
   BountiesIndexRoute: typeof BountiesIndexRoute
   GraveyardIndexRoute: typeof GraveyardIndexRoute
   ProjectsIndexRoute: typeof ProjectsIndexRoute
@@ -538,6 +564,20 @@ declare module '@tanstack/react-router' {
       path: '/bidception/new'
       fullPath: '/bidception/new'
       preLoaderRoute: typeof BidceptionNewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/blog/': {
+      id: '/blog/'
+      path: '/blog'
+      fullPath: '/blog/'
+      preLoaderRoute: typeof BlogIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/blog/$slug': {
+      id: '/blog/$slug'
+      path: '/blog/$slug'
+      fullPath: '/blog/$slug'
+      preLoaderRoute: typeof BlogSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/bounties/': {
@@ -670,6 +710,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiFaviconRoute: ApiFaviconRoute,
   BidceptionIdRoute: BidceptionIdRoute,
   BidceptionNewRoute: BidceptionNewRoute,
+  BlogSlugRoute: BlogSlugRoute,
   BountiesIdRoute: BountiesIdRoute,
   BountiesNewRoute: BountiesNewRoute,
   GraveyardIdRoute: GraveyardIdRoute,
@@ -679,6 +720,7 @@ const rootRouteChildren: RootRouteChildren = {
   ProjectsNewRoute: ProjectsNewRoute,
   SettingsProfileRoute: SettingsProfileRoute,
   BidceptionIndexRoute: BidceptionIndexRoute,
+  BlogIndexRoute: BlogIndexRoute,
   BountiesIndexRoute: BountiesIndexRoute,
   GraveyardIndexRoute: GraveyardIndexRoute,
   ProjectsIndexRoute: ProjectsIndexRoute,
