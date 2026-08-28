@@ -17,7 +17,7 @@ Last release (RC1 copy pass → production):
 - Runtime SHA 949a095 on main; all four domains 200 with plain operational copy; MARKETPLACE_MONEY_LIVE=OFF; BETTER_AUTH_SECRET set on Vercel production.
 
 Next:
-- RC2: finish gates → focused commits → push → CI green → Vercel PREVIEW from the exact SHA → verify (HTTP + browser, desktop + mobile, four hosts) → docs/SEARCH_DISCOVERY_REPORT.md. No production deploy.
+- RC2: PREVIEW released from fb25a93 (dpl_8cgy1tSyoZpYsdV37yE9vJTBqbkP), CI green, verification in docs/SEARCH_DISCOVERY_REPORT.md. No production deploy. Follow-ups: GSC/Bing verification (EXTERNAL ACTION), IndexNow first submission, browser pass on the SSO-gated Vercel preview URL.
 
 Blocked / external (non-repo):
 - culturebid.lol APEX DNS: public A records still resolve to private IPs (10.10.0.1 / 10.0.1.3) → apex unreachable from the internet; www.culturebid.lol works and is now ALSO the canonical origin (RC2). Exact correction + rollback: docs/ops/DEPLOYMENT.md ("DNS note") and docs/ops/SEARCH_VISIBILITY.md ("CultureBid DNS mode").
