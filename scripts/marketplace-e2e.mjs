@@ -133,12 +133,15 @@ async function builderAppliesAndSubmits(page, bountyPath) {
   await page.reload();
   await waitForHydration(page, '[data-testid="viewer-actions"]');
   await page.click('button:has-text("Start work")');
-  // run() reloads the page after the state change; wait for the reloaded
-  // UI to show the WORK_STARTED participation state before continuing.
+  // run() reloads the document after the state change; wait for the RELOADED
+  // page to hydrate and show the WORK_STARTED participation state before
+  // continuing (on slow CI runners the reload hydration loses the race
+  // otherwise and the Submit-work toggle would be a no-op).
   await page.waitForFunction(
     () => document.querySelector("main")?.textContent?.includes("Work started"),
-    { timeout: 20000 },
+    { timeout: 30000 },
   );
+  await waitForHydration(page, '[data-testid="viewer-actions"]');
   await page.click('button:has-text("Submit work"), a:has-text("Submit work")');
   await page.waitForSelector('input[name="title"]');
   await page.fill('input[name="title"]', "Onboarding checklist v1");
