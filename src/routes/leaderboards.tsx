@@ -1,15 +1,20 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
-import { currentProductKey } from "@/lib/host";
+import { currentProductKey, type ProductKey } from "@/lib/host";
 import { ProductShell } from "@/components/product-shell";
 import { boardFn, BOARD_NAMES, type LeaderboardRow } from "@/lib/marketplace/reputation";
 import { getSession } from "@/lib/authz";
+import { Avatar, SkillTags } from "@/components/ui/identity";
+import { PageHeader } from "@/components/ui/layout";
+import { EmptyState, InlineNotice } from "@/components/ui/states";
+import { ButtonLink } from "@/components/ui/button";
 
 /**
- * /leaderboards — Bidthrone's discovery surface (Phase 04, FR-3, RC1 R8).
- * Every board ranks by its own dedicated metric, computed live from
- * verified marketplace outcomes. A board with no one over the sample floor
- * shows an honest empty state, never seeded rows.
+ * /leaderboards — Bidthrone's discovery surface (Phase 04, FR-3, RC1 R8;
+ * RC3, S-28). Data-first: every board ranks by its own dedicated metric,
+ * computed live from verified marketplace outcomes, rendered as a dense
+ * table. A board with no one over the sample floor shows an honest empty
+ * state, never seeded rows. Rankings are not for sale.
  */
 type BoardSection = {
   board: string;
@@ -75,55 +80,49 @@ export const Route = createFileRoute("/leaderboards")({
 function LeaderboardsPage() {
   const d = Route.useLoaderData();
   const anyData = d.sections.some((s) => s.rows.length > 0);
+
   return (
-    <ProductShell site={d.product} me={d.me}>
-      <div className="mx-auto max-w-5xl px-4 py-10">
-        <p className="text-xs font-medium uppercase tracking-kicker text-subtle">Bidthrone</p>
-        <h1 className="mt-1 font-display-site text-2xl tracking-tight sm:text-3xl">Leaderboards</h1>
-        <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted">
-          Each board below ranks one thing, and it comes from the marketplace,
-          not from a member's self-report: completed bounties, completed
-          projects, captained teams, and the reviews attached to them. Boards
-          are network-wide, because reputation crosses products.
-        </p>
+    <ProductShell site={d.product as ProductKey} me={d.me}>
+      <div className="canvas-wide pb-16">
+        <PageHeader
+          kicker="Bidthrone"
+          title="Leaderboards"
+          lead="Each board ranks one thing, and it comes from the marketplace, not from a member's self-report: completed bounties, completed projects, captained teams, and the reviews attached to them. Boards are network-wide, because reputation crosses products."
+        />
 
         {!anyData ? (
-          <div className="mt-10 rounded-lg border-2 border-dashed border-fg/20 bg-surface p-10 text-center" data-testid="new-network">
-            <h2 className="font-display-site text-xl tracking-tight">
-              No verified outcomes yet.
-            </h2>
-            <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-muted">
-              A member appears on a board only when the work behind it has
-              completed on the network. Until then the boards stay empty, and
-              the page says so instead of filling space.
-            </p>
-            <a
-              href="/blog/reputation-from-completed-work"
-              className="mt-5 inline-flex h-10 items-center rounded-md border-2 border-fg/20 px-4 text-sm font-medium"
-            >
-              Why reputation is built from completed work
-            </a>
-          </div>
+          <EmptyState
+            className="mt-2"
+            title="No verified outcomes yet."
+            body="A member appears on a board only when the work behind it has completed on the network. Until then the boards stay empty, and the page says so instead of filling space."
+            action={
+              <ButtonLink href="/blog/reputation-from-completed-work" variant="secondary" size="sm">
+                Why reputation is built from completed work
+              </ButtonLink>
+            }
+          />
         ) : (
-          <div className="mt-8 grid gap-5 sm:grid-cols-2">
+          <div className="mt-8 grid gap-x-10 gap-y-8 lg:grid-cols-2">
             {d.sections.map((s) => (
-              <section key={s.board} className="rounded-lg border-2 border-fg/15 bg-surface p-5" data-testid={`board-${s.board}`}>
-                <h2 className="font-display-site text-lg tracking-tight">{s.title}</h2>
-                <p className="mt-1 text-xs text-subtle">{s.blurb}</p>
+              <section key={s.board} data-testid={`board-${s.board}`}>
+                <h2 className="text-base font-semibold tracking-tight">{s.title}</h2>
+                <p className="mt-0.5 text-xs text-subtle">{s.blurb}</p>
                 {s.rows.length === 0 ? (
-                  <p className="mt-4 text-sm text-muted">
-                    Not enough verified data for this board yet.
-                  </p>
+                  <p className="mt-3 text-sm text-muted">Not enough verified data for this board yet.</p>
                 ) : (
-                  <ol className="mt-3 space-y-2">
+                  <ol className="mt-2">
                     {s.rows.map((r, i) => (
-                      <li key={r.userId} className="flex items-center justify-between gap-2 text-sm">
-                        <span className="flex items-center gap-2">
-                          <span className="w-4 text-right text-xs text-subtle">{i + 1}.</span>
-                          <span className="font-medium">{r.displayName ?? r.handle ?? "member"}</span>
-                          {r.handle ? <span className="text-xs text-subtle">@{r.handle}</span> : null}
+                      <li key={r.userId} className="row-line flex items-center gap-3 py-2.5">
+                        <span className="w-5 shrink-0 text-right text-xs font-semibold tabular text-subtle">{i + 1}</span>
+                        <Avatar name={r.displayName ?? r.handle} size="sm" />
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-sm font-medium">
+                            {r.displayName ?? r.handle ?? "member"}
+                            {r.handle ? <span className="ml-1.5 text-xs text-subtle">@{r.handle}</span> : null}
+                          </span>
+                          {r.skills.length > 0 ? <SkillTags skills={r.skills} max={2} className="mt-0.5" /> : null}
                         </span>
-                        <span className="text-xs text-muted">{metricLabel(s.board, r)}</span>
+                        <span className="tabular shrink-0 text-xs text-muted">{metricLabel(s.board, r)}</span>
                       </li>
                     ))}
                   </ol>
@@ -133,13 +132,13 @@ function LeaderboardsPage() {
           </div>
         )}
 
-        <p className="mt-8 text-xs leading-relaxed text-subtle">
+        <InlineNotice className="mt-10">
           Methodology: every board ranks by its own metric, computed from
           completed marketplace outcomes. Experience counts verified
           completions (bounty wins, project completions, captained units).
           Quality requires at least three reviews. Reliability requires at
           least two completions. No payment or placement input changes a rank.
-        </p>
+        </InlineNotice>
       </div>
     </ProductShell>
   );

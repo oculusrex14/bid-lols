@@ -130,11 +130,11 @@ export function FoundingAccess({
   }
 
   const inputClasses =
-    "h-11 w-full rounded-md border-2 border-fg/20 bg-surface px-3 text-sm outline-none focus:border-fg/60";
+    "h-11 w-full rounded-md border border-fg/20 bg-surface px-3 text-sm outline-none focus:border-fg/60";
 
   return (
     <div id="access" className="mt-12 scroll-mt-20">
-      <div className="rounded-lg border-2 border-fg/20 bg-surface p-5 sm:p-6">
+      <div className="rounded-md border border-fg/20 bg-surface p-5 sm:p-6">
         <p className="text-xs font-medium uppercase tracking-kicker text-subtle">
           Launch updates
         </p>
@@ -151,7 +151,7 @@ export function FoundingAccess({
           <div
             role="status"
             aria-live="polite"
-            className="mt-5 flex items-start gap-3 rounded-md border-2 border-up/40 bg-raised/50 p-4"
+            className="mt-5 flex items-start gap-3 rounded-md border border-up/40 bg-raised/50 p-4"
           >
             <Check className="mt-0.5 size-5 shrink-0 text-up" aria-hidden="true" />
             <div>

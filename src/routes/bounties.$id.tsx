@@ -3,11 +3,9 @@ import { createFileRoute, Link, useNavigate, notFound, redirect } from "@tanstac
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { currentProductKey, product as productInfo, seoOrigin, type ProductKey } from "@/lib/host";
-import { shellContext } from "@/lib/shell-context";
 import { ProductShell } from "@/components/product-shell";
 import { getSql } from "@/lib/db.server";
 import { getBountyDetail, listApplicationsForSponsor } from "@/lib/marketplace/queries.server";
-import { formatMinor } from "@/lib/money";
 import { JsonLd } from "@/components/seo";
 import { breadcrumbSchema } from "@/lib/schema";
 import {
@@ -20,12 +18,22 @@ import {
 } from "@/lib/marketplace/bounties";
 import { getSession } from "@/lib/authz";
 import { entityRedirectFor } from "@/lib/marketplace/capabilities.server";
-import { createReviewFn } from "@/lib/marketplace/reviews";
+import { statusLabel } from "@/lib/marketplace/status-labels";
+import { deadlinePhrase, absoluteDate } from "@/lib/reltime";
+import { formatMinor } from "@/lib/money";
+import { MoneyValue } from "@/components/ui/money";
+import { StatusBadge } from "@/components/ui/status";
+import { Button, ButtonLink } from "@/components/ui/button";
+import { Field, Input, Textarea } from "@/components/ui/field";
+import { StickyPanel } from "@/components/ui/market";
+import { InlineNotice } from "@/components/ui/states";
+import { ReviewBox } from "@/components/ui/review";
 
 /**
- * /bounties/:id — public bounty detail (Phase 01, FR-3/FR-4). Authority-gated
- * actions render from the server-resolved viewer context; every action goes
- * back through the engine's authorization.
+ * /bounties/:id — public bounty detail (Phase 01, FR-3/FR-4; RC3, S-24).
+ * 8/4 morphology: decision-critical data in a sticky panel, the work itself
+ * in the main column. Authority-gated actions render from the
+ * server-resolved viewer context; every action goes back through the engine.
  */
 const loadDetail = createServerFn({ method: "GET" })
   .validator((input: { id: string }) => z.object({ id: z.string().trim().min(4).max(64) }).parse(input))
@@ -73,9 +81,7 @@ type DetailData = {
 
 function BountyDetailBody({ data }: { data: DetailData }) {
   const { detail, product, me } = data;
-  const b = detail.bounty as Record<string, unknown> & {
-    creative?: { formats?: string[]; targetPlatform?: string; publicPostingRequired?: boolean; performanceMeasured?: boolean; usageNotes?: string } | null;
-  };
+  const b = detail.bounty;
   const navigate = useNavigate();
   const [message, setMessage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -83,6 +89,9 @@ function BountyDetailBody({ data }: { data: DetailData }) {
   const viewer = detail.viewer;
 
   const status = String(b.status);
+  const isCulture = product === "culturebid";
+  const origin = seoOrigin(product);
+  const listTitle = isCulture ? "Creative bounties" : "Open bounties";
 
   async function run(fn: () => Promise<{ ok: boolean; message?: string; code?: string }>, okNote: string) {
     if (busy) return;
@@ -115,139 +124,102 @@ function BountyDetailBody({ data }: { data: DetailData }) {
     }, "Funding checkout started. The bounty opens once the payment verifies.");
   }
 
-  const isCulture = product === "culturebid";
-  const origin = seoOrigin(product);
-  const listTitle = isCulture ? "Creative bounties" : "Open bounties";
-  const canonicalUrl = `${origin}/bounties/${String(b.id)}`;
+  const fundingState = b.funding_payment_id ? "Funded" : status === "DRAFT" ? "Not funded yet" : "Funding pending";
 
   return (
     <ProductShell site={product} me={me}>
-      <div className="mx-auto max-w-4xl px-4 py-10">
-        <nav aria-label="Breadcrumb" className="text-sm text-subtle">
-          <a href="/" className="underline-offset-4 hover:underline">
+      <div className="canvas-wide pb-16">
+        <nav aria-label="Breadcrumb" className="pt-6 text-sm text-subtle">
+          <Link to="/" className="hover:underline hover:underline-offset-4">
             {productInfo(product).name}
-          </a>
+          </Link>
           <span aria-hidden="true"> / </span>
-          <a href="/bounties" className="underline-offset-4 hover:underline">
+          <Link to="/bounties" className="hover:underline hover:underline-offset-4">
             {listTitle}
-          </a>
+          </Link>
+          <span aria-hidden="true"> / </span>
+          <span className="text-muted">{String(b.title).slice(0, 40)}{String(b.title).length > 40 ? "…" : ""}</span>
         </nav>
 
-        <div className="mt-4 flex flex-wrap items-start justify-between gap-4">
-          <div className="min-w-0">
-            <p className="text-xs font-medium uppercase tracking-kicker text-subtle">
-              {String(b.category)} · {String(b.reward_structure).replaceAll("_", " ").toLowerCase()} · {status}
-            </p>
-            <h1 className="mt-1 font-display-site text-2xl tracking-tight sm:text-3xl">{String(b.title)}</h1>
-            <p className="mt-1 text-sm text-muted">
-              {Number(b.participants ?? 0)}/{Number(b.participant_cap)} participants ·
-              submissions due {new Date(String(b.submission_deadline)).toISOString().slice(0, 10)}
-            </p>
+        <header className="mt-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <StatusBadge status={status} />
+            <span className="text-xs text-subtle">{String(b.category)}</span>
+            <span className="text-xs text-subtle">·</span>
+            <span className="text-xs text-subtle">{statusLabel(String(b.reward_structure))}</span>
           </div>
-          <div className="text-right">
-            <p className="font-display-site text-2xl tracking-tight text-accent" data-testid="reward-amount">
-              {formatMinor(Number(b.reward_total_minor), String(b.currency))}
-            </p>
-            <p className="text-xs text-subtle">advertised reward, paid in full</p>
+          <h1 className="mt-2 max-w-3xl font-display-site text-3xl tracking-tight sm:text-4xl">{String(b.title)}</h1>
+          <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted">
+            <span>
+              Posted by {String(b.sponsor_company || b.sponsor_name || "a member")}
+              {b.sponsor_handle ? ` (@${b.sponsor_handle})` : ""}
+            </span>
+            <span title={absoluteDate(b.submission_deadline)}>{deadlinePhrase(b.submission_deadline)}</span>
           </div>
-        </div>
-
-        {/* Money state: visually explicit, always */}
-        <div className="mt-4 grid gap-3 sm:grid-cols-3">
-          <div className="rounded-md border-2 border-fg/15 bg-surface p-3">
-            <p className="text-xs uppercase tracking-kicker text-subtle">Funding</p>
-            <p className="mt-1 text-sm font-medium" data-testid="funding-state">
-              {b.funding_payment_id ? "Funded" : status === "DRAFT" ? "Not funded yet" : "Funding pending"}
-            </p>
-          </div>
-          <div className="rounded-md border-2 border-fg/15 bg-surface p-3">
-            <p className="text-xs uppercase tracking-kicker text-subtle">Structure</p>
-            <p className="mt-1 text-sm font-medium">{String(b.reward_structure).replaceAll("_", " ").toLowerCase()}</p>
-          </div>
-          <div className="rounded-md border-2 border-fg/15 bg-surface p-3">
-            <p className="text-xs uppercase tracking-kicker text-subtle">Sponsor</p>
-            <p className="mt-1 truncate text-sm font-medium">
-              {String(b.sponsor_company || b.sponsor_name || "Sponsor")}
-            </p>
-          </div>
-        </div>
-
-        {viewer?.isSponsor && status === "DRAFT" ? (
-          <div className="mt-6 rounded-lg border-2 border-accent/40 bg-raised/40 p-4" data-testid="sponsor-publish">
-            <p className="text-sm font-medium">Publish this bounty</p>
-            <p className="mt-1 text-sm text-muted">
-              {data.emailVerified
-                ? "Publishing starts the funding checkout. The bounty opens to applications once the payment is verified."
-                : "Verify your email first (admin can verify manually while email delivery is unconfigured)."}
-            </p>
-            <button
-              type="button"
-              disabled={busy || !data.emailVerified}
-              onClick={() => void onPublish()}
-              className="mt-3 inline-flex h-10 items-center rounded-md bg-accent px-4 text-sm font-semibold text-accent-fg disabled:opacity-60"
-            >
-              Fund & publish ({formatMinor(Number(b.reward_total_minor))} + fee)
-            </button>
-          </div>
-        ) : null}
+        </header>
 
         {message ? (
-          <p role="status" aria-live="polite" className="mt-4 rounded-md border-2 border-fg/15 bg-surface p-3 text-sm" data-testid="action-message">
+          <InlineNotice className="mt-5" tone="neutral">
             {message}
-          </p>
+          </InlineNotice>
         ) : null}
 
-        <div className="mt-6 grid gap-6 lg:grid-cols-3">
-          <div className="lg:col-span-2">
-            <section className="rounded-lg border-2 border-fg/15 bg-surface p-5">
-              <h2 className="text-xs font-medium uppercase tracking-kicker text-subtle">The problem</h2>
-              <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed">{String(b.description)}</p>
-              {b.deliverables ? (
-                <>
-                  <h2 className="mt-5 text-xs font-medium uppercase tracking-kicker text-subtle">Deliverables</h2>
-                  <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed">{String(b.deliverables)}</p>
-                </>
-              ) : null}
-              {b.creative && (b.creative.formats?.length || b.creative.targetPlatform || b.creative.publicPostingRequired != null) ? (
-                <>
-                  <h2 className="mt-5 text-xs font-medium uppercase tracking-kicker text-subtle">Creative brief</h2>
-                  <ul className="mt-2 space-y-1 text-sm">
-                    {b.creative.formats && b.creative.formats.length > 0 ? <li>• Formats: {b.creative.formats.join(", ")}</li> : null}
-                    {b.creative.targetPlatform ? <li>• Platform/channel: {b.creative.targetPlatform}</li> : null}
-                    {b.creative.publicPostingRequired != null ? <li>• Public posting required: {b.creative.publicPostingRequired ? "yes" : "no"}</li> : null}
-                    {b.creative.performanceMeasured != null ? <li>• Performance measured: {b.creative.performanceMeasured ? "yes (self-reported unless an API integration exists)" : "no"}</li> : null}
-                    {b.creative.usageNotes ? <li>• Usage/licensing: {b.creative.usageNotes}</li> : null}
-                  </ul>
-                </>
-              ) : null}
-              {b.acceptance_criteria ? (
-                <>
-                  <h2 className="mt-5 text-xs font-medium uppercase tracking-kicker text-subtle">Acceptance criteria</h2>
-                  <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed">{String(b.acceptance_criteria)}</p>
-                </>
-              ) : null}
-              {b.ip_and_confidentiality ? (
-                <>
-                  <h2 className="mt-5 text-xs font-medium uppercase tracking-kicker text-subtle">IP & confidentiality</h2>
-                  <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed">{String(b.ip_and_confidentiality)}</p>
-                </>
-              ) : null}
+        <div className="mt-8 grid grid-cols-1 gap-10 lg:grid-cols-12">
+          {/* Main column (8/12): the work. */}
+          <div className="lg:col-span-8">
+            <section aria-labelledby="h-problem">
+              <h2 id="h-problem" className="text-sm font-semibold uppercase tracking-kicker text-subtle">
+                The problem
+              </h2>
+              <p className="mt-3 whitespace-pre-wrap text-[15px] leading-relaxed">{String(b.description)}</p>
             </section>
+            {b.deliverables ? (
+              <section className="mt-8">
+                <h2 className="text-sm font-semibold uppercase tracking-kicker text-subtle">Deliverables</h2>
+                <p className="mt-3 whitespace-pre-wrap text-[15px] leading-relaxed">{String(b.deliverables)}</p>
+              </section>
+            ) : null}
+            {b.acceptance_criteria ? (
+              <section className="mt-8">
+                <h2 className="text-sm font-semibold uppercase tracking-kicker text-subtle">Acceptance criteria</h2>
+                <p className="mt-3 whitespace-pre-wrap text-[15px] leading-relaxed">{String(b.acceptance_criteria)}</p>
+              </section>
+            ) : null}
+            {b.creative && (b.creative.formats?.length || b.creative.targetPlatform || b.creative.publicPostingRequired != null || b.creative.usageNotes) ? (
+              <section className="mt-8">
+                <h2 className="text-sm font-semibold uppercase tracking-kicker text-subtle">Creative brief</h2>
+                <ul className="mt-3 space-y-1.5 text-[15px] leading-relaxed">
+                  {b.creative.formats && b.creative.formats.length > 0 ? <li>Formats: {b.creative.formats.join(", ")}</li> : null}
+                  {b.creative.targetPlatform ? <li>Platform / use: {b.creative.targetPlatform}</li> : null}
+                  {b.creative.publicPostingRequired != null ? <li>Public posting required: {b.creative.publicPostingRequired ? "yes" : "no"}</li> : null}
+                  {b.creative.performanceMeasured != null ? <li>Performance measured: {b.creative.performanceMeasured ? "yes (self-reported unless an API integration exists)" : "no"}</li> : null}
+                  {b.creative.usageNotes ? <li>Usage / licensing: {b.creative.usageNotes}</li> : null}
+                </ul>
+              </section>
+            ) : null}
+            {b.ip_and_confidentiality ? (
+              <section className="mt-8">
+                <h2 className="text-sm font-semibold uppercase tracking-kicker text-subtle">IP & confidentiality</h2>
+                <p className="mt-3 whitespace-pre-wrap text-[15px] leading-relaxed">{String(b.ip_and_confidentiality)}</p>
+              </section>
+            ) : null}
 
             {detail.submissions.length > 0 ? (
-              <section className="mt-6 rounded-lg border-2 border-fg/15 bg-surface p-5">
-                <h2 className="text-xs font-medium uppercase tracking-kicker text-subtle">
+              <section className="mt-10">
+                <h2 className="text-sm font-semibold uppercase tracking-kicker text-subtle">
                   Submissions ({detail.submissions.length})
                 </h2>
-                <ul className="mt-3 space-y-4">
+                <ul className="mt-4 space-y-4">
                   {detail.submissions.map((s) => (
-                    <li key={s.id} className="rounded-md border-2 border-fg/10 p-4">
+                    <li key={s.id} className="rounded-md border border-fg/10 bg-surface/60 p-4">
                       <div className="flex flex-wrap items-baseline justify-between gap-2">
                         <p className="text-sm font-medium">
-                          {s.place ? `#${s.place} ` : ""}{s.title}
+                          {s.place ? `#${s.place} ` : ""}
+                          {s.title}
                         </p>
                         <p className="text-xs text-subtle">
-                          {s.display_name ?? "member"}{s.handle ? ` (@${s.handle})` : ""}
+                          {s.display_name ?? "member"}
+                          {s.handle ? ` (@${s.handle})` : ""}
                         </p>
                       </div>
                       {s.body ? <p className="mt-2 whitespace-pre-wrap text-sm text-muted">{s.body}</p> : null}
@@ -255,7 +227,9 @@ function BountyDetailBody({ data }: { data: DetailData }) {
                         <ul className="mt-2 space-y-1">
                           {s.links.map((l) => (
                             <li key={l}>
-                              <a href={l} rel="nofollow ugc" className="text-sm underline underline-offset-2">{safeHost(l)}</a>
+                              <a href={l} rel="nofollow ugc" className="text-sm text-accent underline underline-offset-2">
+                                {safeHost(l)}
+                              </a>
                             </li>
                           ))}
                         </ul>
@@ -265,157 +239,142 @@ function BountyDetailBody({ data }: { data: DetailData }) {
                 </ul>
               </section>
             ) : null}
-          </div>
 
-          <div className="space-y-6">
-            {/* Viewer actions */}
-            {!viewer?.isSponsor ? (
-              <section className="rounded-lg border-2 border-fg/15 bg-surface p-5" data-testid="viewer-actions">
-                <h2 className="text-xs font-medium uppercase tracking-kicker text-subtle">Your status</h2>
-                {!viewer?.application && !viewer?.participant ? (
-                  status === "OPEN" ? (
-                    <ApplyBox bountyId={String(b.id)} onDone={(m) => setMessage(m)} />
-                  ) : (
-                    <p className="mt-2 text-sm text-muted">Applications are closed (bounty is {status}).</p>
-                  )
-                ) : (
-                  <div className="mt-2 text-sm">
-                    {viewer?.application ? <p>Application: {viewer.application.status}</p> : null}
-                    {viewer?.participant ? <p>Participation: {viewer.participant.status}</p> : null}
-                    {viewer?.application?.status === "APPROVED" && !viewer?.participant ? null : null}
-                    {viewer?.participant?.status === "APPROVED" ? (
-                      <button
-                        type="button"
-                        disabled={busy}
-                        onClick={async () => {
-                          await run(async () => {
-                            const r = await startWorkFn({ data: { bountyId: String(b.id) } });
-                            return r;
-                          }, "Work started. Deliver before the deadline.");
-                        }}
-                        className="mt-3 inline-flex h-10 items-center rounded-md bg-accent px-4 text-sm font-semibold text-accent-fg"
-                      >
-                        Start work
-                      </button>
-                    ) : null}
-                    {viewer?.participant && ["WORK_STARTED", "SUBMITTED"].includes(viewer.participant.status) ? (
-                      <button
-                        type="button"
-                        onClick={() => setShowSubmit((v) => !v)}
-                        className="mt-3 block text-sm font-medium underline underline-offset-2"
-                      >
-                        {viewer.participant.status === "SUBMITTED" ? "Update submission" : "Submit work"}
-                      </button>
-                    ) : null}
-                    {viewer?.application?.status === "PENDING" ? (
-                      <button
-                        type="button"
-                        disabled={busy}
-                        onClick={async () => {
-                          await run(
-                            () => withdrawApplicationFn({ data: { applicationId: viewer.application!.id } }) as never,
-                            "Application withdrawn.",
-                          );
-                        }}
-                        className="mt-3 block text-sm text-muted underline underline-offset-2"
-                      >
-                        Withdraw application
-                      </button>
-                    ) : null}
-                  </div>
-                )}
-              </section>
+            {status === "COMPLETED" && viewer && (viewer.isSponsor || viewer.participant) ? (
+              <ReviewBox
+                workType="BOUNTY"
+                workId={String(b.id)}
+                direction={viewer.isSponsor ? "SPONSOR_TO_PROVIDER" : "PROVIDER_TO_SPONSOR"}
+                onDone={(m) => setMessage(m)}
+              />
             ) : null}
 
-            {viewer?.isSponsor ? (
-              <section className="rounded-lg border-2 border-fg/15 bg-surface p-5" data-testid="sponsor-panel">
-                <h2 className="text-xs font-medium uppercase tracking-kicker text-subtle">Manage</h2>
-                {detail.participants.length > 0 ? (
-                  <ul className="mt-2 space-y-1 text-sm">
-                    {detail.participants.map((p, i) => (
-                      <li key={i} className="flex justify-between gap-2">
-                        <span className="truncate">{p.display_name ?? "member"}</span>
-                        <span className="text-subtle">{p.status}</span>
+            {showSubmit && viewer?.participant ? (
+              <SubmitBox
+                bountyId={String(b.id)}
+                onDone={(m) => {
+                  setMessage(m);
+                  setShowSubmit(false);
+                }}
+              />
+            ) : null}
+          </div>
+
+          {/* Sticky panel (4/12): the decision data + the action. */}
+          <div className="lg:col-span-4">
+            <StickyPanel>
+              <div className="rounded-md border border-fg/10 bg-surface/60 p-4">
+                <MoneyValue minor={Number(b.reward_total_minor)} currency={String(b.currency)} size="xl" className="text-accent" title={String(b.currency)} />
+                <p className="mt-0.5 text-xs text-subtle" data-testid="reward-amount-label">
+                  advertised reward, paid in full
+                </p>
+                <dl className="mt-4 space-y-2.5 text-sm">
+                  <PanelRow label="Funding">
+                    <span data-testid="funding-state">{fundingState}</span>
+                  </PanelRow>
+                  <PanelRow label="Structure">{statusLabel(String(b.reward_structure))}</PanelRow>
+                  <PanelRow label="Participants">
+                    {Number(b.participants ?? 0)} / {Number(b.participant_cap)}
+                  </PanelRow>
+                  {b.application_deadline ? (
+                    <PanelRow label="Applications due">
+                      <span title={absoluteDate(b.application_deadline)}>{deadlinePhrase(b.application_deadline)}</span>
+                    </PanelRow>
+                  ) : null}
+                  <PanelRow label="Submissions due">
+                    <span title={absoluteDate(b.submission_deadline)}>{deadlinePhrase(b.submission_deadline)}</span>
+                  </PanelRow>
+                </dl>
+              </div>
+
+              {/* Viewer actions */}
+              {!viewer?.isSponsor ? (
+                <section className="mt-4 rounded-md border border-fg/10 bg-surface/60 p-4" data-testid="viewer-actions">
+                  <h2 className="text-sm font-semibold">Your status</h2>
+                  <ViewerActions
+                    b={b}
+                    viewer={viewer}
+                    status={status}
+                    busy={busy}
+                    onRun={run}
+                    onToggleSubmit={() => setShowSubmit((v) => !v)}
+                    onDone={(m) => setMessage(m)}
+                  />
+                </section>
+              ) : null}
+
+              {viewer?.isSponsor ? (
+                <section className="mt-4 rounded-md border border-fg/10 bg-surface/60 p-4" data-testid="sponsor-panel">
+                  <h2 className="text-sm font-semibold">Manage</h2>
+                  {status === "DRAFT" ? (
+                    <div className="mt-3" data-testid="sponsor-publish">
+                      <p className="text-sm text-muted">
+                        {data.emailVerified
+                          ? "Publishing starts the funding checkout. The bounty opens to applications once the payment is verified."
+                          : "Verify your email first (admin can verify manually while email delivery is unconfigured)."}
+                      </p>
+                      <Button className="mt-3 w-full" disabled={busy || !data.emailVerified} onClick={() => void onPublish()}>
+                        Fund & publish
+                      </Button>
+                    </div>
+                  ) : null}
+                  {data.applications.length > 0 ? (
+                    <ul className="mt-3 space-y-1.5 text-sm">
+                      {data.applications.map((a) => (
+                        <li key={a.id} className="flex justify-between gap-2">
+                          <span className="truncate">{a.display_name ?? `@${a.handle ?? "member"}`}</span>
+                          <span className="shrink-0 text-xs text-subtle">{statusLabel(a.status)}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+                  {(status === "SUBMISSION" || status === "JUDGING") ? (
+                    <p className="mt-2 text-xs text-subtle">Judging: pick winners from the submissions list.</p>
+                  ) : null}
+                  {["DRAFT", "OPEN", "APPLICATION_CLOSED"].includes(status) ? (
+                    <Button
+                      variant="danger"
+                      size="sm"
+                      className="mt-3"
+                      disabled={busy}
+                      onClick={async () => {
+                        const reason = window.prompt("Why are you cancelling? (shown in the audit trail)");
+                        if (!reason) return;
+                        await run(() => cancelBountyFn({ data: { bountyId: String(b.id), reason } }), "Bounty cancelled.");
+                      }}
+                    >
+                      Cancel bounty
+                    </Button>
+                  ) : null}
+                </section>
+              ) : null}
+
+              {detail.awards.length > 0 ? (
+                <section className="mt-4 rounded-md border border-fg/10 bg-surface/60 p-4" data-testid="awards">
+                  <h2 className="text-sm font-semibold">Awards</h2>
+                  <ul className="mt-2.5 space-y-1.5 text-sm">
+                    {detail.awards.map((a) => (
+                      <li key={a.place} className="flex justify-between gap-2">
+                        <span>
+                          #{a.place} {a.handle ? `@${a.handle}` : ""}
+                        </span>
+                        <span className="tabular shrink-0 font-medium">
+                          {formatMinor(a.amount_minor)} · {statusLabel(a.status)}
+                        </span>
                       </li>
                     ))}
                   </ul>
-                ) : null}
-                {status === "SUBMISSION" || status === "JUDGING" ? (
-                  <p className="mt-2 text-xs text-subtle">
-                    Judging: pick winners from the submissions list on the left.
-                  </p>
-                ) : null}
-                {["DRAFT", "OPEN", "APPLICATION_CLOSED"].includes(status) ? (
-                  <button
-                    type="button"
-                    disabled={busy}
-                    onClick={async () => {
-                      const reason = window.prompt("Why are you cancelling? (shown in the audit trail)");
-                      if (!reason) return;
-                      await run(() => cancelBountyFn({ data: { bountyId: String(b.id), reason } }), "Bounty cancelled.");
-                    }}
-                    className="mt-3 inline-flex h-9 items-center rounded-md border-2 border-danger/40 px-3 text-sm font-medium text-danger"
-                  >
-                    Cancel bounty
-                  </button>
-                ) : null}
-              </section>
-            ) : null}
-
-            {detail.participants.length > 0 ? (
-              <section className="rounded-lg border-2 border-fg/15 bg-surface p-5">
-                <h2 className="text-xs font-medium uppercase tracking-kicker text-subtle">Participants</h2>
-                <ul className="mt-2 space-y-1 text-sm">
-                  {detail.participants.map((p, i) => (
-                    <li key={i} className="flex justify-between gap-2">
-                      <span>{p.display_name ?? "member"}</span>
-                      <span className="text-xs text-subtle">{p.status}</span>
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            ) : null}
-
-            {detail.awards.length > 0 ? (
-              <section className="rounded-lg border-2 border-fg/15 bg-surface p-5" data-testid="awards">
-                <h2 className="text-xs font-medium uppercase tracking-kicker text-subtle">Awards</h2>
-                <ul className="mt-2 space-y-1 text-sm">
-                  {detail.awards.map((a) => (
-                    <li key={a.place} className="flex justify-between gap-2">
-                      <span>#{a.place} {a.handle ? `@${a.handle}` : ""}</span>
-                      <span className="font-medium">{formatMinor(a.amount_minor)} · {a.status}</span>
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            ) : null}
+                </section>
+              ) : null}
+            </StickyPanel>
           </div>
         </div>
-
-        {status === "COMPLETED" && viewer && (viewer.isSponsor || viewer.participant) ? (
-          <ReviewBox
-            workType="BOUNTY"
-            workId={String(b.id)}
-            direction={viewer.isSponsor ? "SPONSOR_TO_PROVIDER" : "PROVIDER_TO_SPONSOR"}
-            onDone={(m) => setMessage(m)}
-          />
-        ) : null}
-
-        {showSubmit && viewer?.participant ? (
-          <SubmitBox
-            bountyId={String(b.id)}
-            onDone={(m) => {
-              setMessage(m);
-              setShowSubmit(false);
-            }}
-          />
-        ) : null}
 
         <JsonLd
           data={breadcrumbSchema(product, [
             { name: productInfo(product).name, url: origin },
             { name: listTitle, url: `${origin}/bounties` },
-            { name: String(b.title), url: canonicalUrl },
+            { name: String(b.title), url: `${origin}/bounties/${b.id}` },
           ])}
         />
       </div>
@@ -423,31 +382,105 @@ function BountyDetailBody({ data }: { data: DetailData }) {
   );
 }
 
+function PanelRow({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex items-baseline justify-between gap-3">
+      <dt className="text-xs uppercase tracking-kicker text-subtle">{label}</dt>
+      <dd className="tabular text-right font-medium">{children}</dd>
+    </div>
+  );
+}
+
+function ViewerActions({
+  b,
+  viewer,
+  status,
+  busy,
+  onRun,
+  onToggleSubmit,
+  onDone,
+}: {
+  b: DetailData["detail"]["bounty"];
+  viewer: DetailData["detail"]["viewer"];
+  status: string;
+  busy: boolean;
+  onRun: (fn: () => Promise<{ ok: boolean; message?: string; code?: string }>, okNote: string) => Promise<void>;
+  onToggleSubmit: () => void;
+  onDone: (m: string) => void;
+}) {
+  if (!viewer || (!viewer.application && !viewer.participant)) {
+    return status === "OPEN" ? (
+      <ApplyBox bountyId={String(b.id)} onDone={onDone} />
+    ) : (
+      <p className="mt-2 text-sm text-muted">
+        Applications are closed (this bounty is {statusLabel(status)}).
+      </p>
+    );
+  }
+  return (
+    <div className="mt-2 text-sm">
+      {viewer.application ? <p className="text-muted">Application: {statusLabel(viewer.application.status)}</p> : null}
+      {viewer.participant ? <p className="text-muted">Participation: {statusLabel(viewer.participant.status)}</p> : null}
+      {viewer.participant?.status === "APPROVED" ? (
+        <Button
+          className="mt-3 w-full"
+          disabled={busy}
+          onClick={async () => {
+            await onRun(async () => startWorkFn({ data: { bountyId: String(b.id) } }), "Work started. Deliver before the deadline.");
+          }}
+        >
+          Start work
+        </Button>
+      ) : null}
+      {viewer.participant && ["WORK_STARTED", "SUBMITTED"].includes(viewer.participant.status) ? (
+        <button
+          type="button"
+          onClick={onToggleSubmit}
+          className="mt-3 block text-sm font-medium text-accent underline underline-offset-2"
+        >
+          {viewer.participant.status === "SUBMITTED" ? "Update submission" : "Submit work"}
+        </button>
+      ) : null}
+      {viewer.application?.status === "PENDING" ? (
+        <button
+          type="button"
+          disabled={busy}
+          onClick={async () => {
+            await onRun(
+              () => withdrawApplicationFn({ data: { applicationId: viewer.application!.id } }) as never,
+              "Application withdrawn.",
+            );
+          }}
+          className="mt-3 block text-sm text-muted underline underline-offset-2"
+        >
+          Withdraw application
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
 function ApplyBox({ bountyId, onDone }: { bountyId: string; onDone: (m: string) => void }) {
   const [busy, setBusy] = useState(false);
+  const [note, setNote] = useState("");
   return (
-    <div className="mt-3">
-      <textarea
-        placeholder="Tell the sponsor why you're the right fit (never do unpaid deliverable work in an application)."
-        rows={3}
-        maxLength={4000}
-        className="w-full rounded-md border-2 border-fg/20 bg-surface p-3 text-sm outline-none focus:border-fg/60"
-      />
-      <button
-        type="button"
-        disabled={busy}
-        onClick={async (e) => {
-          setBusy(true);
-          const textarea = (e.currentTarget.previousElementSibling as HTMLTextAreaElement | null)?.value ?? "";
-          const r = await applyToBountyFn({ data: { bountyId, message: textarea } });
-          setBusy(false);
-          onDone(r.ok ? "Application sent." : r.message);
-        }}
-        className="mt-2 inline-flex h-10 items-center rounded-md bg-accent px-4 text-sm font-semibold text-accent-fg disabled:opacity-60"
-      >
+    <form
+      className="mt-3 space-y-3"
+      onSubmit={async (e) => {
+        e.preventDefault();
+        setBusy(true);
+        const r = await applyToBountyFn({ data: { bountyId, message: note } });
+        setBusy(false);
+        onDone(r.ok ? "Application sent." : r.message);
+      }}
+    >
+      <Field label="Why are you the right fit?" hint="Never do unpaid deliverable work in an application." id="apply-note">
+        <Textarea id="apply-note" rows={3} maxLength={4000} value={note} onChange={(e) => setNote(e.target.value)} />
+      </Field>
+      <Button type="submit" loading={busy} className="w-full">
         Apply
-      </button>
-    </div>
+      </Button>
+    </form>
   );
 }
 
@@ -455,7 +488,7 @@ function SubmitBox({ bountyId, onDone }: { bountyId: string; onDone: (m: string)
   const [busy, setBusy] = useState(false);
   return (
     <form
-      className="mt-6 rounded-lg border-2 border-fg/20 bg-surface p-5"
+      className="mt-8 rounded-md border border-fg/10 bg-surface/60 p-4"
       onSubmit={async (e) => {
         e.preventDefault();
         const f = new FormData(e.currentTarget);
@@ -465,90 +498,32 @@ function SubmitBox({ bountyId, onDone }: { bountyId: string; onDone: (m: string)
             bountyId,
             title: String(f.get("title")),
             body: String(f.get("body") ?? ""),
-            links: String(f.get("links") ?? "").split(/[\s,]+/).map((s) => s.trim()).filter(Boolean).slice(0, 10),
+            links: String(f.get("links") ?? "")
+              .split(/[\s,]+/)
+              .map((s) => s.trim())
+              .filter(Boolean)
+              .slice(0, 10),
           },
         });
         setBusy(false);
         onDone(r.ok ? "Submission saved." : r.message);
       }}
     >
-      <h2 className="text-xs font-medium uppercase tracking-kicker text-subtle">Your submission</h2>
-      <input name="title" required minLength={3} maxLength={140} placeholder="Submission title" className="mt-2 w-full rounded-md border-2 border-fg/20 bg-surface px-3 py-2.5 text-sm outline-none focus:border-fg/60" />
-      <textarea name="body" rows={5} maxLength={50000} placeholder="What you did and how to verify it" className="mt-3 w-full rounded-md border-2 border-fg/20 bg-surface p-3 text-sm outline-none focus:border-fg/60" />
-      <input name="links" placeholder="https:// links, comma-separated" className="mt-3 w-full rounded-md border-2 border-fg/20 bg-surface px-3 py-2.5 text-sm outline-none focus:border-fg/60" />
-      <button
-        type="submit"
-        disabled={busy}
-        className="mt-3 inline-flex h-10 items-center rounded-md bg-accent px-4 text-sm font-semibold text-accent-fg disabled:opacity-60"
-      >
-        {busy ? "Saving…" : "Save submission"}
-      </button>
-    </form>
-  );
-}
-
-function ReviewBox({
-  workType,
-  workId,
-  direction,
-  onDone,
-}: {
-  workType: "BOUNTY" | "PROJECT";
-  workId: string;
-  direction: "SPONSOR_TO_PROVIDER" | "PROVIDER_TO_SPONSOR";
-  onDone: (m: string) => void;
-}) {
-  const [busy, setBusy] = useState(false);
-  const [done, setDone] = useState(false);
-  if (done) return null;
-  return (
-    <form
-      className="mt-6 rounded-lg border-2 border-fg/20 bg-surface p-5"
-      data-testid="review-form"
-      onSubmit={async (e) => {
-        e.preventDefault();
-        const f = new FormData(e.currentTarget);
-        const num = (k: string) => {
-          const v = Number(f.get(k));
-          return v >= 1 && v <= 5 ? v : undefined;
-        };
-        setBusy(true);
-        const r = await createReviewFn({
-          data: {
-            workType,
-            workId,
-            direction,
-            quality: num("quality"),
-            communication: num("communication"),
-            timeliness: num("timeliness"),
-            clarity: num("clarity"),
-            body: String(f.get("body") ?? ""),
-          },
-        });
-        setBusy(false);
-        if (r.ok) {
-          onDone("Review saved. Thank you.");
-          setDone(true);
-        } else {
-          onDone(r.message);
-        }
-      }}
-    >
-      <h2 className="text-xs font-medium uppercase tracking-kicker text-subtle">
-        {direction === "SPONSOR_TO_PROVIDER" ? "Review the winning builder" : "Review the sponsor"}
-      </h2>
-      <div className="mt-3 grid gap-3 sm:grid-cols-4">
-        {["quality", "communication", "timeliness", "clarity"].map((k) => (
-          <div key={k}>
-            <label htmlFor={`rv-${k}`} className="mb-1 block text-xs font-medium capitalize">{k} (1–5)</label>
-            <input id={`rv-${k}`} name={k} type="number" min={1} max={5} className="h-10 w-full rounded-md border-2 border-fg/20 bg-surface px-2 text-sm outline-none focus:border-fg/60" />
-          </div>
-        ))}
+      <h2 className="text-lg font-semibold tracking-tight">Your submission</h2>
+      <div className="mt-3 space-y-3">
+        <Field label="Title" required id="sub-title">
+          <Input id="sub-title" name="title" required minLength={3} maxLength={140} placeholder="What you delivered" />
+        </Field>
+        <Field label="What you did and how to verify it" id="sub-body">
+          <Textarea id="sub-body" name="body" rows={5} maxLength={50000} />
+        </Field>
+        <Field label="Links" hint="https:// links, comma-separated" id="sub-links">
+          <Input id="sub-links" name="links" placeholder="https://…" />
+        </Field>
       </div>
-      <textarea name="body" rows={3} maxLength={4000} placeholder="How did the work go?" className="mt-3 w-full rounded-md border-2 border-fg/20 bg-surface p-3 text-sm outline-none focus:border-fg/60" />
-      <button type="submit" disabled={busy} className="mt-3 inline-flex h-10 items-center rounded-md bg-accent px-4 text-sm font-semibold text-accent-fg disabled:opacity-60">
-        {busy ? "Saving…" : "Submit review"}
-      </button>
+      <Button type="submit" loading={busy} className="mt-4">
+        {busy ? "Saving…" : "Save submission"}
+      </Button>
     </form>
   );
 }

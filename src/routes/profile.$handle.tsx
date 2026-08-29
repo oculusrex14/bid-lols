@@ -71,7 +71,7 @@ function ProfilePage() {
           </div>
           <div className="text-right text-xs text-subtle">
             {p.emailVerified ? (
-              <span className="inline-flex items-center gap-1 rounded-full border-2 border-up/40 px-2 py-0.5 text-up">
+              <span className="inline-flex items-center gap-1 rounded-full border border-up/40 px-2 py-0.5 text-up">
                 email verified
               </span>
             ) : null}
@@ -82,7 +82,7 @@ function ProfilePage() {
         {p.bio ? <p className="mt-4 max-w-xl text-sm leading-relaxed">{p.bio}</p> : null}
 
         {p.companyName ? (
-          <div className="mt-6 rounded-lg border-2 border-fg/15 bg-raised/40 p-4">
+          <div className="mt-6 rounded-md border border-fg/15 bg-raised/40 p-4">
             <p className="text-xs font-medium uppercase tracking-kicker text-subtle">Company</p>
             <p className="mt-1 text-sm font-medium">{p.companyName}</p>
             {p.companyAbout ? <p className="mt-1 text-sm text-muted">{p.companyAbout}</p> : null}
@@ -97,7 +97,7 @@ function ProfilePage() {
         {(p.skills.length > 0 || p.categories.length > 0) ? (
           <div className="mt-6 flex flex-wrap gap-2">
             {p.skills.map((s) => (
-              <span key={`s-${s}`} className="rounded-full border-2 border-fg/20 px-3 py-1 text-xs">{s}</span>
+              <span key={`s-${s}`} className="rounded-full border border-fg/20 px-3 py-1 text-xs">{s}</span>
             ))}
             {p.categories.map((c) => (
               <span key={`c-${c}`} className="rounded-full bg-accent/10 px-3 py-1 text-xs font-medium text-accent">
@@ -124,7 +124,7 @@ function ProfilePage() {
         ) : null}
 
         {d.reputation ? (
-          <div className="mt-8 rounded-lg border-2 border-fg/15 bg-surface p-5" data-testid="reputation">
+          <div className="mt-8 rounded-md border border-fg/15 bg-surface p-5" data-testid="reputation">
             <h2 className="text-xs font-medium uppercase tracking-kicker text-subtle">Verified outcomes</h2>
             {d.reputation.experience === 0 ? (
               <p className="mt-2 text-sm text-muted">

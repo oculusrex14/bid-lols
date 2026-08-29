@@ -8,7 +8,7 @@ import type { BlogArticle, BlogBlock } from "@/content/blog/articles";
  */
 export function ArticleView({ article }: { article: BlogArticle }) {
   return (
-    <article className="mx-auto max-w-3xl px-4 py-10 sm:px-5">
+    <article className="canvas-prose py-10">
       <h1 className="font-display-site text-3xl leading-tight tracking-tight sm:text-4xl">
         {article.headline}
       </h1>
@@ -43,7 +43,7 @@ function Block({ block }: { block: BlogBlock }) {
       );
     case "table":
       return (
-        <div className="overflow-x-auto rounded-lg border-2 border-fg/15">
+        <div className="overflow-x-auto rounded-md border border-fg/15">
           <table className="w-full text-sm">
             <thead className="bg-raised/50 text-left text-xs uppercase tracking-kicker text-subtle">
               <tr>
@@ -70,7 +70,7 @@ function Block({ block }: { block: BlogBlock }) {
       );
     case "callout":
       return (
-        <div className="rounded-lg border-2 border-accent/30 bg-raised/40 p-4">
+        <div className="rounded-md border border-accent/30 bg-raised/40 p-3">
           <p className="text-xs font-semibold uppercase tracking-kicker text-subtle">
             {block.label}
           </p>
@@ -79,7 +79,7 @@ function Block({ block }: { block: BlogBlock }) {
       );
     case "links":
       return (
-        <nav aria-label="Related links" className="rounded-lg border-2 border-fg/15 bg-surface p-4">
+        <nav aria-label="Related links" className="rounded-md border border-fg/15 bg-surface p-4">
           <p className="text-xs font-semibold uppercase tracking-kicker text-subtle">
             Keep reading
           </p>

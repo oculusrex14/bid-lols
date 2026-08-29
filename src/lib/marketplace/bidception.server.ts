@@ -191,6 +191,58 @@ export async function selectCaptain(opts: {
   });
 }
 
+export type EligibleCaptain = {
+  userId: string;
+  handle: string | null;
+  displayName: string | null;
+  wins: number;
+  projectCompletions: number;
+  experience: number;
+};
+
+/**
+ * RC1 R6 / RC3 S-27: captain candidates for the picker. Real people only:
+ * active, unbanned, not the sponsor, and carrying a public signal (a
+ * public handle or at least one verified outcome). Nothing is seeded,
+ * sorted by verified experience (wins + completed projects + captained
+ * completions) so the list is a real leaderboard slice, not a guess.
+ */
+export async function listEligibleCaptains(excludeSponsorUserId: string): Promise<EligibleCaptain[]> {
+  const sql = await getSql();
+  const rows = await sql.query<{
+    user_id: string;
+    handle: string | null;
+    display_name: string | null;
+    wins: number;
+    projects: number;
+    captained: number;
+  }>(
+    `select u.id as user_id, pr.handle, u.display_name,
+            (select count(*)::int from bounty_awards a where a.user_id = u.id and a.place = 1) as wins,
+            (select count(*)::int from projects p
+               join project_proposals pp on pp.id = p.selected_proposal_id
+             where pp.provider_user_id = u.id and p.status = 'COMPLETED') as projects,
+            (select count(*)::int from reputation_events re
+             where re.user_id = u.id and re.kind = 'captained_completion') as captained
+     from users u
+     left join profiles pr on pr.user_id = u.id
+     where u.status = 'active' and u.banned = false and u.id <> $1
+       and ((pr.handle is not null and pr.handle <> '')
+            or (select count(*)::int from bounty_awards a2 where a2.user_id = u.id and a2.place = 1) > 0)
+     order by (wins + projects + captained) desc, wins desc, u.id
+     limit 50`,
+    [excludeSponsorUserId],
+  );
+  return rows.map((r) => ({
+    userId: r.user_id,
+    handle: r.handle,
+    displayName: r.display_name,
+    wins: r.wins,
+    projectCompletions: r.projects,
+    experience: r.wins + r.projects + r.captained,
+  }));
+}
+
 /**
  * Funding verified (webhook/provider-check) -> the parent is FUNDED.
  * Mirrors the bounty settlement discipline: claim-guarded, decomposition

@@ -12,7 +12,7 @@ import { cn } from "@/lib/cn";
  */
 
 const inputClasses =
-  "h-11 w-full rounded-md border-2 border-fg/20 bg-surface px-3 text-sm outline-none focus:border-fg/60";
+  "h-11 w-full rounded-md border border-fg/20 bg-surface px-3 text-sm outline-none focus:border-fg/60";
 
 function toFriendly(message: string | undefined): string {
   if (!message) return "Something went wrong. Please try again.";
@@ -67,7 +67,7 @@ export function AuthCard({
   const isSignup = mode === "signup";
 
   return (
-    <div className="rounded-lg border-2 border-fg/20 bg-surface p-5 sm:p-6">
+    <div className="rounded-md border border-fg/20 bg-surface p-5 sm:p-6">
       <h1 className="font-display-site text-2xl tracking-tight sm:text-3xl">
         {isSignup ? "Create your account" : "Sign in"}
       </h1>
@@ -189,7 +189,7 @@ export function SignOutButton({ className }: { className?: string }) {
         window.location.assign("/");
       }}
       className={cn(
-        "inline-flex h-9 items-center rounded-md border-2 border-fg/20 px-3 text-sm font-medium",
+        "inline-flex h-9 items-center rounded-md border border-fg/20 px-3 text-sm font-medium",
         className,
       )}
     >

@@ -20,6 +20,11 @@ export type BountyListItem = {
   participants: number;
   submission_deadline: string;
   created_at: string;
+  /** RC3 browse: real sponsor identity when the sponsor has one. */
+  sponsor_name: string | null;
+  sponsor_handle: string | null;
+  /** RC3 browse: CultureBid structured brief (formats / platform / usage). */
+  creative: { formats?: string[]; targetPlatform?: string; usageNotes?: string } | null;
 };
 
 export type BountyFilters = {
@@ -39,42 +44,49 @@ export async function listOpenBounties(
   filters: BountyFilters = {},
 ): Promise<{ items: BountyListItem[]; nextCursor: string | null }> {
   const limit = Math.min(Math.max(filters.limit ?? 20, 1), 50);
-  const conditions: string[] = ["product = $1", "status in ('OPEN','APPLICATION_CLOSED','SUBMISSION','JUDGING')"];
+  // Column-qualified: the list join (users/profiles for sponsor identity)
+  // introduces `status` on the joined tables — bare names would be ambiguous.
+  const conditions: string[] = ["b.product = $1", "b.status in ('OPEN','APPLICATION_CLOSED','SUBMISSION','JUDGING')"];
   const params: unknown[] = [product];
   let pi = 2;
   if (filters.category) {
-    conditions.push(`category = $${pi++}`);
+    conditions.push(`b.category = $${pi++}`);
     params.push(filters.category);
   }
   if (filters.rewardMinMinor != null) {
-    conditions.push(`reward_total_minor >= $${pi++}`);
+    conditions.push(`b.reward_total_minor >= $${pi++}`);
     params.push(filters.rewardMinMinor);
   }
   if (filters.rewardMaxMinor != null) {
-    conditions.push(`reward_total_minor <= $${pi++}`);
+    conditions.push(`b.reward_total_minor <= $${pi++}`);
     params.push(filters.rewardMaxMinor);
   }
   if (filters.deadlineWithinDays != null) {
-    conditions.push(`submission_deadline <= now() + ($${pi++} || ' days')::interval`);
+    conditions.push(`b.submission_deadline <= now() + ($${pi++} || ' days')::interval`);
     params.push(String(filters.deadlineWithinDays));
   }
   if (filters.cursor) {
-    conditions.push(`(created_at, id) < ($${pi++}::timestamptz, $${pi++}::text)`);
+    conditions.push(`(b.created_at, b.id) < ($${pi++}::timestamptz, $${pi++}::text)`);
     params.push(filters.cursor, filters.cursor);
   }
   const orderBy =
     filters.sort === "ending_soon"
-      ? "submission_deadline asc"
+      ? "b.submission_deadline asc"
       : filters.sort === "reward"
-        ? "reward_total_minor desc"
-        : "created_at desc";
-  const items = await sql.query<BountyListItem & { cursor_id: string }>(
-    `select id, slug, title, category, reward_total_minor, currency, reward_structure,
-            status, participant_cap, submission_deadline, created_at,
+        ? "b.reward_total_minor desc"
+        : "b.created_at desc";
+  const items = await sql.query<BountyListItem>(
+    `select b.id, b.slug, b.title, b.category, b.reward_total_minor, b.currency,
+            b.reward_structure, b.status, b.participant_cap, b.submission_deadline,
+            b.created_at, b.creative,
+            u.display_name as sponsor_name,
+            p.handle as sponsor_handle,
             (select count(*)::int from bounty_participants bp where bp.bounty_id = b.id) as participants
      from bounties b
+     join users u on u.id = b.sponsor_user_id
+     left join profiles p on p.user_id = b.sponsor_user_id
      where ${conditions.join(" and ")}
-     order by ${orderBy}, id
+     order by ${orderBy}, b.id
      limit $${pi}`,
     [...params, limit + 1],
   );

@@ -3,102 +3,166 @@ import { FoundingAccess } from "@/components/founding-access";
 import { JsonLd } from "@/components/seo";
 import { bidNetworkOrganization, websiteSchema } from "@/lib/schema";
 import type { ShellMe } from "@/components/product-shell";
-import { Kicker, SectionLabel } from "@/components/home/shared";
+import type { HomePreview } from "@/lib/marketplace/home-preview.server";
+import type { LeaderboardRow } from "@/lib/marketplace/reputation";
+import { Kicker } from "@/components/home/shared";
+import { Avatar } from "@/components/ui/identity";
+import { SectionHeader } from "@/components/ui/layout";
+import { InlineNotice } from "@/components/ui/states";
 
 /**
- * Bidthrone home (RC2, C4). Positioning: reputation built from work, not
- * self-promotion. Signals described are only the implemented ones: verified
- * completions (bounty wins, project completions, captained units), reviews
- * from both sides of completed work, recorded disputes, and the sample-gated
- * Bid Index.
+ * Bidthrone home (RC3, S-28): data-first. The leaderboards and the Bid
+ * Index ARE the page — real rows when they exist, honest empty states when
+ * they don't. Explanatory chrome is minimal and secondary.
  */
-export function BidthroneHome({ me }: { me?: ShellMe | null }) {
+export function BidthroneHome({ me, preview }: { me?: ShellMe | null; preview: HomePreview }) {
+  const boards = preview.kind === "boards" ? preview.boards : [];
+  const bidIndexReady = preview.kind === "boards" ? preview.bidIndexReady : false;
   const others = PRODUCT_KEYS.filter((key) => key !== "bidthrone");
 
   return (
     <>
-      <section className="mx-auto w-full max-w-5xl px-4 pt-16 sm:px-5 sm:pt-24">
+      {/* Compact hero: the record, in one paragraph. */}
+      <section className="canvas-wide pt-14 sm:pt-20">
         <Kicker>Bidthrone</Kicker>
-        <h1 className="mt-4 font-display-site text-5xl leading-none tracking-tight sm:text-6xl">
+        <h1 className="mt-4 max-w-3xl font-display-site text-4xl leading-none tracking-tight sm:text-5xl lg:text-6xl">
           Reputation built from work,
           <span className="block text-subtle">not self-promotion.</span>
         </h1>
-        <p className="mt-6 max-w-2xl text-lg leading-relaxed text-muted">
+        <p className="mt-5 max-w-2xl text-base leading-relaxed text-muted sm:text-lg">
           A portfolio shows selected work. A testimonial is a selected
-          opinion. A star average hides context. A public profile here shows
-          outcomes the platform verified: bounties won, projects completed,
-          teams captained, and the reviews written by the people involved.
+          opinion. A public profile here shows outcomes the platform
+          verified: bounties won, projects completed, teams captained, and
+          the reviews written by the people involved.
         </p>
-        <div className="mt-8 flex flex-wrap gap-3">
+        <div className="mt-7 flex flex-wrap gap-3">
           <a
             href="/leaderboards"
-            className="inline-flex h-12 items-center rounded-md bg-accent px-5 text-sm font-semibold text-accent-fg"
+            className="inline-flex h-11 items-center rounded-sm bg-accent px-4 text-sm font-semibold text-accent-fg transition-colors duration-150 hover:bg-accent/90"
           >
             See the leaderboards
           </a>
           <a
             href="/bid-index"
-            className="inline-flex h-12 items-center rounded-md border-2 border-fg/30 px-5 text-sm font-semibold hover:border-fg/60"
+            className="inline-flex h-11 items-center rounded-sm border border-fg/25 px-4 text-sm font-semibold transition-colors duration-150 hover:border-fg/50"
           >
             See the Bid Index
           </a>
           {me ? (
-            <a href="/dashboard" className="text-sm font-medium underline underline-offset-4">
+            <a href="/dashboard" className="inline-flex h-11 items-center px-1 text-sm font-medium text-accent underline underline-offset-4">
               Your dashboard
             </a>
           ) : (
-            <a href="/signup" className="text-sm font-medium underline underline-offset-4">
+            <a href="/signup" className="inline-flex h-11 items-center px-1 text-sm font-medium text-accent underline underline-offset-4">
               Create an account
             </a>
           )}
         </div>
       </section>
 
-      <section className="mx-auto w-full max-w-5xl px-4 py-14 sm:px-5">
-        <SectionLabel>How the record works</SectionLabel>
-        <div className="mt-4 grid gap-3 sm:grid-cols-2">
-          {[
-            {
-              title: "Earned from completed work",
-              body: "A member's numbers come from outcomes the platform verified: bounties won, projects carried to completion, teams captained. There is no self-declared input.",
-            },
-            {
-              title: "Not for sale",
-              body: "No placement fee, no featured slot, no button that boosts a profile. Every value on a public profile traces back to a completed outcome.",
-            },
-            {
-              title: "Reviews from the people involved",
-              body: "After a piece of work completes, both sides leave a review tied to that specific job. You see who wrote what, and when.",
-            },
-            {
-              title: "Disputes stay in the record",
-              body: "When something goes wrong, the record shows it next to the completion. An honest track record beats a curated highlight reel.",
-            },
-          ].map((m) => (
-            <div key={m.title} className="rounded-lg border-2 border-fg/20 bg-surface p-5">
-              <h2 className="font-display-site text-xl tracking-tight">{m.title}</h2>
-              <p className="mt-2 text-sm leading-relaxed text-muted">{m.body}</p>
-            </div>
-          ))}
+      {/* The data: live boards when members have verified outcomes. */}
+      <section className="canvas-wide mt-12 sm:mt-14">
+        <SectionHeader
+          title="Leaderboards"
+          aside={
+            <a href="/leaderboards" className="text-xs font-medium text-accent underline underline-offset-4">
+              All boards and methodology
+            </a>
+          }
+        />
+        {boards.some((b) => b.rows.length > 0) ? (
+          <div className="mt-4 grid gap-6 lg:grid-cols-3">
+            {boards.map((b) => (
+              <div key={b.key}>
+                <h2 className="text-sm font-semibold">{b.name}</h2>
+                <ol className="mt-2">
+                  {b.rows.map((r, i) => (
+                    <BoardRow key={r.userId} rank={i + 1} row={r} />
+                  ))}
+                </ol>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="mt-4">
+            <InlineNotice>
+              No member has enough verified outcomes to rank yet. Boards fill
+              from completed work only; nothing is seeded, and empty is
+              better than fake.
+            </InlineNotice>
+          </div>
+        )}
+      </section>
+
+      {/* The market: the sample-gated Bid Index. */}
+      <section className="canvas-wide mt-12">
+        <SectionHeader title="Bid Index" />
+        {bidIndexReady ? (
+          <div className="mt-4">
+            <p className="max-w-2xl text-sm leading-relaxed text-muted">
+              Market benchmarks now exist: categories with enough verified,
+              settled outcomes publish their median, range, and sample size on
+              the Bid Index.
+            </p>
+            <a href="/bid-index" className="mt-3 inline-block text-sm font-medium text-accent underline underline-offset-4">
+              See the market data
+            </a>
+          </div>
+        ) : (
+          <div className="mt-4">
+            <p className="max-w-2xl text-sm leading-relaxed text-muted">
+              The Bid Index publishes only when a category has at least ten
+              verified, settled outcomes. Until then it shows{" "}
+              <span className="font-medium">Insufficient sample</span> instead
+              of inventing a price. That is the product working as designed.
+            </p>
+            <a href="/bid-index" className="mt-3 inline-block text-sm font-medium text-accent underline underline-offset-4">
+              See the current state
+            </a>
+          </div>
+        )}
+      </section>
+
+      {/* The principles, quiet: type + rules, not a card wall. */}
+      <section className="canvas-wide mt-12">
+        <SectionHeader title="How the record works" />
+        <div className="mt-4 grid gap-x-8 gap-y-4 sm:grid-cols-2">
+          <Principle title="Earned from completed work">
+            A member's numbers come from outcomes the platform verified:
+            bounties won, projects carried to completion, teams captained.
+            There is no self-declared input.
+          </Principle>
+          <Principle title="Not for sale">
+            No placement fee, no featured slot, no button that boosts a
+            profile. Every value on a public profile traces back to a
+            completed outcome.
+          </Principle>
+          <Principle title="Reviews from the people involved">
+            After a piece of work completes, both sides leave a review tied to
+            that specific job. You see who wrote what, and when.
+          </Principle>
+          <Principle title="Disputes stay in the record">
+            When something goes wrong, the record shows it next to the
+            completion. An honest track record beats a curated highlight reel.
+          </Principle>
         </div>
       </section>
 
-      <section className="mx-auto w-full max-w-5xl px-4 py-14 sm:px-5">
-        <SectionLabel>What the network does</SectionLabel>
-        <div className="mt-4 grid gap-3 sm:grid-cols-3">
+      {/* The rest of the network. */}
+      <section className="canvas-wide mt-12">
+        <SectionHeader title="What the network does" />
+        <div className="mt-4">
           {others.map((key) => {
             const p = product(key);
             return (
               <a
                 key={key}
                 href={`${linkOrigin(key)}/`}
-                className="rounded-lg border-2 border-fg/20 bg-surface p-5 transition-colors hover:border-fg/50"
+                className="row-line flex flex-wrap items-baseline gap-x-4 gap-y-1 px-1 py-3 transition-colors duration-150 hover:bg-surface/70"
               >
-                <span className="font-display-site text-xl tracking-tight">{p.name}</span>
-                <span className="mt-1 block text-xs uppercase tracking-kicker text-subtle">
-                  {p.apex}
-                </span>
-                <span className="mt-3 block text-sm leading-relaxed text-muted">
+                <span className="font-display-site text-lg tracking-tight">{p.name}</span>
+                <span className="text-xs text-subtle">{p.apex}</span>
+                <span className="min-w-0 flex-1 text-sm text-muted">
                   {key === "foundersbid" &&
                     "Startup work with a published budget: bounties for bounded competitive work, projects when you choose one provider first."}
                   {key === "culturebid" &&
@@ -106,27 +170,28 @@ export function BidthroneHome({ me }: { me?: ShellMe | null }) {
                   {key === "bidception" &&
                     "One project, one budget, a team of specialists. A paid captain splits the work into funded parts."}
                 </span>
+                <span aria-hidden="true" className="text-sm text-subtle">→</span>
               </a>
             );
           })}
         </div>
       </section>
 
-      <section className="mx-auto w-full max-w-5xl px-4 pb-14 sm:px-5">
-        <SectionLabel>The write up</SectionLabel>
-        <p className="mt-4 max-w-2xl text-sm leading-relaxed text-muted">
+      <section className="canvas-wide mt-12">
+        <SectionHeader title="The write up" />
+        <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted">
           Why portfolios, testimonials, and star averages each hide something,
           and what a public work record shows instead.
         </p>
         <a
           href="/blog/reputation-from-completed-work"
-          className="mt-3 inline-block text-sm font-medium underline underline-offset-4"
+          className="mt-2 inline-block text-sm font-medium text-accent underline underline-offset-4"
         >
           A portfolio tells you what someone says they did. We want the work record.
         </a>
       </section>
 
-      <section className="mx-auto w-full max-w-5xl px-4 pb-20 sm:px-5">
+      <section className="canvas-wide mt-12 pb-16">
         <FoundingAccess
           site="bidthrone"
           heading="Stay updated"
@@ -137,5 +202,31 @@ export function BidthroneHome({ me }: { me?: ShellMe | null }) {
 
       <JsonLd data={[bidNetworkOrganization(), websiteSchema("bidthrone")]} />
     </>
+  );
+}
+
+function BoardRow({ rank, row }: { rank: number; row: LeaderboardRow }) {
+  const name = row.displayName ?? (row.handle ? `@${row.handle}` : "member");
+  return (
+    <li className="row-line flex items-center gap-3 py-2.5">
+      <span className="w-5 shrink-0 text-right text-xs font-semibold tabular text-subtle">{rank}</span>
+      <Avatar name={name} size="sm" />
+      <a
+        href={row.handle ? `/profile/${row.handle}` : "/leaderboards"}
+        className="min-w-0 flex-1 truncate text-sm font-medium hover:underline hover:underline-offset-4"
+      >
+        {name}
+      </a>
+      {row.handle ? <span className="hidden text-xs text-subtle sm:block">@{row.handle}</span> : null}
+    </li>
+  );
+}
+
+function Principle({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="border-t border-fg/10 pt-3">
+      <h2 className="text-sm font-semibold">{title}</h2>
+      <p className="mt-1 text-sm leading-relaxed text-muted">{children}</p>
+    </div>
   );
 }

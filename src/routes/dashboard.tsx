@@ -1,14 +1,15 @@
 import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
-import { currentProductKey } from "@/lib/host";
-import { shellContext } from "@/lib/shell-context";
+import { currentProductKey, type ProductKey } from "@/lib/host";
 import { ProductShell } from "@/components/product-shell";
+import { PageHeader } from "@/components/ui/layout";
+import { ButtonLink } from "@/components/ui/button";
+import { Metric } from "@/components/ui/data";
 
 /**
- * Dashboard (Phase 01, FR-3): the authenticated workspace. This phase starts
- * it with profile status + role-aware quick actions; the marketplace sections
- * (bounties, projects, applications, funding, notifications) are added by the
- * marketplace workstreams.
+ * Dashboard (Phase 01, FR-3; RC3 spine): the authenticated workspace —
+ * profile status, email verification state, the marketplace card, and the
+ * notification feed.
  */
 const loadDashboard = createServerFn({ method: "GET" }).handler(async () => {
   const { getSession } = await import("@/lib/authz");
@@ -41,50 +42,41 @@ export const Route = createFileRoute("/dashboard")({
 function DashboardPage() {
   const d = Route.useLoaderData();
   return (
-    <ProductShell site={d.product} me={d.me}>
-      <div className="mx-auto max-w-4xl px-4 py-10">
-        <p className="text-xs font-medium uppercase tracking-kicker text-subtle">
-          Dashboard
-        </p>
-        <h1 className="mt-1 font-display-site text-2xl tracking-tight sm:text-3xl">
-          Welcome{d.displayName ? `, ${d.displayName}` : ""}
-        </h1>
-
-        <div className="mt-6 grid gap-4 sm:grid-cols-3">
-          <div className="rounded-lg border-2 border-fg/20 bg-surface p-4" data-testid="card-profile">
-            <p className="text-xs font-medium uppercase tracking-kicker text-subtle">Profile</p>
-            <p className="mt-2 text-sm">
-              {d.handle ? (
-                <>
-                  Live at{" "}
-                  <Link to="/profile/$handle" params={{ handle: d.handle }} className="font-medium underline underline-offset-2">
-                    /profile/{d.handle}
-                  </Link>
-                </>
-              ) : (
-                "Not set up yet. Add a handle so sponsors and builders can find you."
-              )}
-            </p>
-            <Link
-              to="/settings/profile"
-              className="mt-3 inline-flex h-9 items-center rounded-md border-2 border-fg/20 px-3 text-sm font-medium"
-            >
+    <ProductShell site={d.product as ProductKey} me={d.me}>
+      <div className="canvas-app pb-16">
+        <PageHeader
+          kicker="Dashboard"
+          title={`Welcome${d.displayName ? `, ${d.displayName}` : ""}`}
+        />
+        <div className="mt-8 grid gap-x-10 gap-y-6 sm:grid-cols-3">
+          <div data-testid="card-profile">
+            <Metric
+              label="Profile"
+              value={d.handle ? `@${d.handle}` : "Not set up"}
+              sub={
+                d.handle
+                  ? "Public on this domain of the network."
+                  : "Add a handle so sponsors and builders can find you."
+              }
+            />
+            <ButtonLink href="/settings/profile" variant="secondary" size="sm" className="mt-2">
               Edit profile
-            </Link>
+            </ButtonLink>
           </div>
-
-          <div className="rounded-lg border-2 border-fg/20 bg-surface p-4" data-testid="card-email">
-            <p className="text-xs font-medium uppercase tracking-kicker text-subtle">Email status</p>
-            <p className="mt-2 text-sm">
-              {d.emailVerified
-                ? "Verified. You are clear for money-facing actions."
-                : "Unverified. Verification email delivery is not configured yet; money-facing actions are held until it is (an admin can verify manually)."}
-            </p>
+          <div data-testid="card-email">
+            <Metric
+              label="Email status"
+              value={d.emailVerified ? "Verified" : "Unverified"}
+              sub={
+                d.emailVerified
+                  ? "You are clear for money-facing actions."
+                  : "Verification email delivery is not configured yet; money-facing actions are held until it is (an admin can verify manually)."
+              }
+            />
           </div>
-
-          <div className="rounded-lg border-2 border-fg/20 bg-surface p-4" data-testid="card-work">
-            <p className="text-xs font-medium uppercase tracking-kicker text-subtle">Marketplace</p>
-            <p className="mt-2 text-sm leading-relaxed">
+          <div data-testid="card-work">
+            <Metric label="Marketplace" value={d.notifications.filter((n) => !n.read).length} sub="unread notifications" />
+            <p className="mt-1 text-xs leading-relaxed text-muted">
               Your drafts, applications, proposals, and funding actions live
               here on this account, on every domain of the network. Funding is
               not enabled yet, so money-facing actions are held until it is.
@@ -92,28 +84,26 @@ function DashboardPage() {
           </div>
         </div>
 
-        <section className="mt-8" data-testid="notifications">
-          <h2 className="text-xs font-medium uppercase tracking-kicker text-subtle">Notifications</h2>
+        <section className="mt-12" data-testid="notifications">
+          <h2 className="text-sm font-semibold uppercase tracking-kicker text-subtle">Notifications</h2>
           {d.notifications.length === 0 ? (
-            <p className="mt-2 text-sm text-muted">
+            <p className="mt-3 text-sm text-muted">
               Nothing yet. Marketplace events (applications, funding, judging,
               milestones, disputes, reviews) will appear here.
             </p>
           ) : (
-            <ul className="mt-3 space-y-2">
+            <ul className="mt-3">
               {d.notifications.map((n) => (
-                <li
-                  key={n.id}
-                  className={
-                    n.read
-                      ? "rounded-md border-2 border-fg/10 bg-surface p-3 text-sm text-muted"
-                      : "rounded-md border-2 border-accent/40 bg-raised/40 p-3 text-sm"
-                  }
-                >
-                  <p className="font-medium">{n.title}</p>
-                  {n.body ? <p className="mt-0.5">{n.body}</p> : null}
+                <li key={n.id} className={`row-line px-1 py-3 text-sm ${n.read ? "text-muted" : ""}`}>
+                  <p className="font-medium">
+                    {!n.read ? <span className="mr-1.5 inline-block size-1.5 rounded-full bg-accent align-middle" aria-label="unread" /> : null}
+                    {n.title}
+                  </p>
+                  {n.body ? <p className="mt-0.5 text-muted">{n.body}</p> : null}
                   {n.link ? (
-                    <a href={n.link} className="mt-1 inline-block text-xs underline underline-offset-2">Open</a>
+                    <a href={n.link} className="mt-1 inline-block text-xs text-accent underline underline-offset-2">
+                      Open
+                    </a>
                   ) : null}
                 </li>
               ))}

@@ -2,13 +2,19 @@ import { useState } from "react";
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { currentProductKey } from "@/lib/host";
-import { shellContext } from "@/lib/shell-context";
 import { ProductShell } from "@/components/product-shell";
 import { createProjectFn } from "@/lib/marketplace/projects";
+import { Button } from "@/components/ui/button";
+import { Field, Input, Textarea } from "@/components/ui/field";
+import { FormSection } from "@/components/ui/layout";
+import { StepIndicator } from "@/components/ui/market";
+import { InlineNotice } from "@/components/ui/states";
+import { CATEGORIES_FOUNDER } from "@/components/create/bounty-steps";
 
 /**
- * /projects/new — sponsor project creation (Mode B). Proposals come pre-work;
- * funding is required after one provider is selected.
+ * /projects/new — sponsor project creation (Mode B; RC3, S-24).
+ * Two steps: the work, then budget + rules. Live summary on the right.
+ * Proposals come pre-work; funding happens after one provider is selected.
  */
 const loadCreate = createServerFn({ method: "GET" }).handler(async () => {
   const { getSession } = await import("@/lib/authz");
@@ -22,105 +28,195 @@ export const Route = createFileRoute("/projects/new")({
   component: NewProjectPage,
 });
 
-const field =
-  "w-full rounded-md border-2 border-fg/20 bg-surface px-3 py-2.5 text-sm outline-none focus:border-fg/60";
+type Draft = {
+  title: string;
+  description: string;
+  category: string;
+  skills: string;
+  budgetMin: string;
+  budgetMax: string;
+  proposalDeadline: string;
+  ipAndConfidentiality: string;
+};
 
 function NewProjectPage() {
   const d = Route.useLoaderData();
   const navigate = useNavigate();
-  const [status, setStatus] = useState<
-    | { state: "idle" }
-    | { state: "creating" }
-    | { state: "error"; message: string }
-  >({ state: "idle" });
+  const [step, setStep] = useState(0);
+  const [draft, setDraft] = useState<Draft>({
+    title: "",
+    description: "",
+    category: "",
+    skills: "",
+    budgetMin: "",
+    budgetMax: "",
+    proposalDeadline: "",
+    ipAndConfidentiality: "",
+  });
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [creating, setCreating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    if (status.state === "creating") return;
-    const f = new FormData(e.currentTarget);
-    setStatus({ state: "creating" });
+  const set = <K extends keyof Draft>(k: K, v: Draft[K]) => setDraft((p) => ({ ...p, [k]: v }));
+
+  function validate(only: number): Record<string, string> {
+    const e: Record<string, string> = {};
+    if (only === 0) {
+      if (draft.title.trim().length < 8) e.title = "At least 8 characters.";
+      if (draft.category.trim().length < 2) e.category = "Pick or type a category.";
+      if (draft.description.trim().length < 20) e.description = "At least 20 characters.";
+    }
+    if (only === 1) {
+      const min = draft.budgetMin ? Number(draft.budgetMin) : 0;
+      const max = draft.budgetMax ? Number(draft.budgetMax) : 0;
+      if (min > 0 && max > 0 && max < min) e.budgetMax = "Budget to must be at least budget from.";
+      if (draft.proposalDeadline && Number.isNaN(new Date(draft.proposalDeadline).getTime())) e.proposalDeadline = "Invalid date.";
+    }
+    return e;
+  }
+
+  const next = () => {
+    const e = validate(step);
+    setErrors(e);
+    if (Object.keys(e).length === 0) setStep((s) => s + 1);
+  };
+
+  async function doCreate() {
+    if (creating) return;
+    setCreating(true);
+    setError(null);
     try {
       const result = await createProjectFn({
         data: {
-          title: String(f.get("title")),
-          description: String(f.get("description")),
-          category: String(f.get("category")),
-          skills: String(f.get("skills") ?? "").split(",").map((s) => s.trim()).filter(Boolean).slice(0, 20),
-          budgetMinRupees: f.get("budgetMin") ? Number(f.get("budgetMin")) : undefined,
-          budgetMaxRupees: f.get("budgetMax") ? Number(f.get("budgetMax")) : undefined,
-          proposalDeadline: f.get("proposalDeadline")
-            ? new Date(String(f.get("proposalDeadline"))).toISOString()
+          title: draft.title,
+          description: draft.description,
+          category: draft.category,
+          skills: draft.skills.split(",").map((s) => s.trim()).filter(Boolean).slice(0, 20),
+          budgetMinRupees: draft.budgetMin ? Number(draft.budgetMin) : undefined,
+          budgetMaxRupees: draft.budgetMax ? Number(draft.budgetMax) : undefined,
+          proposalDeadline: draft.proposalDeadline
+            ? new Date(draft.proposalDeadline).toISOString()
             : undefined,
-          ipAndConfidentiality: String(f.get("ipAndConfidentiality") ?? ""),
+          ipAndConfidentiality: draft.ipAndConfidentiality,
         },
       });
       if (result.ok) {
         void navigate({ to: "/projects/$id", params: { id: result.id } });
       } else {
-        setStatus({ state: "error", message: result.message });
+        setError(result.message);
+        setCreating(false);
       }
     } catch (err) {
-      setStatus({ state: "error", message: err instanceof Error ? err.message : "Invalid data." });
+      setError(err instanceof Error ? err.message : "Invalid data.");
+      setCreating(false);
     }
   }
 
   return (
     <ProductShell site={d.product} me={d.me}>
-      <div className="mx-auto max-w-3xl px-4 py-10">
-        <p className="text-xs font-medium uppercase tracking-kicker text-subtle">Sponsor</p>
-        <h1 className="mt-1 font-display-site text-2xl tracking-tight sm:text-3xl">Post a project</h1>
-        <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted">
-          Describe the work and constraints. Providers respond with an approach,
-          evidence and a milestone plan, not with finished deliverables.
-        </p>
-        <form onSubmit={onSubmit} noValidate className="mt-6 rounded-lg border-2 border-fg/20 bg-surface p-5" data-testid="create-project-form">
-          <div className="grid gap-4">
-            <div>
-              <label htmlFor="pj-title" className="mb-1.5 block text-sm font-medium">Title</label>
-              <input id="pr-title" name="title" required minLength={8} maxLength={140} placeholder="Build an MVP billing dashboard" className={field} />
-            </div>
-            <div>
-              <label htmlFor="pr-desc" className="mb-1.5 block text-sm font-medium">The brief</label>
-              <textarea id="pr-desc" name="description" rows={6} required minLength={20} maxLength={30000} className={field} />
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div>
-                <label htmlFor="pr-cat" className="mb-1.5 block text-sm font-medium">Category</label>
-                <input id="pr-cat" name="category" required maxLength={40} placeholder="development" className={field} />
-              </div>
-              <div>
-                <label htmlFor="pr-skills" className="mb-1.5 block text-sm font-medium">Skills (comma-separated)</label>
-                <input id="pr-skills" name="skills" className={field} />
-              </div>
-              <div>
-                <label htmlFor="pr-bmin" className="mb-1.5 block text-sm font-medium">Budget from (₹, optional)</label>
-                <input id="pr-bmin" name="budgetMinRupees" type="number" min={0} className={field} />
-              </div>
-              <div>
-                <label htmlFor="pr-bmax" className="mb-1.5 block text-sm font-medium">Budget to (₹, optional)</label>
-                <input id="pr-bmax" name="budgetMaxRupees" type="number" min={0} className={field} />
-              </div>
-              <div>
-                <label htmlFor="pr-dl" className="mb-1.5 block text-sm font-medium">Proposal deadline (optional)</label>
-                <input id="pr-dl" name="proposalDeadline" type="datetime-local" className={field} />
-              </div>
-            </div>
-            <div>
-              <label htmlFor="pr-ip" className="mb-1.5 block text-sm font-medium">IP & confidentiality</label>
-              <textarea id="pr-ip" name="ipAndConfidentiality" rows={2} maxLength={4000} className={field} />
+      <div className="canvas-wide pb-16">
+        <header className="border-b border-fg/10 py-6">
+          <p className="text-xs font-semibold uppercase tracking-kicker text-subtle">Sponsor · project</p>
+          <h1 className="mt-1 font-display-site text-3xl tracking-tight">Post a project</h1>
+          <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted">
+            Providers respond with an approach, evidence and a milestone plan, not with finished deliverables. You select one provider, then fund the work.
+          </p>
+          <div className="mt-4 hidden md:block">
+            <StepIndicator steps={["The work", "Budget & rules"]} current={step} />
+          </div>
+        </header>
+
+        {error ? (
+          <div data-testid="create-error" className="mt-6">
+            <InlineNotice tone="down">{error}</InlineNotice>
+          </div>
+        ) : null}
+
+        <div className="mt-8 grid grid-cols-1 gap-10 lg:grid-cols-12" data-testid="create-project-form">
+          <div className="lg:col-span-8">
+            {step === 0 ? (
+              <FormSection title="What needs doing?" description="One piece of work with a clear scope. If several people should compete on a bounded task, that is a bounty instead.">
+                <Field label="Title" required error={errors.title} id="pr-title">
+                  <Input id="pr-title" value={draft.title} invalid={Boolean(errors.title)} onChange={(e) => set("title", e.target.value)} required minLength={8} maxLength={140} placeholder="Build an MVP billing dashboard" />
+                </Field>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <Field label="Category" required error={errors.category} id="pr-cat">
+                    <Input id="pr-cat" value={draft.category} invalid={Boolean(errors.category)} onChange={(e) => set("category", e.target.value)} required maxLength={40} list="pr-cat-list" placeholder={CATEGORIES_FOUNDER[0]} />
+                    <datalist id="pr-cat-list">
+                      {CATEGORIES_FOUNDER.map((c) => (
+                        <option key={c} value={c} />
+                      ))}
+                    </datalist>
+                  </Field>
+                  <Field label="Skills (comma-separated)" id="pr-skills">
+                    <Input id="pr-skills" value={draft.skills} onChange={(e) => set("skills", e.target.value)} placeholder="postgres, tailwind" />
+                  </Field>
+                </div>
+                <Field label="The brief" required error={errors.description} id="pr-desc">
+                  <Textarea id="pr-desc" value={draft.description} invalid={Boolean(errors.description)} onChange={(e) => set("description", e.target.value)} rows={6} required minLength={20} maxLength={30000} />
+                </Field>
+              </FormSection>
+            ) : (
+              <FormSection title="Budget & rules" description="The budget range guides proposals; the final amount is the quote you select.">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <Field label="Budget from (₹, optional)" id="pr-bmin">
+                    <Input id="pr-bmin" value={draft.budgetMin} onChange={(e) => set("budgetMin", e.target.value)} type="number" min={0} className="tabular" />
+                  </Field>
+                  <Field label="Budget to (₹, optional)" error={errors.budgetMax} id="pr-bmax">
+                    <Input id="pr-bmax" value={draft.budgetMax} invalid={Boolean(errors.budgetMax)} onChange={(e) => set("budgetMax", e.target.value)} type="number" min={0} className="tabular" />
+                  </Field>
+                  <Field label="Proposal deadline (optional)" error={errors.proposalDeadline} id="pr-dl">
+                    <Input id="pr-dl" value={draft.proposalDeadline} invalid={Boolean(errors.proposalDeadline)} onChange={(e) => set("proposalDeadline", e.target.value)} type="datetime-local" />
+                  </Field>
+                </div>
+                <Field label="IP & confidentiality" id="pr-ip">
+                  <Textarea id="pr-ip" value={draft.ipAndConfidentiality} onChange={(e) => set("ipAndConfidentiality", e.target.value)} rows={2} maxLength={4000} />
+                </Field>
+              </FormSection>
+            )}
+            <div className="mt-8 flex items-center justify-between gap-3 border-t border-fg/10 pt-5">
+              <Button variant="ghost" onClick={() => setStep((s) => Math.max(0, s - 1))} disabled={step === 0}>
+                Back
+              </Button>
+              {step === 0 ? (
+                <Button onClick={next}>Continue</Button>
+              ) : (
+                <Button loading={creating} onClick={doCreate}>
+                  {creating ? "Creating…" : "Create project (draft)"}
+                </Button>
+              )}
             </div>
           </div>
-          {status.state === "error" ? (
-            <p role="alert" className="mt-3 text-sm font-medium text-danger">{status.message}</p>
-          ) : null}
-          <button
-            type="submit"
-            disabled={status.state === "creating"}
-            className="mt-5 inline-flex h-11 items-center justify-center rounded-md bg-accent px-6 text-sm font-semibold text-accent-fg disabled:opacity-60"
-          >
-            {status.state === "creating" ? "Creating…" : "Create project (draft)"}
-          </button>
-        </form>
+          <div className="lg:col-span-4">
+            <aside className="space-y-4 lg:sticky lg:top-20" aria-label="Draft summary">
+              <div className="rounded-md border border-fg/10 bg-surface/60 p-4">
+                <p className="text-xs font-semibold uppercase tracking-kicker text-subtle">Your draft</p>
+                {draft.title ? <p className="mt-2 text-sm font-medium leading-snug">{draft.title}</p> : <p className="mt-2 text-sm text-subtle">The title will appear here.</p>}
+                <dl className="mt-3 space-y-2 border-t border-fg/10 pt-3 text-sm">
+                  {draft.category ? (
+                    <div className="flex justify-between gap-3">
+                      <dt className="text-xs uppercase tracking-kicker text-subtle">Category</dt>
+                      <dd>{draft.category}</dd>
+                    </div>
+                  ) : null}
+                  {draft.budgetMin || draft.budgetMax ? (
+                    <div className="flex justify-between gap-3">
+                      <dt className="text-xs uppercase tracking-kicker text-subtle">Budget</dt>
+                      <dd className="tabular">
+                        {draft.budgetMin ? `₹${Number(draft.budgetMin).toLocaleString("en-IN")}` : ""}
+                        {draft.budgetMin && draft.budgetMax ? " – " : ""}
+                        {draft.budgetMax ? `₹${Number(draft.budgetMax).toLocaleString("en-IN")}` : ""}
+                      </dd>
+                    </div>
+                  ) : null}
+                </dl>
+              </div>
+              <p className="px-1 text-xs leading-relaxed text-subtle">
+                Creating a draft is free. Projects are funded only after you select a provider, when funding is enabled.
+              </p>
+            </aside>
+          </div>
+        </div>
       </div>
     </ProductShell>
   );

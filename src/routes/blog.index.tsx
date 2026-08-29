@@ -27,7 +27,7 @@ function BlogIndexPage() {
   const p = d.product as BlogArticle["product"];
   return (
     <ProductShell site={p} me={d.me}>
-      <div className="mx-auto max-w-3xl px-4 py-10 sm:px-5">
+      <div className="canvas-prose py-10">
         <p className="text-xs font-medium uppercase tracking-kicker text-subtle">
           {product(p).name}
         </p>
@@ -46,7 +46,7 @@ function BlogIndexPage() {
               key={a.slug}
               to="/blog/$slug"
               params={{ slug: a.slug }}
-              className="block rounded-lg border-2 border-fg/15 bg-surface p-5 transition-colors hover:border-fg/40"
+              className="block rounded-md border border-fg/15 bg-surface p-5 transition-colors duration-150 hover:border-fg/40"
             >
               <p className="text-xs text-subtle">
                 {new Date(a.publishedAt).toDateString()}

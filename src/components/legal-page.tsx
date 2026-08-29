@@ -15,7 +15,7 @@ export function LegalPage({
   const email = contactEmail(productKey);
 
   return (
-    <article className="mx-auto w-full max-w-2xl px-4 py-12 sm:px-5">
+    <article className="canvas-prose py-12">
       <p className="text-xs uppercase tracking-kicker text-subtle">{cfg.apex}</p>
       <h1 className="mt-3 font-display-site text-4xl tracking-tight sm:text-5xl">
         {doc.title}

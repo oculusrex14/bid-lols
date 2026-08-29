@@ -39,7 +39,7 @@ function PostChooser() {
         </p>
 
         <div className="mt-8 grid gap-4 sm:grid-cols-2">
-          <section className="flex flex-col rounded-lg border-2 border-fg/15 bg-surface p-5">
+          <section className="flex flex-col rounded-md border border-fg/15 bg-surface p-5">
             <h2 className="font-display-site text-xl tracking-tight">Bounty</h2>
             <p className="mt-1 text-sm font-medium text-accent">
               Several qualified people can compete on a bounded task.
@@ -58,7 +58,7 @@ function PostChooser() {
             </a>
           </section>
 
-          <section className="flex flex-col rounded-lg border-2 border-fg/15 bg-surface p-5">
+          <section className="flex flex-col rounded-md border border-fg/15 bg-surface p-5">
             <h2 className="font-display-site text-xl tracking-tight">Project</h2>
             <p className="mt-1 text-sm font-medium text-accent">
               Choose one provider from proposals before work begins.
@@ -71,7 +71,7 @@ function PostChooser() {
             </p>
             <a
               href="/projects/new"
-              className="mt-5 inline-flex h-11 items-center justify-center rounded-md border-2 border-fg/30 px-4 text-sm font-semibold hover:border-fg/60"
+              className="mt-5 inline-flex h-11 items-center justify-center rounded-md border border-fg/30 px-4 text-sm font-semibold hover:border-fg/60"
             >
               Post a project
             </a>

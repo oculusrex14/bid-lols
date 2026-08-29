@@ -1,9 +1,8 @@
 import { useState } from "react";
-import { createFileRoute, notFound, redirect } from "@tanstack/react-router";
+import { createFileRoute, Link, notFound, redirect } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { currentProductKey, product as productInfo, seoOrigin, type ProductKey } from "@/lib/host";
-import { shellContext } from "@/lib/shell-context";
 import { ProductShell } from "@/components/product-shell";
 import { getSql } from "@/lib/db.server";
 import { entityRedirectFor } from "@/lib/marketplace/capabilities.server";
@@ -16,11 +15,19 @@ import {
   fundProjectFn,
 } from "@/lib/marketplace/projects";
 import { formatMinor } from "@/lib/money";
+import { statusLabel } from "@/lib/marketplace/status-labels";
+import { deadlinePhrase, absoluteDate } from "@/lib/reltime";
+import { StatusBadge } from "@/components/ui/status";
+import { Button } from "@/components/ui/button";
+import { Field, Input, Textarea } from "@/components/ui/field";
+import { StickyPanel } from "@/components/ui/market";
+import { ProgressBar } from "@/components/ui/data";
+import { InlineNotice } from "@/components/ui/states";
 
 /**
- * /projects/:id — public project detail (Phase 01, FR-5). Sponsor publishes,
- * providers propose, sponsor selects one provider, funding follows,
- * milestones run.
+ * /projects/:id — public project detail (Phase 01, FR-5; RC3, S-24).
+ * 8/4: brief + proposals in the main column; the decision panel (budget,
+ * stage, milestones, primary action) sticky on the right.
  */
 type ProjectPublic = {
   id: string; product: string; title: string; slug: string; description: string; category: string;
@@ -99,17 +106,21 @@ function ProjectDetailPage() {
 type Data = NonNullable<Awaited<ReturnType<typeof loadDetail>>>;
 
 function ProjectDetailBody({ data }: { data: Data }) {
-  const p = data.project as Record<string, unknown>;
+  const p = data.project;
   const [message, setMessage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [showPropose, setShowPropose] = useState(false);
 
-  async function run(fn: () => Promise<{ ok: boolean; message?: string }>, okNote: string) {
+  async function run(fn: () => Promise<{ ok: boolean; message?: string; checkoutUrl?: string }>, okNote: string) {
     if (busy) return;
     setBusy(true);
     setMessage(null);
     try {
       const r = await fn();
+      if (r.ok && r.checkoutUrl) {
+        window.location.assign(r.checkoutUrl);
+        return;
+      }
       setMessage(r.ok ? okNote : r.message ?? "Something went wrong.");
       if (r.ok) {
         await new Promise((res) => setTimeout(res, 600));
@@ -121,163 +132,191 @@ function ProjectDetailBody({ data }: { data: Data }) {
   }
 
   const status = String(p.status);
-
   const origin = seoOrigin(data.product as ProductKey);
-  const canonicalUrl = `${origin}/projects/${String(p.id)}`;
+  const paidMilestones = data.milestones.filter((m) => m.status === "PAID_OUT").length;
 
   return (
     <ProductShell site={data.product as ProductKey} me={data.me}>
-      <div className="mx-auto max-w-4xl px-4 py-10">
-        <nav aria-label="Breadcrumb" className="text-sm text-subtle">
-          <a href="/" className="underline-offset-4 hover:underline">
+      <div className="canvas-wide pb-16">
+        <nav aria-label="Breadcrumb" className="pt-6 text-sm text-subtle">
+          <Link to="/" className="hover:underline hover:underline-offset-4">
             {productInfo(data.product as ProductKey).name}
-          </a>
+          </Link>
           <span aria-hidden="true"> / </span>
-          <a href="/projects" className="underline-offset-4 hover:underline">
+          <Link to="/projects" className="hover:underline hover:underline-offset-4">
             Open projects
-          </a>
+          </Link>
+          <span aria-hidden="true"> / </span>
+          <span className="text-muted">{String(p.title).slice(0, 40)}{String(p.title).length > 40 ? "…" : ""}</span>
         </nav>
-        <div className="mt-4 flex flex-wrap items-start justify-between gap-4">
-          <div className="min-w-0">
-            <p className="text-xs font-medium uppercase tracking-kicker text-subtle">
-              {String(p.category)} · {status}
-            </p>
-            <h1 className="mt-1 font-display-site text-2xl tracking-tight sm:text-3xl">{String(p.title)}</h1>
+
+        <header className="mt-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <StatusBadge status={status} />
+            <span className="text-xs text-subtle">{String(p.category)}</span>
           </div>
-        </div>
+          <h1 className="mt-2 max-w-3xl font-display-site text-3xl tracking-tight sm:text-4xl">{String(p.title)}</h1>
+          <p className="mt-2 text-sm text-muted">
+            Posted by {String(p.sponsor_company || p.sponsor_name || "a member")}
+            {p.sponsor_handle ? ` (@${p.sponsor_handle})` : ""}
+          </p>
+        </header>
 
         {message ? (
-          <p role="status" aria-live="polite" className="mt-4 rounded-md border-2 border-fg/15 bg-surface p-3 text-sm">{message}</p>
+          <InlineNotice className="mt-5">{message}</InlineNotice>
         ) : null}
 
-        <div className="mt-6 grid gap-6 lg:grid-cols-3">
-          <div className="lg:col-span-2">
-            <section className="rounded-lg border-2 border-fg/15 bg-surface p-5">
-              <h2 className="text-xs font-medium uppercase tracking-kicker text-subtle">The brief</h2>
-              <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed">{String(p.description)}</p>
+        <div className="mt-8 grid grid-cols-1 gap-10 lg:grid-cols-12">
+          <div className="lg:col-span-8">
+            <section aria-labelledby="h-brief">
+              <h2 id="h-brief" className="text-sm font-semibold uppercase tracking-kicker text-subtle">The brief</h2>
+              <p className="mt-3 whitespace-pre-wrap text-[15px] leading-relaxed">{String(p.description)}</p>
             </section>
 
             {data.proposals.length > 0 ? (
-              <section className="mt-6 rounded-lg border-2 border-fg/15 bg-surface p-5">
-                <h2 className="text-xs font-medium uppercase tracking-kicker text-subtle">Proposals ({data.proposals.length})</h2>
-                <ul className="mt-3 space-y-4">
+              <section className="mt-10">
+                <h2 className="text-sm font-semibold uppercase tracking-kicker text-subtle">Proposals ({data.proposals.length})</h2>
+                <ul className="mt-4 space-y-4">
                   {data.proposals.map((pr) => (
-                    <li key={pr.id} className="rounded-md border-2 border-fg/10 p-4">
+                    <li key={pr.id} className="rounded-md border border-fg/10 bg-surface/60 p-4">
                       <div className="flex flex-wrap items-baseline justify-between gap-2">
-                        <p className="text-sm font-medium">{formatMinor(Number(pr.quoted_minor))} · {pr.timeline_weeks ?? "?"} wk</p>
-                        <p className="text-xs text-subtle">{pr.display_name ?? "provider"}{pr.handle ? ` (@${pr.handle})` : ""} · {pr.status}</p>
+                        <p className="tabular text-sm font-semibold">{formatMinor(Number(pr.quoted_minor))} · {pr.timeline_weeks ?? "?"} wk</p>
+                        <p className="text-xs text-subtle">
+                          {pr.display_name ?? "provider"}
+                          {pr.handle ? ` (@${pr.handle})` : ""} · {statusLabel(pr.status)}
+                        </p>
                       </div>
                       <p className="mt-2 whitespace-pre-wrap text-sm text-muted">{pr.approach}</p>
                       {data.isSponsor && pr.status === "SUBMITTED" && status === "OPEN_FOR_PROPOSALS" ? (
-                        <button
-                          type="button"
+                        <Button
+                          size="sm"
+                          className="mt-3"
                           disabled={busy}
                           onClick={async () => {
                             await run(() => selectProposalFn({ data: { projectId: String(p.id), proposalId: pr.id } }), "Proposal selected. Funding is next.");
                           }}
-                          className="mt-2 inline-flex h-9 items-center rounded-md bg-accent px-3 text-sm font-semibold text-accent-fg"
                         >
                           Select this provider
-                        </button>
+                        </Button>
                       ) : null}
                     </li>
                   ))}
                 </ul>
               </section>
             ) : null}
+
+            {showPropose && !data.isSponsor ? <ProposalBox projectId={String(p.id)} onDone={(m) => { setMessage(m); setShowPropose(false); }} /> : null}
           </div>
 
-          <div className="space-y-6">
-            {data.isSponsor && status === "DRAFT" ? (
-              <section className="rounded-lg border-2 border-accent/40 bg-raised/40 p-4">
-                <p className="text-sm font-medium">Publish this project</p>
-                <button
-                  type="button"
-                  disabled={busy}
-                  onClick={async () => {
-                    await run(async () => publishProjectFn({ data: { projectId: String(p.id) } }), "Project is open for proposals.");
-                  }}
-                  className="mt-3 inline-flex h-10 items-center rounded-md bg-accent px-4 text-sm font-semibold text-accent-fg"
-                >
-                  Open for proposals
-                </button>
-              </section>
-            ) : null}
-
-            {data.isSponsor && status === "PROPOSAL_SELECTED" ? (
-              <section className="rounded-lg border-2 border-accent/40 bg-raised/40 p-4" data-testid="sponsor-fund">
-                <p className="text-sm font-medium">Fund the selected proposal</p>
-                <p className="mt-1 text-sm text-muted">
-                  {data.milestones[0] ? `Quoted: ${formatMinor(Number(p.selected_quoted_minor))} across ${data.milestones.length} milestones.` : ""}
+          <div className="lg:col-span-4">
+            <StickyPanel>
+              <div className="rounded-md border border-fg/10 bg-surface/60 p-4">
+                <p className="text-xs uppercase tracking-kicker text-subtle">Budget</p>
+                <p className="tabular mt-1 text-xl font-semibold text-accent">
+                  {p.selected_quoted_minor != null ? formatMinor(Number(p.selected_quoted_minor), String(p.currency)) : "Set by the selected proposal"}
                 </p>
-                <button
-                  type="button"
-                  disabled={busy}
-                  onClick={async () => {
-                    await run(
-                      async () => {
-                        const r = await fundProjectFn({ data: { projectId: String(p.id) } });
-                        if (r.ok && r.checkoutUrl) window.location.assign(r.checkoutUrl);
-                        return r;
-                      },
-                      "Funding checkout started.",
-                    );
-                  }}
-                  className="mt-3 inline-flex h-10 items-center rounded-md bg-accent px-4 text-sm font-semibold text-accent-fg"
-                >
-                  Fund ({formatMinor(Number(p.selected_quoted_minor))} + fee)
-                </button>
-              </section>
-            ) : null}
+                <dl className="mt-4 space-y-2.5 text-sm">
+                  <div className="flex items-baseline justify-between gap-3">
+                    <dt className="text-xs uppercase tracking-kicker text-subtle">Stage</dt>
+                    <dd className="font-medium">{statusLabel(status)}</dd>
+                  </div>
+                  {p.proposal_deadline ? (
+                    <div className="flex items-baseline justify-between gap-3">
+                      <dt className="text-xs uppercase tracking-kicker text-subtle">Proposals due</dt>
+                      <dd className="tabular" title={absoluteDate(String(p.proposal_deadline))}>{deadlinePhrase(String(p.proposal_deadline))}</dd>
+                    </div>
+                  ) : null}
+                  {p.funding_payment_id ? (
+                    <div className="flex items-baseline justify-between gap-3">
+                      <dt className="text-xs uppercase tracking-kicker text-subtle">Funding</dt>
+                      <dd className="font-medium text-up">Funded</dd>
+                    </div>
+                  ) : null}
+                </dl>
 
-            {status === "ACTIVE" || data.milestones.length > 0 ? (
-              <section className="rounded-lg border-2 border-fg/15 bg-surface p-5" data-testid="milestones">
-                <h2 className="text-xs font-medium uppercase tracking-kicker text-subtle">Milestones</h2>
-                <ul className="mt-2 space-y-2 text-sm">
-                  {data.milestones.map((m) => (
-                    <li key={m.id} className="flex items-center justify-between gap-2 rounded-md border-2 border-fg/10 p-2">
-                      <span className="min-w-0">
-                        <span className="text-subtle">#{m.seq}</span> {m.title}
-                        <span className="ml-2 font-medium">{formatMinor(Number(m.amount_minor), m.currency)}</span>
-                      </span>
-                      <span className="text-xs text-subtle">{m.status}</span>
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            ) : null}
-
-            {!data.isSponsor && status === "OPEN_FOR_PROPOSALS" ? (
-              <section className="rounded-lg border-2 border-fg/15 bg-surface p-5">
-                {data.proposals.length > 0 && data.milestones.length === 0 ? null : null}
-                {data.mine ? (
-                  <p className="text-sm">Your proposal: {data.mine.status}</p>
-                ) : (
-                  <>
-                    <button
-                      type="button"
-                      className="inline-flex h-10 items-center rounded-md bg-accent px-4 text-sm font-semibold text-accent-fg"
-                      onClick={() => setShowPropose((v) => !v)}
+                {data.isSponsor && status === "DRAFT" ? (
+                  <div className="mt-4 border-t border-fg/10 pt-4">
+                    <p className="text-xs text-subtle">Draft. Open it for proposals when the brief is final.</p>
+                    <Button
+                      className="mt-2 w-full"
+                      disabled={busy}
+                      onClick={async () => {
+                        await run(async () => publishProjectFn({ data: { projectId: String(p.id) } }), "Project is open for proposals.");
+                      }}
                     >
-                      Submit a proposal
-                    </button>
-                    <p className="mt-2 text-xs text-subtle">
-                      Proposals describe approach + evidence + milestone plan. Never submit the finished work.
+                      Open for proposals
+                    </Button>
+                  </div>
+                ) : null}
+
+                {data.isSponsor && status === "PROPOSAL_SELECTED" ? (
+                  <div className="mt-4 border-t border-fg/10 pt-4" data-testid="sponsor-fund">
+                    <p className="text-xs text-subtle">
+                      {data.milestones[0]
+                        ? `Quoted ${formatMinor(Number(p.selected_quoted_minor))} across ${data.milestones.length} milestones.`
+                        : "Funding starts the checkout."}
                     </p>
-                  </>
-                )}
-              </section>
-            ) : null}
+                    <Button
+                      className="mt-2 w-full"
+                      disabled={busy}
+                      onClick={async () => {
+                        await run(async () => fundProjectFn({ data: { projectId: String(p.id) } }), "Funding checkout started.");
+                      }}
+                    >
+                      Fund project
+                    </Button>
+                  </div>
+                ) : null}
+
+                {!data.isSponsor && status === "OPEN_FOR_PROPOSALS" ? (
+                  <div className="mt-4 border-t border-fg/10 pt-4">
+                    {data.mine ? (
+                      <p className="text-sm">Your proposal: {statusLabel(data.mine.status)}</p>
+                    ) : (
+                      <>
+                        <Button className="mt-0 w-full" onClick={() => setShowPropose((v) => !v)}>
+                          Submit a proposal
+                        </Button>
+                        <p className="mt-2 text-xs text-subtle">
+                          Proposals describe approach + evidence + milestone plan. Never submit the finished work.
+                        </p>
+                      </>
+                    )}
+                  </div>
+                ) : null}
+              </div>
+
+              {data.milestones.length > 0 ? (
+                <div className="mt-4 rounded-md border border-fg/10 bg-surface/60 p-4" data-testid="milestones">
+                  <div className="flex items-baseline justify-between">
+                    <h2 className="text-sm font-semibold">Milestones</h2>
+                    <span className="tabular text-xs text-subtle">{paidMilestones}/{data.milestones.length} paid</span>
+                  </div>
+                  <ProgressBar value={paidMilestones} max={data.milestones.length} className="mt-2" label="" />
+                  <ul className="mt-3 space-y-2">
+                    {data.milestones.map((m) => (
+                      <li key={m.id} className="flex items-baseline justify-between gap-2 text-sm">
+                        <span className="min-w-0 truncate">
+                          <span className="text-subtle">#{m.seq}</span> {m.title}
+                        </span>
+                        <span className="shrink-0">
+                          <span className="tabular mr-2 font-medium">{formatMinor(Number(m.amount_minor), m.currency)}</span>
+                          <StatusBadge status={m.status} />
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+            </StickyPanel>
           </div>
         </div>
-
-        {showPropose && !data.isSponsor ? <ProposalBox projectId={String(p.id)} onDone={(m) => { setMessage(m); setShowPropose(false); }} /> : null}
 
         <JsonLd
           data={breadcrumbSchema(data.product as ProductKey, [
             { name: productInfo(data.product as ProductKey).name, url: origin },
             { name: "Open projects", url: `${origin}/projects` },
-            { name: String(p.title), url: canonicalUrl },
+            { name: String(p.title), url: `${origin}/projects/${String(p.id)}` },
           ])}
         />
       </div>
@@ -289,7 +328,8 @@ function ProposalBox({ projectId, onDone }: { projectId: string; onDone: (m: str
   const [busy, setBusy] = useState(false);
   return (
     <form
-      className="mt-6 rounded-lg border-2 border-fg/20 bg-surface p-5"
+      className="mt-10 rounded-md border border-fg/10 bg-surface/60 p-4"
+      data-testid="proposal-form"
       onSubmit={async (e) => {
         e.preventDefault();
         const f = new FormData(e.currentTarget);
@@ -316,15 +356,29 @@ function ProposalBox({ projectId, onDone }: { projectId: string; onDone: (m: str
         onDone(r.ok ? "Proposal sent." : r.message);
       }}
     >
-      <h2 className="text-xs font-medium uppercase tracking-kicker text-subtle">Your proposal</h2>
-      <textarea name="approach" required minLength={20} maxLength={8000} rows={4} placeholder="How would you approach this? (20–8000 chars)" className="mt-2 w-full rounded-md border-2 border-fg/20 bg-surface p-3 text-sm outline-none focus:border-fg/60" />
-      <input name="quotedRupees" type="number" required min={1} placeholder="Quote (₹)" className="mt-3 w-full rounded-md border-2 border-fg/20 bg-surface px-3 py-2.5 text-sm outline-none focus:border-fg/60" />
-      <input name="timelineWeeks" type="number" min={1} max={52} placeholder="Timeline (weeks)" className="mt-3 w-full rounded-md border-2 border-fg/20 bg-surface px-3 py-2.5 text-sm outline-none focus:border-fg/60" />
-      <textarea name="experience" rows={2} maxLength={4000} placeholder="Relevant experience" className="mt-3 w-full rounded-md border-2 border-fg/20 bg-surface p-3 text-sm outline-none focus:border-fg/60" />
-      <textarea name="milestones" rows={4} placeholder={"Milestones, one per line (EXAMPLE format, not real numbers):\nDesign system + screens ₹15000\nFrontend build ₹25000\nQA handoff ₹5000"} className="mt-3 w-full rounded-md border-2 border-fg/20 bg-surface p-3 text-sm outline-none focus:border-fg/60" />
-      <button type="submit" disabled={busy} className="mt-3 inline-flex h-10 items-center rounded-md bg-accent px-4 text-sm font-semibold text-accent-fg disabled:opacity-60">
+      <h2 className="text-lg font-semibold tracking-tight">Your proposal</h2>
+      <div className="mt-3 space-y-3">
+        <Field label="Approach" required id="pr-approach">
+          <Textarea id="pr-approach" name="approach" required minLength={20} maxLength={8000} rows={4} placeholder="How would you approach this?" />
+        </Field>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Field label="Quote (₹)" required id="pr-quote">
+            <Input id="pr-quote" name="quotedRupees" type="number" required min={1} className="tabular" />
+          </Field>
+          <Field label="Timeline (weeks)" id="pr-timeline">
+            <Input id="pr-timeline" name="timelineWeeks" type="number" min={1} max={52} className="tabular" />
+          </Field>
+        </div>
+        <Field label="Relevant experience" id="pr-exp">
+          <Textarea id="pr-exp" name="experience" rows={2} maxLength={4000} />
+        </Field>
+        <Field label="Milestones" hint="One per line: title and amount. EXAMPLE format, not real numbers: Design system + screens 15000 / Frontend build 25000 / QA handoff 5000.">
+          <Textarea name="milestones" rows={4} placeholder={"Milestones, one per line (title + amount)"} className="mt-3 w-full rounded-sm border border-fg/20 bg-surface p-3 text-sm" />
+        </Field>
+      </div>
+      <Button type="submit" loading={busy} className="mt-4">
         {busy ? "Sending…" : "Send proposal"}
-      </button>
+      </Button>
     </form>
   );
 }

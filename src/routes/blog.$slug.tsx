@@ -44,7 +44,7 @@ function BlogArticlePage() {
   const origin = seoOrigin(p);
   return (
     <ProductShell site={p} me={d.me}>
-      <div className="mx-auto max-w-3xl px-4 pt-6 sm:px-5">
+      <div className="canvas-prose pt-6">
         <nav aria-label="Breadcrumb" className="text-sm text-subtle">
           <a href="/" className="underline-offset-4 hover:underline">
             {product(p).name}
@@ -56,7 +56,7 @@ function BlogArticlePage() {
         </nav>
       </div>
       <ArticleView article={article} />
-      <div className="mx-auto max-w-3xl px-4 pb-10 sm:px-5">
+      <div className="canvas-prose pb-10">
         <JsonLd
           data={[
             blogPostingSchema(p, article),

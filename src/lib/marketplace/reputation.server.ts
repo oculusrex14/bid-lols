@@ -134,6 +134,8 @@ export type LeaderboardRow = {
   /** Derived only for context; the rank uses `metric`. */
   experience: number;
   score: number;
+  /** RC3 S-28: primary skills from the public profile (display only). */
+  skills: string[];
 };
 
 export const BOARD_NAMES = [
@@ -156,6 +158,7 @@ type UserFacts = {
   userId: string;
   handle: string | null;
   displayName: string | null;
+  skills: string[];
   experience: number;
   wins: number;
   projectCompletions: number;
@@ -176,6 +179,7 @@ async function loadFacts(): Promise<UserFacts[]> {
     user_id: string;
     handle: string | null;
     display_name: string | null;
+    skills: string[] | null;
     wins: number;
     project_completions: number;
     captained: number;
@@ -186,11 +190,11 @@ async function loadFacts(): Promise<UserFacts[]> {
     sponsor_reviews: number;
   }>(
     `with candidates as (
-       select u.id, pr.handle, u.display_name
+       select u.id, pr.handle, u.display_name, pr.skills
        from users u left join profiles pr on pr.user_id = u.id
        where u.status = 'active' and u.banned = false
      )
-     select c.id as user_id, c.handle, c.display_name,
+     select c.id as user_id, c.handle, c.display_name, c.skills as skills,
        (select count(*)::int from bounty_awards where user_id = c.id and place = 1) as wins,
        (select count(*)::int from projects p
           join project_proposals pp on pp.id = p.selected_proposal_id
@@ -233,6 +237,7 @@ async function loadFacts(): Promise<UserFacts[]> {
       userId: r.user_id,
       handle: r.handle,
       displayName: r.display_name,
+      skills: Array.isArray(r.skills) ? r.skills.slice(0, 3) : [],
       experience,
       wins,
       projectCompletions,
@@ -308,6 +313,7 @@ export async function leaderboard(
         userId: f.userId,
         handle: f.handle,
         displayName: f.displayName,
+        skills: f.skills,
         metric,
         experience: f.experience,
         score: f.experience + 10 * f.reliability + 10 * f.quality,

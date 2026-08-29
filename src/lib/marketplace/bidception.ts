@@ -13,7 +13,11 @@ import {
   completeChild,
   failChild,
   beginParentSettlement,
+  listEligibleCaptains,
+  type EligibleCaptain,
 } from "@/lib/marketplace/bidception.server";
+
+export type { EligibleCaptain };
 import { requireUser, toErrorResponse, requireVerifiedEmail } from "@/lib/authz";
 import {
   assertHostCapability,
@@ -261,6 +265,25 @@ export const childStateFn = createServerFn({ method: "POST" })
       const mapped = toErrorResponse(err);
       if (mapped) return { ok: false, ...mapped.body };
       return { ok: false, code: "error", message: "State change failed." };
+    }
+  });
+
+/**
+ * RC1 R6 / RC3 S-27: captain picker data. Read-only; the list is real
+ * members with a public signal (handle or a verified outcome) — never
+ * invented, and the sponsor themselves is excluded.
+ */
+export const eligibleCaptainsFn = createServerFn({ method: "GET" })
+  .handler(async (): Promise<
+    { ok: true; items: EligibleCaptain[] } | { ok: false; code: string; message: string }
+  > => {
+    try {
+      const session = await requireUser();
+      return { ok: true, items: await listEligibleCaptains(session.user.id) };
+    } catch (err) {
+      const mapped = toErrorResponse(err);
+      if (mapped) return { ok: false, ...mapped.body };
+      return { ok: false, code: "error", message: "Could not load eligible captains." };
     }
   });
 

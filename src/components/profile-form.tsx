@@ -10,7 +10,7 @@ import { cn } from "@/lib/cn";
  */
 
 const inputClasses =
-  "h-11 w-full rounded-md border-2 border-fg/20 bg-surface px-3 text-sm outline-none focus:border-fg/60";
+  "h-11 w-full rounded-md border border-fg/20 bg-surface px-3 text-sm outline-none focus:border-fg/60";
 
 const RESERVED_NOTE =
   "Handles are lowercase (a–z, 0–9, underscore) and public: /profile/<handle>.";
@@ -99,7 +99,7 @@ export function ProfileForm({ initial }: { initial: MyProfileView }) {
 
       <div className="mt-4">
         <label htmlFor="pf-bio" className={label}>Short bio</label>
-        <textarea id="pf-bio" name="bio" rows={3} maxLength={1000} defaultValue={p.bio} className="w-full rounded-md border-2 border-fg/20 bg-surface p-3 text-sm outline-none focus:border-fg/60" />
+        <textarea id="pf-bio" name="bio" rows={3} maxLength={1000} defaultValue={p.bio} className="w-full rounded-md border border-fg/20 bg-surface p-3 text-sm outline-none focus:border-fg/60" />
       </div>
 
       <div className="mt-4 grid gap-4 sm:grid-cols-2">
@@ -144,7 +144,7 @@ export function ProfileForm({ initial }: { initial: MyProfileView }) {
         </div>
       </div>
 
-      <div className="mt-6 rounded-md border-2 border-fg/10 bg-raised/40 p-4">
+      <div className="mt-6 rounded-md border border-fg/10 bg-raised/40 p-4">
         <p className="text-xs font-medium uppercase tracking-kicker text-subtle">Sponsor / company (optional)</p>
         <div className="mt-3 grid gap-4 sm:grid-cols-2">
           <div>
@@ -158,7 +158,7 @@ export function ProfileForm({ initial }: { initial: MyProfileView }) {
         </div>
         <div className="mt-4">
           <label htmlFor="pf-coa" className={label}>What does the company do?</label>
-          <textarea id="pf-coa" name="companyAbout" rows={2} maxLength={500} defaultValue={p.company_about ?? ""} className="w-full rounded-md border-2 border-fg/20 bg-surface p-3 text-sm outline-none focus:border-fg/60" />
+          <textarea id="pf-coa" name="companyAbout" rows={2} maxLength={500} defaultValue={p.company_about ?? ""} className="w-full rounded-md border border-fg/20 bg-surface p-3 text-sm outline-none focus:border-fg/60" />
         </div>
         <label className="mt-3 flex items-center gap-2 text-sm text-muted">
           <input type="checkbox" name="isSponsor" defaultChecked={p.is_sponsor} className="size-4 accent-[var(--fg)]" />

@@ -23,7 +23,7 @@ export const Route = createFileRoute("/bidception/new")({
 });
 
 const field =
-  "w-full rounded-md border-2 border-fg/20 bg-surface px-3 py-2.5 text-sm outline-none focus:border-fg/60";
+  "w-full rounded-md border border-fg/20 bg-surface px-3 py-2.5 text-sm outline-none focus:border-fg/60";
 
 function NewParentPage() {
   const d = Route.useLoaderData();
@@ -68,7 +68,7 @@ function NewParentPage() {
           decomposes it into funded child units. Allocations, the captain's
           fee and any reserve always add up to the funded budget. Never more.
         </p>
-        <form onSubmit={onSubmit} noValidate className="mt-6 rounded-lg border-2 border-fg/20 bg-surface p-5" data-testid="create-parent-form">
+        <form onSubmit={onSubmit} noValidate className="mt-6 rounded-md border border-fg/20 bg-surface p-5" data-testid="create-parent-form">
           <div className="grid gap-4">
             <div>
               <label htmlFor="bce-title" className="mb-1.5 block text-sm font-medium">Title</label>

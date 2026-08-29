@@ -1,11 +1,10 @@
 import { useState } from "react";
-import { createFileRoute, notFound, redirect } from "@tanstack/react-router";
+import { createFileRoute, Link, notFound, redirect } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { currentProductKey, product as productInfo, seoOrigin, type ProductKey } from "@/lib/host";
 import { ProductShell } from "@/components/product-shell";
 import { getSql } from "@/lib/db.server";
-import { formatMinor } from "@/lib/money";
 import { JsonLd } from "@/components/seo";
 import { breadcrumbSchema } from "@/lib/schema";
 import { getSession } from "@/lib/authz";
@@ -20,15 +19,19 @@ import {
 } from "@/lib/marketplace/graveyard";
 import { graveyardControls } from "@/lib/marketplace/state";
 import { statusLabel } from "@/lib/marketplace/status-labels";
+import { MoneyValue } from "@/components/ui/money";
+import { StatusBadge } from "@/components/ui/status";
+import { Button, ButtonLink } from "@/components/ui/button";
+import { Field, Input, Textarea } from "@/components/ui/field";
+import { StickyPanel } from "@/components/ui/market";
+import { InlineNotice } from "@/components/ui/states";
 
 /**
- * /graveyard/:id — asset detail (Phase 01B, FR-2/FR-3). Offers and authority
- * context resolve server-side; transactions complete directly between parties.
- *
- * RC3 (S-7.1): the listing row comes from `getGraveyardDetail`, whose type
- * equals its SQL projection — `status` is selected, so the control matrix
- * (`graveyardControls`) works on real data. Screenshots are stored but not
- * rendered (CSP: no remote img-src; see RC3 spec, 7.2).
+ * /graveyard/:id — asset detail (Phase 01B, FR-2/FR-3; RC3, S-7.1/S-31).
+ * RC3: the row comes from getGraveyardDetail (type == SQL projection —
+ * status is selected), and every status-dependent control renders from the
+ * graveyardControls matrix, so the UI can never offer what the engine
+ * refuses. Screenshots are stored, not rendered (CSP, see RC3 spec 7.2).
  */
 const loadDetail = createServerFn({ method: "GET" })
   .validator((input: { id: string }) => z.object({ id: z.string().trim().min(4).max(64) }).parse(input))
@@ -109,192 +112,184 @@ function GraveyardDetailBody({ data }: { data: NonNullable<Awaited<ReturnType<ty
     isSeller: data.isSeller,
     viewerOfferStatus: viewerOffer?.status ?? null,
   });
+  const pKey = data.product as ProductKey;
+  const origin = seoOrigin(pKey);
 
   return (
     <ProductShell site={data.product} me={data.me}>
-      <div className="mx-auto max-w-4xl px-4 py-10">
-        <nav aria-label="Breadcrumb" className="text-sm text-subtle">
-          <a href="/" className="underline-offset-4 hover:underline">
-            {productInfo(data.product as ProductKey).name}
-          </a>
+      <div className="canvas-wide pb-16">
+        <nav aria-label="Breadcrumb" className="pt-6 text-sm text-subtle">
+          <Link to="/" className="hover:underline hover:underline-offset-4">
+            {productInfo(pKey).name}
+          </Link>
           <span aria-hidden="true"> / </span>
-          <a href="/graveyard" className="underline-offset-4 hover:underline">
+          <Link to="/graveyard" className="hover:underline hover:underline-offset-4">
             The Graveyard
-          </a>
+          </Link>
         </nav>
 
-        <div className="mt-4 flex flex-wrap items-start justify-between gap-4">
-          <div className="min-w-0">
-            <p className="text-xs font-medium uppercase tracking-kicker text-subtle">{statusLabel(status)}</p>
-            <h1 className="mt-1 font-display-site text-2xl tracking-tight sm:text-3xl">{l.title}</h1>
+        <header className="mt-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <StatusBadge status={status} />
           </div>
-          <div className="text-right">
-            {l.asking_price_minor != null ? (
-              <p className="font-display-site text-2xl tracking-tight text-accent">{formatMinor(Number(l.asking_price_minor), l.currency)}</p>
-            ) : (
-              <p className="text-sm text-muted">open to offers</p>
-            )}
-          </div>
-        </div>
+          <h1 className="mt-2 max-w-3xl font-display-site text-3xl tracking-tight sm:text-4xl">{l.title}</h1>
+        </header>
 
         {message ? (
-          <p role="status" aria-live="polite" className="mt-4 rounded-md border-2 border-fg/15 bg-surface p-3 text-sm" data-testid="action-message">{message}</p>
+          <div className="mt-5" data-testid="action-message">
+            <InlineNotice>{message}</InlineNotice>
+          </div>
         ) : null}
 
-        <div className="mt-6 grid gap-6 lg:grid-cols-3">
-          <div className="lg:col-span-2">
-            <section className="rounded-lg border-2 border-fg/15 bg-surface p-5">
-              <h2 className="text-xs font-medium uppercase tracking-kicker text-subtle">The project</h2>
-              <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed">{l.description}</p>
-              {l.reason_of_death ? (
-                <>
-                  <h2 className="mt-5 text-xs font-medium uppercase tracking-kicker text-subtle">Why it was paused</h2>
-                  <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed">{l.reason_of_death}</p>
-                </>
-              ) : null}
-              {l.includes.length > 0 ? (
-                <>
-                  <h2 className="mt-5 text-xs font-medium uppercase tracking-kicker text-subtle">Included</h2>
-                  <ul className="mt-2 space-y-1 text-sm">
-                    {l.includes.map((k) => <li key={k}>• {k}</li>)}
-                  </ul>
-                </>
-              ) : null}
-              {l.liabilities ? (
-                <>
-                  <h2 className="mt-5 text-xs font-medium uppercase tracking-kicker text-subtle">Known liabilities</h2>
-                  <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed">{l.liabilities}</p>
-                </>
-              ) : null}
-              {l.history_self_reported ? (
-                <>
-                  <h2 className="mt-5 text-xs font-medium uppercase tracking-kicker text-subtle">History (self-reported)</h2>
-                  <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-muted">{l.history_self_reported}</p>
-                </>
-              ) : null}
+        <div className="mt-8 grid grid-cols-1 gap-10 lg:grid-cols-12">
+          <div className="lg:col-span-8">
+            <section aria-labelledby="h-project">
+              <h2 id="h-project" className="text-sm font-semibold uppercase tracking-kicker text-subtle">The project</h2>
+              <p className="mt-3 whitespace-pre-wrap text-[15px] leading-relaxed">{l.description}</p>
             </section>
-          </div>
-
-          <div className="space-y-6">
-            {data.isSeller ? (
-              <>
-                {controls.canPublish ? (
-                  <section className="rounded-lg border-2 border-accent/40 bg-raised/40 p-4">
-                    <p className="text-sm font-medium">Publish this listing</p>
-                    <button
-                      type="button"
-                      disabled={busy}
-                      onClick={async () => {
-                        await run(() => publishListingFn({ data: { listingId: String(l.id) } }), "Listing is live in the graveyard.");
-                      }}
-                      className="mt-3 inline-flex h-10 items-center rounded-md bg-accent px-4 text-sm font-semibold text-accent-fg"
-                    >
-                      Publish
-                    </button>
-                  </section>
-                ) : null}
-
-                {controls.canMarkTransferred ? (
-                  <button
-                    type="button"
-                    disabled={busy}
-                    onClick={async () => {
-                      await run(async () => markTransferredFn({ data: { listingId: String(l.id), checklistConfirmed: true } }), "Marked transferred.");
-                    }}
-                    className="inline-flex h-10 items-center rounded-md bg-accent px-4 text-sm font-semibold text-accent-fg"
-                  >
-                    Mark transferred (checklist done)
-                  </button>
-                ) : null}
-
-                {controls.canWithdraw ? (
-                  <button
-                    type="button"
-                    disabled={busy}
-                    onClick={async () => {
-                      await run(() => withdrawListingFn({ data: { listingId: String(l.id) } }), "Listing withdrawn.");
-                    }}
-                    className="text-sm text-danger underline underline-offset-2"
-                  >
-                    Withdraw listing
-                  </button>
-                ) : null}
-              </>
-            ) : null}
-
-            {controls.canOffer ? (
-              <OfferBox listingId={String(l.id)} onDone={(m) => setMessage(m)} />
-            ) : null}
-
-            {!data.isSeller && viewerOffer ? (
-              <section className="rounded-lg border-2 border-fg/15 bg-surface p-5" data-testid="my-offer">
-                <h2 className="text-xs font-medium uppercase tracking-kicker text-subtle">Your offer</h2>
-                <p className="mt-2 text-sm">
-                  {formatMinor(Number(viewerOffer.amount_minor), l.currency)} · {statusLabel(viewerOffer.status)}
-                </p>
-                {controls.canRetractOffer ? (
-                  <button
-                    type="button"
-                    disabled={busy}
-                    onClick={async () => {
-                      await run(() => retractOfferFn({ data: { offerId: String(viewerOffer.id) } }), "Offer retracted.");
-                    }}
-                    className="mt-2 text-xs text-muted underline underline-offset-2"
-                  >
-                    Retract offer
-                  </button>
-                ) : null}
+            {l.reason_of_death ? (
+              <section className="mt-8">
+                <h2 className="text-sm font-semibold uppercase tracking-kicker text-subtle">Why it was paused</h2>
+                <p className="mt-3 whitespace-pre-wrap text-[15px] leading-relaxed">{l.reason_of_death}</p>
               </section>
             ) : null}
-
-            {data.isSeller && data.offers.length > 0 ? (
-              <section className="rounded-lg border-2 border-fg/15 bg-surface p-5" data-testid="seller-offers">
-                <h2 className="text-xs font-medium uppercase tracking-kicker text-subtle">Offers ({data.offers.length})</h2>
-                <ul className="mt-3 space-y-3">
-                  {data.offers.map((o) => (
-                    <li key={o.id} className="rounded-md border-2 border-fg/10 p-3 text-sm">
-                      <div className="flex flex-wrap items-baseline justify-between gap-2">
-                        <p className="font-medium">{formatMinor(Number(o.amount_minor), l.currency)} · {statusLabel(o.status)}</p>
-                        <p className="text-xs text-subtle">{o.buyer_name ?? "member"}{o.buyer_handle ? ` (@${o.buyer_handle})` : ""}</p>
-                      </div>
-                      {o.message ? <p className="mt-1 text-muted">{o.message}</p> : null}
-                      {o.status === "PENDING" && controls.canDecideOffers ? (
-                        <div className="mt-2 flex gap-2">
-                          <button
-                            type="button"
-                            disabled={busy}
-                            onClick={async () => {
-                              await run(() => decideOfferFn({ data: { offerId: String(o.id), decision: "ACCEPT" } }), "Offer accepted. Coordinate the handover directly.");
-                            }}
-                            className="inline-flex h-8 items-center rounded-md bg-accent px-3 text-xs font-semibold text-accent-fg"
-                          >
-                            Accept
-                          </button>
-                          <button
-                            type="button"
-                            disabled={busy}
-                            onClick={async () => {
-                              await run(() => decideOfferFn({ data: { offerId: String(o.id), decision: "REJECT" } }), "Offer rejected.");
-                            }}
-                            className="text-xs text-muted underline underline-offset-2"
-                          >
-                            Reject
-                          </button>
-                        </div>
-                      ) : null}
+            {l.includes.length > 0 ? (
+              <section className="mt-8">
+                <h2 className="text-sm font-semibold uppercase tracking-kicker text-subtle">Included</h2>
+                <ul className="mt-3 grid gap-1.5 text-[15px] sm:grid-cols-2">
+                  {l.includes.map((k) => (
+                    <li key={k} className="flex items-center gap-2">
+                      <span aria-hidden="true" className="text-accent">✓</span>
+                      {k}
                     </li>
                   ))}
                 </ul>
               </section>
             ) : null}
+            {l.liabilities ? (
+              <section className="mt-8">
+                <h2 className="text-sm font-semibold uppercase tracking-kicker text-subtle">Known liabilities</h2>
+                <p className="mt-3 whitespace-pre-wrap text-[15px] leading-relaxed">{l.liabilities}</p>
+              </section>
+            ) : null}
+            {l.history_self_reported ? (
+              <section className="mt-8">
+                <h2 className="text-sm font-semibold uppercase tracking-kicker text-subtle">History (self-reported)</h2>
+                <p className="mt-3 whitespace-pre-wrap text-[15px] leading-relaxed text-muted">{l.history_self_reported}</p>
+              </section>
+            ) : null}
+          </div>
+
+          <div className="lg:col-span-4">
+            <StickyPanel>
+              <div className="rounded-md border border-fg/10 bg-surface/60 p-4">
+                {l.asking_price_minor != null ? (
+                  <>
+                    <MoneyValue minor={Number(l.asking_price_minor)} currency={l.currency} size="xl" className="text-accent" />
+                    <p className="mt-0.5 text-xs text-subtle">asking price</p>
+                  </>
+                ) : (
+                  <p className="text-sm font-medium">Open to offers</p>
+                )}
+              </div>
+
+              {/* Seller controls (status-driven via graveyardControls). */}
+              {data.isSeller ? (
+                <div className="mt-4 space-y-3">
+                  {controls.canPublish ? (
+                    <div className="rounded-md border border-accent/40 bg-raised/40 p-4">
+                      <p className="text-sm font-medium">Publish this listing</p>
+                      <p className="mt-1 text-xs text-muted">It becomes visible in The Graveyard once published.</p>
+                      <Button className="mt-3 w-full" disabled={busy} onClick={() => void run(() => publishListingFn({ data: { listingId: String(l.id) } }), "Listing is live in the graveyard.")}>
+                        Publish
+                      </Button>
+                    </div>
+                  ) : null}
+                  {controls.canMarkTransferred ? (
+                    <Button className="w-full" disabled={busy} onClick={() => void run(() => markTransferredFn({ data: { listingId: String(l.id), checklistConfirmed: true } }), "Marked transferred.")}>
+                      Mark transferred (checklist done)
+                    </Button>
+                  ) : null}
+                  {controls.canWithdraw ? (
+                    <Button variant="danger" size="sm" className="w-full" disabled={busy} onClick={() => void run(() => withdrawListingFn({ data: { listingId: String(l.id) } }), "Listing withdrawn.")}>
+                      Withdraw listing
+                    </Button>
+                  ) : null}
+                </div>
+              ) : null}
+
+              {/* Buyer: offer box. */}
+              {controls.canOffer ? <OfferBox listingId={String(l.id)} currency={l.currency} onDone={(m) => setMessage(m)} /> : null}
+
+              {!data.isSeller && viewerOffer ? (
+                <div className="mt-4 rounded-md border border-fg/10 bg-surface/60 p-4" data-testid="my-offer">
+                  <p className="text-xs font-semibold uppercase tracking-kicker text-subtle">Your offer</p>
+                  <p className="mt-2 flex items-baseline justify-between gap-3 text-sm">
+                    <MoneyValue minor={Number(viewerOffer.amount_minor)} currency={l.currency} />
+                    <StatusBadge status={viewerOffer.status} />
+                  </p>
+                  {controls.canRetractOffer ? (
+                    <Button variant="ghost" size="sm" className="mt-2" disabled={busy} onClick={() => void run(() => retractOfferFn({ data: { offerId: String(viewerOffer.id) } }), "Offer retracted.")}>
+                      Retract offer
+                    </Button>
+                  ) : null}
+                </div>
+              ) : null}
+
+              {/* Seller: all offers. */}
+              {data.isSeller && data.offers.length > 0 ? (
+                <div className="mt-4 rounded-md border border-fg/10 bg-surface/60 p-4" data-testid="seller-offers">
+                  <p className="text-xs font-semibold uppercase tracking-kicker text-subtle">Offers ({data.offers.length})</p>
+                  <ul className="mt-3 space-y-3">
+                    {data.offers.map((o) => (
+                      <li key={o.id} className="border-t border-fg/10 pt-3 first:border-t-0 first:pt-0">
+                        <div className="flex flex-wrap items-baseline justify-between gap-2">
+                          <p className="tabular text-sm font-medium">
+                            <MoneyValue minor={Number(o.amount_minor)} currency={l.currency} size="sm" /> · {statusLabel(o.status)}
+                          </p>
+                          <p className="text-xs text-subtle">
+                            {o.buyer_name ?? "member"}
+                            {o.buyer_handle ? ` (@${o.buyer_handle})` : ""}
+                          </p>
+                        </div>
+                        {o.message ? <p className="mt-1 text-sm text-muted">{o.message}</p> : null}
+                        {o.status === "PENDING" && controls.canDecideOffers ? (
+                          <div className="mt-2 flex gap-2">
+                            <Button
+                              size="sm"
+                              disabled={busy}
+                              onClick={() => void run(() => decideOfferFn({ data: { offerId: String(o.id), decision: "ACCEPT" } }), "Offer accepted. Coordinate the handover directly.")}
+                            >
+                              Accept
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              disabled={busy}
+                              onClick={() => void run(() => decideOfferFn({ data: { offerId: String(o.id), decision: "REJECT" } }), "Offer rejected.")}
+                            >
+                              Reject
+                            </Button>
+                          </div>
+                        ) : null}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+
+              <p className="px-1 text-xs leading-relaxed text-subtle">
+                Accepted offers are commitments completed directly between the buyer and the seller. The platform does not hold funds or credentials.
+              </p>
+            </StickyPanel>
           </div>
         </div>
 
         <JsonLd
-          data={breadcrumbSchema(data.product as ProductKey, [
-            { name: productInfo(data.product as ProductKey).name, url: seoOrigin(data.product as ProductKey) },
-            { name: "The Graveyard", url: `${seoOrigin(data.product as ProductKey)}/graveyard` },
-            { name: l.title, url: `${seoOrigin(data.product as ProductKey)}/graveyard/${l.id}` },
+          data={breadcrumbSchema(pKey, [
+            { name: productInfo(pKey).name, url: origin },
+            { name: "The Graveyard", url: `${origin}/graveyard` },
+            { name: l.title, url: `${origin}/graveyard/${l.id}` },
           ])}
         />
       </div>
@@ -302,17 +297,11 @@ function GraveyardDetailBody({ data }: { data: NonNullable<Awaited<ReturnType<ty
   );
 }
 
-function OfferBox({
-  listingId,
-  onDone,
-}: {
-  listingId: string;
-  onDone: (m: string) => void;
-}) {
+function OfferBox({ listingId, currency, onDone }: { listingId: string; currency: string; onDone: (m: string) => void }) {
   const [busy, setBusy] = useState(false);
   return (
     <form
-      className="rounded-lg border-2 border-fg/20 bg-surface p-5"
+      className="mt-4 rounded-md border border-fg/10 bg-surface/60 p-4"
       data-testid="offer-form"
       onSubmit={async (e) => {
         e.preventDefault();
@@ -329,16 +318,18 @@ function OfferBox({
         onDone(r.ok ? "Offer sent to the seller." : r.message);
       }}
     >
-      <h2 className="text-xs font-medium uppercase tracking-kicker text-subtle">Make an offer</h2>
-      <input name="amountRupees" type="number" required min={1} placeholder="Your offer (₹)" className="mt-3 w-full rounded-md border-2 border-fg/20 bg-surface px-3 py-2.5 text-sm outline-none focus:border-fg/60" />
-      <textarea name="message" rows={3} maxLength={2000} placeholder="Terms or questions (optional)" className="mt-3 w-full rounded-md border-2 border-fg/20 bg-surface p-3 text-sm outline-none focus:border-fg/60" />
-      <button type="submit" disabled={busy} className="mt-3 inline-flex h-10 items-center rounded-md bg-accent px-4 text-sm font-semibold text-accent-fg disabled:opacity-60">
+      <p className="text-sm font-semibold">Make an offer</p>
+      <div className="mt-3 space-y-3">
+        <Field label={`Your offer (₹${currency === "INR" ? "" : ` ${currency}`})`} required id="offer-amount">
+          <Input id="offer-amount" name="amountRupees" type="number" required min={1} className="tabular" />
+        </Field>
+        <Field label="Terms or questions (optional)" id="offer-message">
+          <Textarea id="offer-message" name="message" rows={3} maxLength={2000} />
+        </Field>
+      </div>
+      <Button type="submit" loading={busy} className="mt-4 w-full">
         {busy ? "Sending…" : "Submit offer"}
-      </button>
-      <p className="mt-2 text-xs text-subtle">
-        Accepted offers are commitments completed directly between you and the
-        seller. The platform does not hold funds or credentials.
-      </p>
+      </Button>
     </form>
   );
 }

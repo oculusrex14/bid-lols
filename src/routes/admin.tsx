@@ -153,7 +153,7 @@ function AdminPage() {
             ["money events", d.stats[0]?.monevents],
             ["pending payouts", d.obligations.length],
           ].map(([label, value]) => (
-            <div key={String(label)} className="rounded-md border-2 border-fg/15 bg-surface p-3">
+            <div key={String(label)} className="rounded-md border border-fg/15 bg-surface p-3">
               <p className="text-xs uppercase tracking-kicker text-subtle">{String(label)}</p>
               <p className="mt-1 font-display-site text-xl tracking-tight">{Number(value ?? 0)}</p>
             </div>
@@ -162,7 +162,7 @@ function AdminPage() {
 
         <section className="mt-8">
           <h2 className="text-xs font-medium uppercase tracking-kicker text-subtle">Users</h2>
-          <div className="mt-3 overflow-x-auto rounded-lg border-2 border-fg/15">
+          <div className="mt-3 overflow-x-auto rounded-md border border-fg/15">
             <table className="w-full text-sm" data-testid="admin-users">
               <thead className="bg-raised/50 text-left text-xs uppercase tracking-kicker text-subtle">
                 <tr>
@@ -186,7 +186,7 @@ function AdminPage() {
                               location.reload();
                             }}
                           >
-                            <button className="rounded border-2 border-fg/20 px-2 py-0.5 text-xs">Verify email</button>
+                            <button className="rounded border border-fg/20 px-2 py-0.5 text-xs">Verify email</button>
                           </form>
                         ) : null}
                         {u.banned || u.status === "suspended" ? (
@@ -226,7 +226,7 @@ function AdminPage() {
           ) : (
             <ul className="mt-3 space-y-2">
               {d.disputes.map((dispute) => (
-                <li key={String(dispute.id)} className="rounded-md border-2 border-fg/15 bg-surface p-3 text-sm">
+                <li key={String(dispute.id)} className="rounded-md border border-fg/15 bg-surface p-3 text-sm">
                   <p className="font-medium">
                     {String(dispute.work_type)} · {String(dispute.status)} · claimant {String(dispute.claimant_email ?? dispute.claimant_user_id)}
                   </p>
@@ -246,8 +246,8 @@ function AdminPage() {
                       location.reload();
                     }}
                   >
-                    <input name="resolution" placeholder="Resolution note (audited)" className="h-8 rounded-md border-2 border-fg/20 bg-surface px-2 text-xs" />
-                    <button className="inline-flex h-7 items-center rounded-md border-2 border-fg/20 px-2 text-xs font-medium">Resolve</button>
+                    <input name="resolution" placeholder="Resolution note (audited)" className="h-8 rounded-md border border-fg/20 bg-surface px-2 text-xs" />
+                    <button className="inline-flex h-7 items-center rounded-md border border-fg/20 px-2 text-xs font-medium">Resolve</button>
                   </form>
                 </li>
               ))}
@@ -257,7 +257,7 @@ function AdminPage() {
 
         <section className="mt-8">
           <h2 className="text-xs font-medium uppercase tracking-kicker text-subtle">Payments</h2>
-          <div className="mt-3 overflow-x-auto rounded-lg border-2 border-fg/15">
+          <div className="mt-3 overflow-x-auto rounded-md border border-fg/15">
             <table className="w-full text-sm">
               <thead className="bg-raised/50 text-left text-xs uppercase tracking-kicker text-subtle">
                 <tr><th className="p-2">Product</th><th className="p-2">Kind</th><th className="p-2">Status</th><th className="p-2">Amount</th><th className="p-2">Created</th></tr>

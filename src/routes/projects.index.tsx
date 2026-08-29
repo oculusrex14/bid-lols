@@ -1,17 +1,24 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { currentProductKey, product, seoOrigin, type ProductKey } from "@/lib/host";
-import { shellContext } from "@/lib/shell-context";
 import { ProductShell } from "@/components/product-shell";
 import { getSql } from "@/lib/db.server";
 import { listOpenProjects } from "@/lib/marketplace/queries.server";
 import { formatMinor } from "@/lib/money";
+import { statusLabel } from "@/lib/marketplace/status-labels";
+import { deadlinePhrase, absoluteDate } from "@/lib/reltime";
 import { JsonLd } from "@/components/seo";
 import { itemListSchema } from "@/lib/schema";
+import { PageHeader } from "@/components/ui/layout";
+import { StatusBadge } from "@/components/ui/status";
+import { EmptyState } from "@/components/ui/states";
+import { ButtonLink } from "@/components/ui/button";
 
 /**
- * /projects — public project listing (Phase 01, FR-3). Providers propose
- * first, the sponsor selects one, then delivery runs through milestones.
+ * /projects — public project listing (Phase 01, FR-3; RC3, S-24).
+ * Providers propose first, the sponsor selects one, delivery runs through
+ * the published milestones. Budget range is the decision data, surfaced
+ * like a reward.
  */
 const loadProjects = createServerFn({ method: "GET" }).handler(async () => {
   const sql = await getSql();
@@ -26,90 +33,70 @@ export const Route = createFileRoute("/projects/")({
   component: ProjectsPage,
 });
 
+function budgetText(p: Awaited<ReturnType<typeof loadProjects>>["items"][number]): string {
+  if (p.budget_min_minor && p.budget_max_minor) {
+    return `${formatMinor(Number(p.budget_min_minor), String(p.currency))} – ${formatMinor(Number(p.budget_max_minor), String(p.currency))}`;
+  }
+  if (p.budget_min_minor) return `from ${formatMinor(Number(p.budget_min_minor), String(p.currency))}`;
+  return "Open brief";
+}
+
 function ProjectsPage() {
   const data = Route.useLoaderData();
   const pKey = data.product as ProductKey;
 
   return (
     <ProductShell site={pKey} me={data.me}>
-      <div className="mx-auto max-w-5xl px-4 py-10">
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <p className="text-xs font-medium uppercase tracking-kicker text-subtle">
-              {product(pKey).name}
-            </p>
-            <h1 className="mt-1 font-display-site text-2xl tracking-tight sm:text-3xl">
-              Open projects
-            </h1>
-            <p className="mt-1 max-w-2xl text-sm leading-relaxed text-muted">
-              Larger work, run proposal first. Providers describe their
-              approach, evidence, and milestones before doing any deliverable
-              work. The sponsor selects one provider, funds the project, and
-              delivery runs through the published milestones.
-            </p>
-          </div>
-          <Link
-            to="/projects/new"
-            className="inline-flex h-10 items-center rounded-md bg-accent px-4 text-sm font-semibold text-accent-fg"
-          >
-            Post a project
-          </Link>
-        </div>
+      <div className="canvas-wide pb-16">
+        <PageHeader
+          kicker={product(pKey).name}
+          title="Open projects"
+          lead="Larger work, run proposal first. Providers describe their approach, evidence, and milestones before doing any deliverable work. The sponsor selects one provider, funds the project, and delivery runs through the published milestones."
+          actions={
+            <ButtonLink href="/projects/new" variant="secondary">
+              Post a project
+            </ButtonLink>
+          }
+        />
 
         {data.items.length === 0 ? (
-          <div className="mt-10 rounded-lg border-2 border-dashed border-fg/20 bg-surface p-10 text-center">
-            <h2 className="font-display-site text-xl tracking-tight">
-              No open projects yet.
-            </h2>
-            <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-muted">
-              A project is bounded work with one selected provider: proposals
-              come in, the sponsor picks one, and the work is funded before it
-              begins. The first live projects will appear here.
-            </p>
-            <div className="mt-5 flex flex-wrap justify-center gap-3">
-              <Link to="/projects/new" className="inline-flex h-10 items-center rounded-md bg-accent px-4 text-sm font-semibold text-accent-fg">
-                Post a project
-              </Link>
-              <Link to="/blog/$slug" params={{ slug: "bounty-or-project" }} className="inline-flex h-10 items-center rounded-md border-2 border-fg/20 px-4 text-sm font-medium">
-                Bounty or project: how the two modes differ
-              </Link>
-            </div>
-          </div>
+          <EmptyState
+            title="No open projects yet."
+            body="A project is bounded work with one selected provider: proposals come in, the sponsor picks one, and the work is funded before it begins. The first live projects will appear here."
+            action={
+              <>
+                <ButtonLink href="/projects/new" size="sm">
+                  Post a project
+                </ButtonLink>
+                <ButtonLink href="/blog/bounty-or-project" variant="secondary" size="sm">
+                  Bounty or project: how the two modes differ
+                </ButtonLink>
+              </>
+            }
+          />
         ) : (
-          <ul className="mt-6 space-y-3">
+          <div className="mt-6">
             {data.items.map((p) => (
-              <li key={String(p.id)}>
-                <Link
-                  to="/projects/$id"
-                  params={{ id: String(p.id) }}
-                  className="block rounded-lg border-2 border-fg/15 bg-surface p-4 transition-colors hover:border-fg/40"
-                >
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="text-xs font-medium uppercase tracking-kicker text-subtle">
-                        {String(p.category)} · {String(p.status)}
-                      </p>
-                      <h2 className="mt-1 truncate font-display-site text-lg tracking-tight">{String(p.title)}</h2>
-                      {p.proposal_deadline ? (
-                        <p className="mt-1 text-sm text-muted">
-                          proposals due {new Date(String(p.proposal_deadline)).toISOString().slice(0, 10)}
-                        </p>
-                      ) : null}
-                    </div>
-                    <div className="text-right">
-                      <p className="font-display-site text-lg tracking-tight text-accent">
-                        {p.budget_min_minor && p.budget_max_minor
-                          ? `${formatMinor(Number(p.budget_min_minor), String(p.currency))} – ${formatMinor(Number(p.budget_max_minor), String(p.currency))}`
-                          : p.budget_min_minor
-                            ? `from ${formatMinor(Number(p.budget_min_minor), String(p.currency))}`
-                            : "Open brief"}
-                      </p>
-                    </div>
-                  </div>
-                </Link>
-              </li>
+              <Link
+                key={String(p.id)}
+                to="/projects/$id"
+                params={{ id: String(p.id) }}
+                className="row-line group flex flex-wrap items-center gap-x-4 gap-y-1 px-1 py-4 transition-colors duration-150 hover:bg-surface/70"
+              >
+                <span className="w-40 shrink-0 tabular text-base font-semibold text-accent">{budgetText(p)}</span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-[15px] font-semibold group-hover:underline group-hover:underline-offset-4">
+                    {String(p.title)}
+                  </span>
+                  <span className="mt-0.5 block text-xs text-muted">
+                    {String(p.category)} · {statusLabel(String(p.status))}
+                    {p.proposal_deadline ? ` · proposals ${deadlinePhrase(String(p.proposal_deadline))}` : ""}
+                  </span>
+                </span>
+                <StatusBadge status={String(p.status)} className="sm:hidden" />
+              </Link>
             ))}
-          </ul>
+          </div>
         )}
 
         {data.items.length > 0 ? (
