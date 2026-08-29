@@ -78,7 +78,11 @@ async function host(browser) {
       const text = await page.textContent("h1");
       const norm = (t) => (t ?? "").replace(/\s+/g, " ").trim();
       const cs = await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue("--accent").trim());
-      ok(`home ${host}: h1 + accent`, norm(text).includes(norm(h1)) && cs === accent, `${norm(text)} / ${cs}`);
+      // Prefix, not substring: a stray artifact prepended to the H1 (the "');"
+      // typo that shipped on the founders home) must fail, while homes whose H1
+      // carries an extra span clause still pass. No code punctuation in an H1.
+      const clean = !/[);{}]|=>/.test(norm(text));
+      ok(`home ${host}: h1 + accent`, norm(text).startsWith(norm(h1)) && clean && cs === accent, `${norm(text)} / ${cs}`);
       ok(`home ${host}: zero page errors`, errors.length === 0, errors[0] ?? "");
     }
 

@@ -99,7 +99,6 @@ function HomeHero({ me, openItems }: { me: ShellMe | null | undefined; openItems
           <div className="lg:col-span-7">
             <Kicker>FoundersBid</Kicker>
             <h1 className="mt-4 font-display-site text-4xl leading-none tracking-tight sm:text-5xl lg:text-6xl">
-  );
               Get startup work done{" "}
               <span className="block text-subtle">without hiring a whole team.</span>
             </h1>
