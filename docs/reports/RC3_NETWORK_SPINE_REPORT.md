@@ -1,12 +1,13 @@
 # RC3 NETWORK SPINE / UI V2 — RELEASE REPORT
 
-**Status:** IN PROGRESS (this file is completed at release; see the checklist at the bottom for the verified state)
+**Status:** IMPLEMENTATION VERIFIED — release/deploy section completed after the production cut.
 
 ## Release
 
-- Final SHA: (filled at release)
-- Production deployment: (filled at release)
-- Production verification: (filled at release)
+- Branch: `rc3-network-spine` (6 commits ahead of `main` @ `7315ad0`); final
+  pre-release SHA: (below — filled at merge/deploy)
+
+## Release
 
 ## Correctness fixes
 
