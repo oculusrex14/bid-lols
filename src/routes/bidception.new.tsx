@@ -2,9 +2,10 @@ import { useState } from "react";
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { currentProductKey } from "@/lib/host";
-import { shellContext } from "@/lib/shell-context";
 import { ProductShell } from "@/components/product-shell";
 import { createParentWorkFn } from "@/lib/marketplace/bidception";
+import { Button } from "@/components/ui/button";
+import { Field, Input, Textarea } from "@/components/ui/field";
 
 /**
  * /bidception/new — sponsor creates a parent work and starts funding.
@@ -21,9 +22,6 @@ export const Route = createFileRoute("/bidception/new")({
   loader: () => loadNew(),
   component: NewParentPage,
 });
-
-const field =
-  "w-full rounded-md border border-fg/20 bg-surface px-3 py-2.5 text-sm outline-none focus:border-fg/60";
 
 function NewParentPage() {
   const d = Route.useLoaderData();
@@ -60,7 +58,7 @@ function NewParentPage() {
 
   return (
     <ProductShell site={d.product} me={d.me}>
-      <div className="mx-auto max-w-3xl px-4 py-10">
+      <div className="canvas-prose py-10">
         <p className="text-xs font-medium uppercase tracking-kicker text-subtle">Sponsor</p>
         <h1 className="mt-1 font-display-site text-2xl tracking-tight sm:text-3xl">Start a team project</h1>
         <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted">
@@ -70,21 +68,19 @@ function NewParentPage() {
         </p>
         <form onSubmit={onSubmit} noValidate className="mt-6 rounded-md border border-fg/20 bg-surface p-5" data-testid="create-parent-form">
           <div className="grid gap-4">
-            <div>
-              <label htmlFor="bce-title" className="mb-1.5 block text-sm font-medium">Title</label>
-              <input id="bce-title" name="title" required minLength={8} maxLength={140} placeholder="Launch campaign: page, video, outreach" className={field} />
-            </div>
-            <div>
-              <label htmlFor="bce-obj" className="mb-1.5 block text-sm font-medium">Objective</label>
-              <textarea id="bce-obj" name="objective" rows={5} required minLength={20} maxLength={20000} placeholder="What does done look like? Scope, constraints, deadline." className={field} />
-            </div>
+            <Field label="Title" id="bce-title" required>
+              <Input id="bce-title" name="title" required minLength={8} maxLength={140} placeholder="Launch campaign: page, video, outreach" />
+            </Field>
+            <Field label="Objective" id="bce-obj" required>
+              <Textarea id="bce-obj" name="objective" rows={5} required minLength={20} maxLength={20000} placeholder="What does done look like? Scope, constraints, deadline." />
+            </Field>
           </div>
           {status.state === "error" ? (
             <p role="alert" className="mt-3 text-sm font-medium text-danger">{status.message}</p>
           ) : null}
-          <button type="submit" disabled={status.state === "working"} className="mt-5 inline-flex h-11 items-center justify-center rounded-md bg-accent px-6 text-sm font-semibold text-accent-fg disabled:opacity-60">
-            {status.state === "working" ? "Creating…" : "Create parent work (draft)"}
-          </button>
+          <Button type="submit" size="md" loading={status.state === "working"} className="mt-5">
+            Create parent work (draft)
+          </Button>
           <p className="mt-2 text-xs text-subtle">
             Drafts are free. Funding happens on the parent's page when payments
             are enabled; until then the draft stays a draft.

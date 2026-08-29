@@ -1,14 +1,23 @@
 # 03_DESIGN_SYSTEM.md — Bid Network Design System
 
-**Status:** Compact, implementation-oriented design system for the four Bid Network products, grounded in the existing codebase. Not a brand manual.
+**Status:** Compact, implementation-oriented design system for the four Bid Network products, grounded in the existing codebase. Not a brand manual. Updated for the RC3 Network Spine: the spine primitives in `src/components/ui/` are the only control skin; raw hex and raw control markup in component code are drift.
 
 ## Shared UI Foundation
 
-- One design system, four products. Differentiation is via **token values + copy**, not new components: per-domain `data-theme` plus light/dark `data-mode` — all four products support both.
-- Semantic roles only (already in `@theme`): `bg / surface / raised / fg / muted / subtle / accent / accent-fg / border / ring / up / danger`. Component code uses token utilities only — no raw hex outside `styles.css`.
-- Kept utilities: `.hairline`, `.tabular`, `.sr-only`, `.grid-veil` (optional decorative backdrop).
-- Motion: 150/250/400ms tokens, one ease-out curve, stagger capped at 160ms; `prefers-reduced-motion` disables all.
+- One design system, four products. Differentiation is via **token values + copy**, not new components: `data-theme` on `<html>` (rendered at SSR by the root loader from the request host) plus light/dark `data-mode` — all four products support both, in light **and** dark. Dark palettes are product-aware via `html[data-mode="dark"][data-theme="…"]` (compound on the element that owns both attributes).
+- Semantic roles only (`@theme` in `src/styles.css`): `bg / surface / raised / fg / muted / subtle / accent / accent-fg / accent-soft / border / ring / up / danger / warn`. Component code uses token utilities only — no raw hex outside `styles.css` (favicon SVG and the `theme-color` meta value are the only exceptions, both host-derived).
+- Kept utilities: `.tabular`, `.sr-only`, `.row-line` (1px row separator), `.skeleton`, `.rise-in`. Canvas wrappers: `.canvas-wide` (1240px marketplace), `.canvas-app` (1080px application), `.canvas-prose` (720px forms/articles) — pages pick exactly one; raw `max-w-*` page containers are drift.
+- **No drop shadows anywhere** (RC3). Elevation = 1px hairline borders + `surface`/`raised` tokens. `border-2` is reserved for selected states (e.g. the active market tab); never for cards or dividers.
+- Radii: controls 8px (`rounded-sm`), cards 12px (`rounded-md`), pills only for status chips. Off-scale radii (16px cards, 12px buttons) are drift.
+- Motion: 150/250ms tokens, one ease-out curve; `prefers-reduced-motion` disables all.
 - Cashfree checkout keeps its own provider skin (`data-gateway="cashfree"`) — third-party context, never blended with product tokens.
+
+## Spine primitives (single source for control skin)
+
+- `Button` / `ButtonLink` (`ui/button`): the only button markup. Sizes sm/md/lg = h-8/h-10/h-12, `rounded-sm`, hover + active states, `loading` variant preserves the label.
+- `Field` / `Input` / `Textarea` / `Select` / `CheckRow` (`ui/field`): h-10 controls, `rounded-sm`, `border-fg/20`, `focus:border-fg/50`, `placeholder:text-subtle`, errors via `aria-describedby`; checkbox/radio fill = `accent` (never `fg`).
+- `StatusBadge` (`ui/status`), `MoneyValue` / `formatMinor` (`ui/money`), `Avatar` (`ui/identity`), empty/error/notice states (`ui/states`), `SectionHeader` (`ui/layout`), `BudgetBar` (`ui/data`), `ReviewCard` (`ui/review`).
+- A component that writes raw `<input>` / raw `<button>` with its own class string is a bug by construction; the RC3 style pass (2026-08-29) eliminated the last legacy skins (auth, profile, waitlist, create-parent, 404, legal, admin, post-chooser).
 
 ## Typography
 
@@ -20,31 +29,31 @@
 ## Spacing
 
 - 4px base grid (Tailwind scale): 8px inside components, 16px between, 24–32px section spacing, 48–64px between page-level sections.
-- Whitespace is the primary hierarchy device; dividers are hairlines, used sparingly (the masthead's 3px/1px ink rules are the one allowed strong rule).
+- Whitespace is the primary hierarchy device; dividers are 1px hairlines (`border-fg/10`–`/20`), used sparingly. There are no strong ink rules in the spine (the legacy masthead's 3px rule is retired).
 
 ## Layout
 
-- Centered `max-w-6xl` column, `px-4` mobile / `px-5+` desktop — existing shell rhythm kept.
-- Sticky `h-14` header; content-first, no hero-heavy layouts. Complex detail views: primary content + sticky meta/actions sidebar.
-- Domain chrome = one shared `SiteShell`, parameterized by domain config (wordmark, nav, CTA, tagline, empty-state copy).
+- Centered canvas column — one of `.canvas-wide` (1240px, marketplaces), `.canvas-app` (1080px, application surfaces), `.canvas-prose` (720px, forms/articles), `px-4` mobile / `px-5` desktop. Raw `max-w-*` page containers are drift.
+- Sticky `h-14` header (1px bottom hairline, `bg-surface/95 backdrop-blur`); content-first, no hero-heavy layouts. Complex detail views: primary content + sticky meta/actions sidebar.
+- Domain chrome = one shared `ProductShell` (`src/components/product-shell.tsx`), parameterized by host config (wordmark, nav, CTA, tagline, empty-state copy).
 
 ## Cards
 
-- One card style for everything (bounties, listings, profiles): `bg-surface`, `rounded-lg`, `.hairline`, 16–24px padding. `raised` on hover/active; no drop shadows, glassmorphism, or gradients.
+- One card style for everything (bounties, listings, profiles): `bg-surface`, `rounded-md` (12px), 1px `border-fg/15`–`border-fg/20`, 16–24px padding. Hover rows use `bg-surface/70` or `raised`, not shadows. No drop shadows, glassmorphism, or gradients anywhere.
 - Hierarchy: title (display font) → meta (`muted`) → body → footer row (actions left, meta right).
 
 ## Forms
 
-- Keep `Input`/`Textarea` (`h-11`, `bg-raised`, `.hairline`, ring focus) and `Field` (visible `sm` label, `xs/subtle` hint); add `Select`/checkbox/radio from the existing Radix deps, same skin.
-- Server-side zod validation is the source of truth; client hints only; field errors: `danger` `xs` under the field, `aria-describedby`.
+- Use the spine `Field`/`Input`/`Textarea`/`Select`/`CheckRow` primitives only: `h-10` controls, `rounded-sm` (8px), `bg-surface`, `border-fg/20`, `focus:border-fg/50`, `placeholder:text-subtle`, global `:focus-visible` ring (never `outline-none` on a control). `Field` carries the visible `sm` label + `xs/subtle` hint + `danger` error wired via `aria-describedby`.
+- Checkbox/radio fill is the product `accent`, not `fg`.
+- Server-side zod validation is the source of truth; client hints only.
 - Money is never free-typed: amounts are server-computed and labeled; the user confirms, never enters, a payment-critical amount.
 - One primary action per form; destructive actions use `danger` plus a confirmation dialog.
 
 ## Buttons
 
-- Keep the 4-variant `Button` (`primary`/`outline`/`ghost`/`danger`): `h-11` (44px target), `rounded-md`, focus ring, disabled opacity.
-- Add one state: **loading** (spinner + disabled, label preserved). No new variants.
-- Money CTAs use `primary` and state the server-verified price (e.g. "Fund ₹5,000"); unverified states get no money CTA.
+- One `Button`/`ButtonLink` pair, 4 variants (`primary`/`secondary`/`ghost`/`danger`): `rounded-sm` (8px), sizes sm/md/lg = h-8/h-10/h-12, global focus ring, disabled opacity, `loading` variant (spinner + disabled, label preserved). Money CTAs use `primary` and state the server-verified price; unverified states get no money CTA.
+- The header CTA and hero CTAs are the same component (`ButtonLink`); raw anchor/button markup with its own class string is drift and should not reappear.
 
 ## Status Badges
 

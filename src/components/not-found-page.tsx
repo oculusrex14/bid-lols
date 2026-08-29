@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { linkOrigin, product, PRODUCT_KEYS } from "@/lib/host";
+import { ButtonLink } from "@/components/ui/button";
 
 /**
  * Branded not-found page (Phase 00.5, AC-6.4). Wired as the router's
@@ -34,7 +35,7 @@ export function NotFoundPage() {
   }, []);
 
   return (
-    <div className="mx-auto flex min-h-[60vh] w-full max-w-3xl flex-col items-start justify-center px-4 py-20 sm:px-5">
+    <div className="canvas-prose flex min-h-[60vh] flex-col items-start justify-center py-20">
       <p className="font-mono text-sm text-subtle">404</p>
       <h1 className="mt-3 font-display-site text-5xl leading-none tracking-tight sm:text-6xl">
         This page does not exist.
@@ -57,12 +58,9 @@ export function NotFoundPage() {
         ))}
       </div>
 
-      <a
-        href="/"
-        className="mt-10 inline-flex h-11 items-center rounded-md bg-accent px-5 text-sm font-semibold text-accent-fg"
-      >
+      <ButtonLink href="/" size="md" className="mt-10">
         Back to home
-      </a>
+      </ButtonLink>
     </div>
   );
 }

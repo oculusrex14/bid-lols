@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { Check, Loader2 } from "lucide-react";
+import { Check } from "lucide-react";
 import { product, type ProductKey } from "@/lib/host";
 import { joinFoundingAccess } from "@/lib/waitlist";
 import { WAITLIST_CONSENT_TEXT, type WaitlistRole } from "@/lib/waitlist-shared";
-import { cn } from "@/lib/cn";
+import { Button } from "@/components/ui/button";
+import { CheckRow, Field, Input, Select } from "@/components/ui/field";
 
 /**
  * Founding-access capture (Phase 00.5, WS3). The smallest truthful conversion
@@ -82,6 +83,7 @@ export function FoundingAccess({
       : options[0].value,
   );
   const [status, setStatus] = useState<Status>({ state: "idle" });
+  const [consent, setConsent] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
 
   // The CTAs above preset the role without a full page reload.
@@ -103,7 +105,7 @@ export function FoundingAccess({
         data: {
           email: String(data.get("email") ?? ""),
           role,
-          consent: data.get("consent") === "on",
+          consent,
           company: data.get("company") ? String(data.get("company")) : undefined,
         },
       });
@@ -154,6 +156,8 @@ export function FoundingAccess({
             error={status.state === "error" ? status.message : null}
             role={role}
             setRole={setRole}
+            consent={consent}
+            setConsent={setConsent}
             options={options}
             ctaLabel={ctaLabel ?? "Notify me"}
           />
@@ -194,6 +198,8 @@ function CaptureForm({
   error,
   role,
   setRole,
+  consent,
+  setConsent,
   options,
   ctaLabel,
 }: {
@@ -203,45 +209,39 @@ function CaptureForm({
   error: string | null;
   role: WaitlistRole;
   setRole: (r: WaitlistRole) => void;
+  consent: boolean;
+  setConsent: (v: boolean) => void;
   options: Array<{ value: WaitlistRole; label: string }>;
   ctaLabel: string;
 }) {
-  const inputClasses = "h-10 w-full rounded-md border border-fg/20 bg-surface px-3 text-sm outline-none focus:border-fg/50";
   return (
 
           <form ref={formRef} onSubmit={onSubmit} noValidate className="mt-5">
             <div className="grid gap-4 sm:grid-cols-2">
-              <div>
-                <label htmlFor="fa-email" className="mb-1.5 block text-sm font-medium">
-                  Email
-                </label>
-                <input
+              <Field label="Email" id="fa-email" required>
+                <Input
                   id="fa-email"
                   name="email"
                   type="email"
                   required
                   autoComplete="email"
                   placeholder="you@example.com"
-                  className={inputClasses}
                 />
-              </div>
-              <div>
-                <label htmlFor="fa-role" className="mb-1.5 block text-sm font-medium">
-                  I'm here as…
-                </label>
-                <select
+              </Field>
+              <Field label="I'm here as…" id="fa-role" required>
+                <Select
                   id="fa-role"
+                  name="role"
                   value={role}
                   onChange={(e) => setRole(e.target.value as WaitlistRole)}
-                  className={inputClasses}
                 >
                   {options.map((o) => (
                     <option key={o.value} value={o.value}>
                       {o.label}
                     </option>
                   ))}
-                </select>
-              </div>
+                </Select>
+              </Field>
             </div>
 
             {/* Honeypot: off-screen, unfocusable, invisible to people. */}
@@ -259,15 +259,14 @@ function CaptureForm({
               />
             </div>
 
-            <label className="mt-4 flex cursor-pointer items-start gap-3 text-sm text-muted">
-              <input
+            <div className="mt-4">
+              <CheckRow
                 type="checkbox"
-                name="consent"
-                required
-                className="mt-0.5 size-4 shrink-0 accent-[var(--fg)]"
+                checked={consent}
+                onChange={setConsent}
+                label={WAITLIST_CONSENT_TEXT + "."}
               />
-              <span>{WAITLIST_CONSENT_TEXT}.</span>
-            </label>
+            </div>
 
             {error ? (
               <p role="alert" className="mt-3 text-sm font-medium text-danger">
@@ -275,23 +274,9 @@ function CaptureForm({
               </p>
             ) : null}
 
-            <button
-              type="submit"
-              disabled={busy}
-              className={cn(
-                "mt-5 inline-flex h-11 items-center justify-center gap-2 rounded-md bg-accent px-5 text-sm font-semibold text-accent-fg",
-                "disabled:cursor-not-allowed disabled:opacity-60",
-              )}
-            >
-              {busy ? (
-                <>
-                  <Loader2 className="size-4 animate-spin" aria-hidden="true" />
-                  Saving…
-                </>
-              ) : (
-                ctaLabel
-              )}
-            </button>
+            <Button type="submit" size="md" loading={busy} className="mt-5">
+              {ctaLabel}
+            </Button>
           </form>
   );
 }

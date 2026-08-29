@@ -1,7 +1,6 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { currentProductKey } from "@/lib/host";
-import { shellContext } from "@/lib/shell-context";
 import { ProductShell } from "@/components/product-shell";
 import { ProfileFormLoader } from "@/components/profile-form";
 
@@ -26,7 +25,7 @@ function SettingsProfilePage() {
   const { product: site, me } = Route.useLoaderData();
   return (
     <ProductShell site={site} me={me}>
-      <div className="mx-auto max-w-3xl px-4 py-10">
+      <div className="canvas-app py-10">
         <p className="text-xs font-medium uppercase tracking-kicker text-subtle">
           Your account
         </p>

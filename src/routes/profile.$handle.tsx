@@ -48,7 +48,7 @@ function ProfilePage() {
     Boolean(p.githubUrl || p.linkedinUrl || p.websiteUrl);
   return (
     <ProductShell site={d.product} me={d.me}>
-      <div className="mx-auto max-w-3xl px-4 py-10">
+      <div className="canvas-app py-10">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <p className="text-xs font-medium uppercase tracking-kicker text-subtle">

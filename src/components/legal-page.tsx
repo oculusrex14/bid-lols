@@ -2,6 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { contactEmail, legalDoc, type LegalSlug } from "@/lib/legal";
 import { product, type ProductKey } from "@/lib/host";
 import { LegalLinks } from "@/components/legal-links";
+import { ButtonLink } from "@/components/ui/button";
 
 export function LegalPage({
   productKey,
@@ -23,12 +24,9 @@ export function LegalPage({
       <p className="mt-2 text-xs text-subtle">Updated {doc.updated}</p>
       <p className="mt-5 text-muted">{doc.intro}</p>
       {slug === "contact" ? (
-        <a
-          href={`mailto:${email}`}
-          className="mt-6 inline-flex h-11 items-center rounded-md bg-accent px-4 text-sm font-medium text-accent-fg"
-        >
+        <ButtonLink href={`mailto:${email}`} size="md" className="mt-6">
           {email}
-        </a>
+        </ButtonLink>
       ) : null}
       {doc.blocks.map((block) => (
         <section key={block.heading ?? block.body[0]} className="mt-8">

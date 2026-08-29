@@ -2,6 +2,7 @@ import { createFileRoute, redirect } from "@tanstack/react-router";
 import { ProductShell } from "@/components/product-shell";
 import { currentProductKey } from "@/lib/host";
 import { marketplaceShell } from "@/lib/shell-context";
+import { ButtonLink } from "@/components/ui/button";
 
 /**
  * /post — FoundersBid quick choice (RC3, S-7.3). "Post work" must not dump
@@ -30,7 +31,7 @@ function PostChooser() {
   const { product, me } = Route.useLoaderData();
   return (
     <ProductShell site={product} me={me}>
-      <div className="mx-auto w-full max-w-3xl px-4 py-14 sm:px-5">
+      <div className="canvas-prose py-14">
         <h1 className="font-display-site text-3xl tracking-tight sm:text-4xl">Post work</h1>
         <p className="mt-3 max-w-2xl text-base leading-relaxed text-muted">
           FoundersBid runs two kinds of listing. They look similar, but the
@@ -50,12 +51,9 @@ function PostChooser() {
               submits their best attempt. You review the submissions and pick
               the winner.
             </p>
-            <a
-              href="/bounties/new"
-              className="mt-5 inline-flex h-11 items-center justify-center rounded-md bg-accent px-4 text-sm font-semibold text-accent-fg"
-            >
+            <ButtonLink href="/bounties/new" size="md" className="mt-5 w-full">
               Post a bounty
-            </a>
+            </ButtonLink>
           </section>
 
           <section className="flex flex-col rounded-md border border-fg/15 bg-surface p-5">
@@ -69,12 +67,9 @@ function PostChooser() {
               funded after selection and runs through the milestones, each
               paid when you approve it.
             </p>
-            <a
-              href="/projects/new"
-              className="mt-5 inline-flex h-11 items-center justify-center rounded-md border border-fg/30 px-4 text-sm font-semibold hover:border-fg/60"
-            >
+            <ButtonLink href="/projects/new" variant="secondary" size="md" className="mt-5 w-full">
               Post a project
-            </a>
+            </ButtonLink>
           </section>
         </div>
 

@@ -123,7 +123,11 @@
   --font-display-active: var(--font-meta);
 }
 
-/* ---- Dark mode (product-aware, not a blanket invert) -------------------- */
+/* ---- Dark mode (product-aware, not a blanket invert) --------------------
+   data-theme is rendered on <html> (SSR, see __root.tsx), so each product's
+   dark skin is a compound same-element selector: html[data-mode="dark"][data-theme="…"].
+   A descendant form would theme the shell subtree but leave the page/body
+   chrome on the default (bidthrone) dark palette. */
 html[data-mode="dark"] {
   /* bidthrone dark */
   --bg: #0a0a0a;
@@ -143,7 +147,7 @@ html[data-mode="dark"] {
   --font-display-active: var(--font-display);
 }
 
-html[data-mode="dark"] [data-theme="founders"] {
+html[data-mode="dark"][data-theme="founders"] {
   --bg: #1a1612;
   --surface: #221e19;
   --raised: #2c2620;
@@ -158,7 +162,7 @@ html[data-mode="dark"] [data-theme="founders"] {
   --font-display-active: var(--font-display);
 }
 
-html[data-mode="dark"] [data-theme="culture"] {
+html[data-mode="dark"][data-theme="culture"] {
   --bg: #141613;
   --surface: #1c1e1a;
   --raised: #252822;
@@ -173,7 +177,7 @@ html[data-mode="dark"] [data-theme="culture"] {
   --font-display-active: var(--font-sans);
 }
 
-html[data-mode="dark"] [data-theme="bidception"] {
+html[data-mode="dark"][data-theme="bidception"] {
   --bg: #09090b;
   --surface: #121214;
   --raised: #18181b;

@@ -662,7 +662,11 @@ export function sitemapXml(productKey, entries = []) {
 export function injectNotFoundTheme(html, productKey) {
   const theme = product(productKey).theme;
   if (!theme) return String(html ?? "");
-  return String(html ?? "").replace(/<html\b/, `<html data-theme="${theme}"`);
+  const doc = String(html ?? "");
+  // Idempotent: the root document (SSR) already renders data-theme on <html>
+  // for the request host; only inject when that pass missed it.
+  if (/<html\b[^>]*\bdata-theme="/.test(doc)) return doc;
+  return doc.replace(/<html\b/, `<html data-theme="${theme}"`);
 }
 
 /**

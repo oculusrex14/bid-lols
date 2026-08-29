@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useLocation } from "@tanstack/react-router";
-import { ChevronDown, Circle, List } from "lucide-react";
+import { ChevronDown, Circle, List, Menu, X } from "lucide-react";
 import { pageTitleFor, product, PRODUCT_KEYS, linkOrigin, THEME_COLORS, type ProductKey } from "@/lib/host";
 import { readMode, type Mode } from "@/lib/mode";
 import { ModeToggle } from "@/components/mode-toggle";
@@ -150,8 +150,11 @@ export function ProductShell({
         : "text-muted hover:text-fg",
     );
 
+  // The product skin lives on <html> (SSR via the root loader + the effect
+  // below), so every surface — body background, header, footer — themes as
+  // one. No duplicate data-theme on this wrapper.
   return (
-    <div data-theme={cfg.theme ?? undefined} className="flex min-h-screen flex-col">
+    <div className="flex min-h-screen flex-col">
       <a
         href="#content"
         className="sr-only focus:not-sr-only focus:absolute focus:left-3 focus:top-3 focus:z-50 focus:rounded-sm focus:bg-raised focus:px-3 focus:py-2 focus:text-sm"
@@ -239,7 +242,8 @@ function MobileNav({
             onClick={onClose}
             className={cn(
               "rounded-sm px-2 py-2.5 text-sm",
-              isNavActive(pathname, item.href) && "font-semibold text-accent",
+              isNavActive(pathname, item.href) &&
+                "font-semibold text-accent underline decoration-2 underline-offset-4",
             )}
           >
             {item.label}
@@ -357,7 +361,7 @@ function NetworkSwitcher({
                   <div
                     role="menu"
                     aria-label="Bid Network products"
-                    className="absolute left-0 top-full z-20 mt-1.5 w-72 rounded-md border border-fg/15 bg-surface p-1 shadow-lg"
+                    className="absolute left-0 top-full z-20 mt-1.5 w-72 rounded-md border border-fg/15 bg-surface p-1"
                   >
                     {PRODUCT_KEYS.map((key) => (
                       <a
@@ -430,21 +434,21 @@ function AccountArea({
                 )}
                 <a
                   href={cta.href}
-                  className="inline-flex h-9 items-center rounded-sm bg-accent px-3.5 text-sm font-semibold text-accent-fg transition-colors duration-150 hover:bg-accent/90"
+                  className="inline-flex h-10 items-center rounded-sm bg-accent px-3.5 text-sm font-semibold text-accent-fg transition-colors duration-150 hover:bg-accent/90 active:bg-accent/80"
                   data-testid="primary-cta"
                 >
                   {cta.label}
                 </a>
                 <ModeToggle variant="icon" />
-                {/* mobile menu toggle */}
+                {/* mobile menu toggle: spine icon control (no text glyph) */}
                 <button
                   type="button"
                   aria-expanded={menuOpen}
                   aria-label={menuOpen ? "Close menu" : "Open menu"}
                   onClick={onToggleMenu}
-                  className="inline-flex size-10 items-center justify-center rounded-sm border border-fg/20 md:hidden"
+                  className="inline-flex size-10 items-center justify-center rounded-sm text-muted transition-colors duration-150 hover:text-fg md:hidden"
                 >
-                  <span className="text-sm" aria-hidden="true">{menuOpen ? "✕" : "☰"}</span>
+                  {menuOpen ? <X className="size-4" aria-hidden="true" /> : <Menu className="size-4" aria-hidden="true" />}
                 </button>
     </>
   );

@@ -8,6 +8,7 @@ import {
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "sonner";
 import { MODE_BOOT_SCRIPT, readMode, type Mode } from "@/lib/mode";
+import { currentProductKey, product, type ProductKey } from "@/lib/host";
 import appCss from "../styles.css?url";
 
 /**
@@ -15,8 +16,15 @@ import appCss from "../styles.css?url";
  * description / canonical / OG: those are host-aware and injected per-domain
  * by server/middleware/seo-host.ts (prod+preview) and
  * scripts/host-seo-plugin.mjs (dev) from scripts/host-seo-shared.mjs.
+ *
+ * The product skin (`data-theme`) is resolved per request and rendered on
+ * <html> at SSR: the CSS themes html itself (light: [data-theme=…], dark:
+ * html[data-mode="dark"][data-theme=…]), so the page background, header and
+ * footer all carry the product palette from first paint. No flash of the
+ * default (bidthrone) skin, in light or dark.
  */
 export const Route = createRootRoute({
+  loader: async () => ({ productKey: await currentProductKey() }) as { productKey: ProductKey },
   head: () => ({
     meta: [
       { charSet: "utf-8" },
@@ -44,6 +52,7 @@ export const Route = createRootRoute({
 });
 
 function RootDocument() {
+  const { productKey } = Route.useLoaderData();
   const [queryClient] = useState(
     () =>
       new QueryClient({
@@ -68,7 +77,13 @@ function RootDocument() {
   }, []);
 
   return (
-    <html lang="en" className="antialiased" data-mode={mode} suppressHydrationWarning>
+    <html
+      lang="en"
+      className="antialiased"
+      data-mode={mode}
+      data-theme={product(productKey).theme ?? undefined}
+      suppressHydrationWarning
+    >
       <head>
         <script dangerouslySetInnerHTML={{ __html: MODE_BOOT_SCRIPT }} />
         <HeadContent />

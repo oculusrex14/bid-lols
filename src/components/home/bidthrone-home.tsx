@@ -6,6 +6,7 @@ import type { ShellMe } from "@/components/product-shell";
 import type { HomePreview } from "@/lib/marketplace/home-preview.server";
 import type { LeaderboardRow } from "@/lib/marketplace/reputation";
 import { Kicker } from "@/components/home/shared";
+import { ButtonLink } from "@/components/ui/button";
 import { Avatar } from "@/components/ui/identity";
 import { SectionHeader } from "@/components/ui/layout";
 import { InlineNotice } from "@/components/ui/states";
@@ -38,18 +39,12 @@ export function BidthroneHome({ me, preview }: { me?: ShellMe | null; preview: H
           the reviews written by the people involved.
         </p>
         <div className="mt-7 flex flex-wrap gap-3">
-          <a
-            href="/leaderboards"
-            className="inline-flex h-11 items-center rounded-sm bg-accent px-4 text-sm font-semibold text-accent-fg transition-colors duration-150 hover:bg-accent/90"
-          >
+          <ButtonLink href="/leaderboards" size="lg">
             See the leaderboards
-          </a>
-          <a
-            href="/bid-index"
-            className="inline-flex h-11 items-center rounded-sm border border-fg/25 px-4 text-sm font-semibold transition-colors duration-150 hover:border-fg/50"
-          >
+          </ButtonLink>
+          <ButtonLink href="/bid-index" variant="secondary" size="lg">
             See the Bid Index
-          </a>
+          </ButtonLink>
           {me ? (
             <a href="/dashboard" className="inline-flex h-11 items-center px-1 text-sm font-medium text-accent underline underline-offset-4">
               Your dashboard

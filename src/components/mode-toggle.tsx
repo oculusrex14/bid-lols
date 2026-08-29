@@ -32,7 +32,7 @@ export function ModeToggle({
     <div
       role="group"
       aria-label="Color mode"
-      className="inline-flex h-11 shrink-0 items-center rounded-md bg-surface p-0.5 shadow-[var(--shadow-border)]"
+      className="inline-flex h-11 shrink-0 items-center rounded-md border border-fg/15 bg-surface p-0.5"
     >
       <button
         type="button"
@@ -71,7 +71,7 @@ export function ModeToggle({
         onClick={() => pick(next)}
         aria-label={mode === "dark" ? "Switch to light mode" : "Switch to dark mode"}
         title={mode === "dark" ? "Light mode" : "Dark mode"}
-        className="inline-flex size-9 shrink-0 items-center justify-center rounded-md text-muted hover:bg-raised hover:text-fg"
+        className="inline-flex size-10 shrink-0 items-center justify-center rounded-sm text-muted transition-colors duration-150 hover:bg-raised/60 hover:text-fg"
       >
         {mode === "dark" ? <Sun className="size-4" /> : <Moon className="size-4" />}
       </button>
@@ -81,7 +81,7 @@ export function ModeToggle({
   return (
     <div
       id="appearance-toggle"
-      className="flex w-full items-center justify-between gap-3 rounded-md bg-raised px-3 py-2 shadow-[var(--shadow-border)]"
+      className="flex w-full items-center justify-between gap-3 rounded-md border border-fg/15 bg-raised px-3 py-2"
     >
       <p className="text-xs font-medium uppercase tracking-kicker text-fg">Appearance</p>
       {switches}

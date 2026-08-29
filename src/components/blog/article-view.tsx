@@ -56,7 +56,7 @@ function Block({ block }: { block: BlogBlock }) {
             </thead>
             <tbody>
               {block.rows.map((row, r) => (
-                <tr key={r} className="border-t-2 border-fg/10 align-top">
+                <tr key={r} className="border-t border-fg/10 align-top">
                   {row.map((cell, c) => (
                     <td key={c} className={c === 0 ? "p-3 font-medium" : "p-3 text-muted"}>
                       {cell}

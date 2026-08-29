@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { Loader2 } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
 import { cn } from "@/lib/cn";
+import { Button } from "@/components/ui/button";
+import { Field, Input } from "@/components/ui/field";
 
 /**
  * Shared auth forms (Phase 01, FR-1): sign-in and sign-up over Better Auth's
@@ -10,9 +11,6 @@ import { cn } from "@/lib/cn";
  * verbatim in their friendly form. Password minimum is enforced server-side
  * (10 chars) and mirrored client-side only as a UX hint.
  */
-
-const inputClasses =
-  "h-11 w-full rounded-md border border-fg/20 bg-surface px-3 text-sm outline-none focus:border-fg/60";
 
 function toFriendly(message: string | undefined): string {
   if (!message) return "Something went wrong. Please try again.";
@@ -85,22 +83,14 @@ export function AuthCard({
           </p>
         ) : null}
 
-        <button
+        <Button
           type="submit"
-          disabled={status.state === "submitting"}
-          className="mt-5 inline-flex h-11 w-full items-center justify-center gap-2 rounded-md bg-accent px-5 text-sm font-semibold text-accent-fg disabled:cursor-not-allowed disabled:opacity-60"
+          size="md"
+          loading={status.state === "submitting"}
+          className="mt-5 w-full"
         >
-          {status.state === "submitting" ? (
-            <>
-              <Loader2 className="size-4 animate-spin" aria-hidden="true" />
-              {isSignup ? "Creating account…" : "Signing in…"}
-            </>
-          ) : isSignup ? (
-            "Create account"
-          ) : (
-            "Sign in"
-          )}
-        </button>
+          {isSignup ? "Create account" : "Sign in"}
+        </Button>
       </form>
 
       <p className="mt-4 text-sm text-muted">
@@ -137,7 +127,7 @@ export function SignOutButton({ className }: { className?: string }) {
         window.location.assign("/");
       }}
       className={cn(
-        "inline-flex h-9 items-center rounded-md border border-fg/20 px-3 text-sm font-medium",
+        "inline-flex h-9 items-center rounded-sm border border-fg/25 px-3 text-sm font-medium transition-colors duration-150 hover:border-fg/50",
         className,
       )}
     >
@@ -146,56 +136,51 @@ export function SignOutButton({ className }: { className?: string }) {
   );
 }
 
-/** Identity fields (RC3 split): names/ids are the submit contract. */
+/** Identity fields (RC3 split): names/ids are the submit contract;
+ *  the skin is the spine Field/Input pair (rounded-sm h-10, token focus). */
 function AuthFields({ isSignup }: { isSignup: boolean }) {
   return (
         <>
         {isSignup ? (
           <div className="mb-4">
-            <label htmlFor="au-name" className="mb-1.5 block text-sm font-medium">
-              Name
-            </label>
-            <input
-              id="au-name"
-              name="name"
-              type="text"
-              required
-              autoComplete="name"
-              placeholder="Ada Lovelace"
-              className={inputClasses}
-            />
+            <Field label="Name" id="au-name" required>
+              <Input
+                id="au-name"
+                name="name"
+                type="text"
+                required
+                autoComplete="name"
+                placeholder="Ada Lovelace"
+              />
+            </Field>
           </div>
         ) : null}
 
         <div className="mb-4">
-          <label htmlFor="au-email" className="mb-1.5 block text-sm font-medium">
-            Email
-          </label>
-          <input
-            id="au-email"
-            name="email"
-            type="email"
-            required
-            autoComplete="email"
-            placeholder="you@example.com"
-            className={inputClasses}
-          />
+          <Field label="Email" id="au-email" required>
+            <Input
+              id="au-email"
+              name="email"
+              type="email"
+              required
+              autoComplete="email"
+              placeholder="you@example.com"
+            />
+          </Field>
         </div>
 
         <div>
-          <label htmlFor="au-password" className="mb-1.5 block text-sm font-medium">
-            Password
-          </label>
-          <input
-            id="au-password"
-            name="password"
-            type="password"
-            required
-            minLength={isSignup ? 10 : undefined}
-            autoComplete={isSignup ? "new-password" : "current-password"}
-            placeholder={isSignup ? "At least 10 characters" : "Your password"}
-            className={inputClasses}
-          />
+          <Field label="Password" id="au-password" required>
+            <Input
+              id="au-password"
+              name="password"
+              type="password"
+              required
+              minLength={isSignup ? 10 : undefined}
+              autoComplete={isSignup ? "new-password" : "current-password"}
+              placeholder={isSignup ? "At least 10 characters" : "Your password"}
+            />
+          </Field>
         </div>
         </>
   );

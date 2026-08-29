@@ -142,7 +142,7 @@ function AdminPage() {
   const d = Route.useLoaderData();
   return (
     <ProductShell site={d.product} me={d.me}>
-      <div className="mx-auto max-w-6xl px-4 py-10">
+      <div className="canvas-app py-10">
         <p className="text-xs font-medium uppercase tracking-kicker text-subtle">Admin</p>
         <h1 className="mt-1 font-display-site text-2xl tracking-tight sm:text-3xl">Operations</h1>
         <div className="mt-4 grid gap-3 sm:grid-cols-4" data-testid="admin-stats">
@@ -193,8 +193,8 @@ function AdminPage() {
                       location.reload();
                     }}
                   >
-                    <input name="resolution" placeholder="Resolution note (audited)" className="h-8 rounded-md border border-fg/20 bg-surface px-2 text-xs" />
-                    <button className="inline-flex h-7 items-center rounded-md border border-fg/20 px-2 text-xs font-medium">Resolve</button>
+                    <input name="resolution" placeholder="Resolution note (audited)" className="h-8 rounded-sm border border-fg/20 bg-surface px-2 text-xs transition-colors duration-150 focus:border-fg/50" />
+                    <button className="inline-flex h-7 items-center rounded-sm border border-fg/25 px-2 text-xs font-medium transition-colors duration-150 hover:border-fg/50">Resolve</button>
                   </form>
                 </li>
               ))}
@@ -211,7 +211,7 @@ function AdminPage() {
               </thead>
               <tbody>
                 {d.payments.map((p) => (
-                  <tr key={p.id} className="border-t-2 border-fg/10">
+                  <tr key={p.id} className="border-t border-fg/10">
                     <td className="p-2">{p.product}</td><td className="p-2">{p.kind}</td><td className="p-2">{p.status}</td>
                     <td className="p-2">{(Number(p.amount_cents) / 100).toLocaleString("en-IN", { style: "currency", currency: p.currency })}</td>
                     <td className="p-2">{String(p.created_at).slice(0, 10)}</td>
@@ -261,7 +261,7 @@ function AdminUsers({
               </thead>
               <tbody>
                 {users.map((u: typeof users[number]) => (
-                  <tr key={u.id} className="border-t-2 border-fg/10">
+                  <tr key={u.id} className="border-t border-fg/10">
                     <td className="p-2">{u.email}</td>
                     <td className="p-2">{u.role}</td>
                     <td className="p-2">{u.email_verified ? "yes" : "no"}</td>
