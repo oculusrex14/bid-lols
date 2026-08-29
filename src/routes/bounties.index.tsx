@@ -9,7 +9,7 @@ import { listOpenBounties } from "@/lib/marketplace/queries.server";
 import { categoriesFor } from "@/lib/marketplace/categories";
 import { statusLabel } from "@/lib/marketplace/status-labels";
 import { deadlinePhrase, absoluteDate } from "@/lib/reltime";
-import { MoneyValue, MoneyBreakdown } from "@/components/ui/money";
+import { MoneyValue } from "@/components/ui/money";
 import { StatusBadge } from "@/components/ui/status";
 import { PageHeader } from "@/components/ui/layout";
 import { FilterBar, FilterChip, SortControl, MarketplaceRow } from "@/components/ui/market";

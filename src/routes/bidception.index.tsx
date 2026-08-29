@@ -3,7 +3,6 @@ import { createServerFn } from "@tanstack/react-start";
 import { currentProductKey, product, seoOrigin, type ProductKey } from "@/lib/host";
 import { ProductShell } from "@/components/product-shell";
 import { getSql } from "@/lib/db.server";
-import { statusLabel } from "@/lib/marketplace/status-labels";
 import { JsonLd } from "@/components/seo";
 import { itemListSchema } from "@/lib/schema";
 import { PageHeader } from "@/components/ui/layout";

@@ -23,7 +23,7 @@ import { deadlinePhrase, absoluteDate } from "@/lib/reltime";
 import { formatMinor } from "@/lib/money";
 import { MoneyValue } from "@/components/ui/money";
 import { StatusBadge } from "@/components/ui/status";
-import { Button, ButtonLink } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { Field, Input, Textarea } from "@/components/ui/field";
 import { StickyPanel } from "@/components/ui/market";
 import { InlineNotice } from "@/components/ui/states";

@@ -59,8 +59,6 @@ export const Route = createFileRoute("/bid-index")({
   component: BidIndexPage,
 });
 
-type IndexRow = NonNullable<Awaited<ReturnType<typeof loadIndex>>>["rows"][number];
-
 function BidIndexPage() {
   const d = Route.useLoaderData();
   const sufficient = d.rows.filter((r) => r.sufficient);

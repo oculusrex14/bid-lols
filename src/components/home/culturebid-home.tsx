@@ -1,4 +1,3 @@
-import { product } from "@/lib/host";
 import { FoundingAccess } from "@/components/founding-access";
 import { JsonLd } from "@/components/seo";
 import { websiteSchema } from "@/lib/schema";
@@ -48,7 +47,6 @@ const FORMAT_LINKS: Array<{ label: string; icon: typeof Camera; href: string }> 
 type HomeOpenItem = Extract<HomePreview, { kind: "bounties" }>["items"];
 
 export function CulturebidHome({ me, preview }: { me?: ShellMe | null; preview: HomePreview }) {
-  const cfg = product("culturebid");
   const openItems = preview.kind === "bounties" ? preview.items : [];
 
   return (

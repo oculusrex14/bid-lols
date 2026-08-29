@@ -174,9 +174,9 @@ function NewBountyPage() {
       case 0:
         return isCulture ? <StepCommissioning d={draft} set={set} errors={errors} /> : <StepWhat d={draft} set={set} errors={errors} categories={CATEGORIES_FOUNDER} />;
       case 1:
-        return isCulture ? <StepBrief d={draft} set={set} errors={errors} /> : <StepDone d={draft} set={set} errors={errors} />;
+        return isCulture ? <StepBrief d={draft} set={set} errors={errors} /> : <StepDone d={draft} set={set} />;
       case 2:
-        return isCulture ? <StepDone d={draft} set={set} errors={errors} /> : <StepParticipation d={draft} set={set} errors={errors} />;
+        return isCulture ? <StepDone d={draft} set={set} /> : <StepParticipation d={draft} set={set} errors={errors} />;
       case 3:
         return isCulture ? <StepParticipation d={draft} set={set} errors={errors} /> : <StepReward d={draft} set={set} errors={errors} plan={plan} />;
       case 4:

@@ -1,4 +1,3 @@
-import { product, type ProductKey } from "@/lib/host";
 import { FoundingAccess } from "@/components/founding-access";
 import { JsonLd } from "@/components/seo";
 import { websiteSchema } from "@/lib/schema";
@@ -31,47 +30,13 @@ const CATEGORIES = [
 type HomeOpenItem = Extract<HomePreview, { kind: "bounties" }>["items"];
 
 export function FoundersbidHome({ me, preview }: { me?: ShellMe | null; preview: HomePreview }) {
-  const cfg = product("foundersbid");
   const openItems = preview.kind === "bounties" ? preview.items : [];
 
   return (
     <>
       <HomeHero me={me} openItems={openItems} />
       {/* 2 — Real open work, or the honest empty state. */}
-      <section className="canvas-wide mt-14 pb-4 sm:mt-16">
-        <SectionHeader
-          title="Open now"
-          aside={
-            <a href="/bounties" className="text-xs font-medium text-accent underline underline-offset-4">
-              Browse all
-            </a>
-          }
-        />
-        {openItems.length > 0 ? (
-          <div className="mt-4">
-            {openItems.map((b) => (
-              <a
-                key={b.id}
-                href={`/bounties/${b.id}`}
-                className="row-line flex flex-wrap items-center gap-x-4 gap-y-1 px-1 py-3 transition-colors duration-150 hover:bg-surface/70"
-              >
-                <MoneyValue minor={b.reward_total_minor} currency={b.currency} className="w-28 shrink-0 text-accent" />
-                <span className="min-w-0 flex-1 truncate text-sm font-medium hover:underline hover:underline-offset-4">{b.title}</span>
-                <span className="hidden text-xs text-subtle sm:block">
-                  {b.category} · {b.participants}/{b.participant_cap} · {deadlinePhrase(b.submission_deadline)}
-                </span>
-                <StatusBadge status={b.status} />
-              </a>
-            ))}
-          </div>
-        ) : (
-          <div className="mt-4 rounded-md border border-dashed border-fg/15 bg-surface/40 p-6 text-sm leading-relaxed text-muted">
-            No open bounties yet. A bounty is bounded work with a fixed reward
-            and a deadline: the sponsor posts it, a capped set of people
-            compete, and the winner is paid the advertised amount.
-          </div>
-        )}
-      </section>
+      <HomeOpenNow openItems={openItems} />
 
       <HomeModes />
       {/* 4 — Categories. */}

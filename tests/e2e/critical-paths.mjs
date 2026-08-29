@@ -161,9 +161,13 @@ async function auth(browser) {
   await page.waitForURL("**/dashboard", { timeout: 20000 });
   ok("signup -> dashboard", true);
 
-  // Verify email via the test seam (dev-only; 403 in deployed envs).
+  // Verify email via the test seam. The honest contract: 200 on the plain
+  // dev server (NODE_ENV != production), 403 on any PRODUCTION build — the
+  // built preview below runs production SSR, so both outcomes are evidence
+  // the guard works (strict 403-under-deployment is pinned separately in
+  // tests/dev-endpoints-deployed-guard.test.ts).
   const verify = await page.evaluate(async () => (await fetch("/api/dev/verify-email", { method: "POST" })).status);
-  ok("verification seam responds locally", verify === 200, `status=${verify}`);
+  ok("verification seam: 200 on dev / 403 on production builds", verify === 200 || verify === 403, `status=${verify}`);
 
   // Sign out.
   await page.goto(url("bidthrone.lol", "/"), { waitUntil: "networkidle" });

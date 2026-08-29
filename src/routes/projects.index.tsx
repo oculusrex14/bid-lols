@@ -6,7 +6,7 @@ import { getSql } from "@/lib/db.server";
 import { listOpenProjects } from "@/lib/marketplace/queries.server";
 import { formatMinor } from "@/lib/money";
 import { statusLabel } from "@/lib/marketplace/status-labels";
-import { deadlinePhrase, absoluteDate } from "@/lib/reltime";
+import { deadlinePhrase } from "@/lib/reltime";
 import { JsonLd } from "@/components/seo";
 import { itemListSchema } from "@/lib/schema";
 import { PageHeader } from "@/components/ui/layout";

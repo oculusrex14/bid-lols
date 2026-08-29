@@ -129,9 +129,6 @@ export function FoundingAccess({
     }
   }
 
-  const inputClasses =
-    "h-11 w-full rounded-md border border-fg/20 bg-surface px-3 text-sm outline-none focus:border-fg/60";
-
   return (
     <div id="access" className="mt-12 scroll-mt-20">
       <div className="rounded-md border border-fg/20 bg-surface p-5 sm:p-6">

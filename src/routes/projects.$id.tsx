@@ -133,7 +133,6 @@ function ProjectDetailBody({ data }: { data: Data }) {
 
   const status = String(p.status);
   const origin = seoOrigin(data.product as ProductKey);
-  const paidMilestones = data.milestones.filter((m) => m.status === "PAID_OUT").length;
 
   return (
     <ProductShell site={data.product as ProductKey} me={data.me}>

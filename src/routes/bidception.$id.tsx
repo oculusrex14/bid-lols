@@ -20,12 +20,11 @@ import {
   eligibleCaptainsFn,
   type EligibleCaptain,
 } from "@/lib/marketplace/bidception";
-import { statusLabel } from "@/lib/marketplace/status-labels";
 import { formatMinor } from "@/lib/money";
 import { MoneyValue } from "@/components/ui/money";
 import { StatusBadge } from "@/components/ui/status";
 import { Button } from "@/components/ui/button";
-import { Field, Input, Select, CheckRow } from "@/components/ui/field";
+import { Field, Input, CheckRow } from "@/components/ui/field";
 import { StickyPanel } from "@/components/ui/market";
 import { InlineNotice } from "@/components/ui/states";
 import { BudgetBar, Metric } from "@/components/ui/data";

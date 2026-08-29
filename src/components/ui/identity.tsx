@@ -42,7 +42,6 @@ export function IdentityLine({
   name,
   handle,
   role,
-  skills,
   href,
   size = "md",
   className,
@@ -50,7 +49,6 @@ export function IdentityLine({
   name: string;
   handle?: string | null;
   role?: string;
-  skills?: string[];
   href?: string;
   size?: "sm" | "md";
   className?: string;

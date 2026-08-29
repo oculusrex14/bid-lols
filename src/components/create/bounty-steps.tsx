@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Camera, Clapperboard, Mic, PenTool, Tag, Type, Users, Video, Wrench } from "lucide-react";
+import { Camera, Mic, PenTool, Tag, Type, Users, Video, Wrench } from "lucide-react";
 import { FormSection } from "@/components/ui/layout";
 import { Field, Input, Textarea, Select, CheckRow } from "@/components/ui/field";
 import { cn } from "@/lib/cn";
@@ -265,11 +265,9 @@ export function StepBrief({
 export function StepDone({
   d,
   set,
-  errors,
 }: {
   d: BountyDraft;
   set: <K extends keyof BountyDraft>(k: K, v: BountyDraft[K]) => void;
-  errors: StepErrors;
 }) {
   return (
     <FormSection
@@ -423,7 +421,7 @@ export function StepReward({
 
       {d.rewardStructure === "PODIUM" ? (
         <div className="mt-4 grid gap-4 sm:grid-cols-3">
-          <Field label="1st place (₹)" error={mismatch ? errors.allocations : undefined} id="bn-p1">
+          <Field label="1st place (₹)" id="bn-p1">
             <Input id="bn-p1" name="podiumFirst" type="number" min={0} value={d.podiumFirst} onChange={(e) => set("podiumFirst", e.target.value)} className="tabular" />
           </Field>
           <Field label="2nd place (₹)" id="bn-p2">
@@ -442,7 +440,7 @@ export function StepReward({
 
       {d.rewardStructure === "FINALIST_POOL" ? (
         <div className="mt-4 grid gap-4 sm:grid-cols-3">
-          <Field label="Winner premium (₹)" error={mismatch ? errors.allocations : undefined} id="bn-pw">
+          <Field label="Winner premium (₹)" id="bn-pw">
             <Input id="bn-pw" name="poolWinner" type="number" min={0} value={d.poolWinner} onChange={(e) => set("poolWinner", e.target.value)} className="tabular" />
           </Field>
           <Field label="Per finalist (₹)" id="bn-pfr">
