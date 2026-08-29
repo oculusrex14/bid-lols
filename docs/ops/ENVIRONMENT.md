@@ -70,3 +70,13 @@ no manual settlement/refund/deletion).
 - `.env.local` holds prod credentials locally and is **never committed** (gitignored via `.env*`).
 - No secret value ever appears in source, committed files, or logs.
 - Production must verify (existence only, values never printed): `CASHFREE_WEBHOOK_SECRET` set, `CASHFREE_MODE=production` set, `DATABASE_URL` valid — a deploy missing any of these must fail loudly, not silently degrade.
+
+
+## RC4 trust flags
+
+| Variable | Default | Meaning |
+| --- | --- | --- |
+| `TRUST_VERIFICATION_LIVE` | `0` (OFF) | Future verified-founder / verified-provider flow. No public surface exists; even when enabled later, verification payments earn zero Bid Index effect. |
+| `MARKETPLACE_MONEY_LIVE` | unset (OFF) | Marketplace funding. Remains OFF in RC4. |
+
+The trust event projector is operator-side: `npx tsx scripts/rebuild-trust-events.mjs [--apply]` (never in CI; see docs/ops/TRUST_SCORE.md).

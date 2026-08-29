@@ -7,6 +7,11 @@ import { getSql } from "@/lib/db.server";
 import { requireAdmin, getSession } from "@/lib/authz";
 import { insertAudit, recentAudit } from "@/lib/audit.server";
 import { transitionDispute, listOpenDisputes } from "@/lib/marketplace/disputes.server";
+import {
+  RESOLUTION_CODES,
+  RESPONSIBILITIES,
+  SEVERITY_CODES,
+} from "@/lib/marketplace/dispute-vocab";
 
 /**
  * /admin — the protected operational surface (Phase 01, FR-12). EVERY action
@@ -58,6 +63,9 @@ const adminAction = createServerFn({ method: "POST" })
         userId: z.string().trim().min(4).max(64).optional(),
         disputeId: z.string().trim().min(4).max(64).optional(),
         resolution: z.string().trim().max(2000).optional(),
+        resolutionCode: z.enum(RESOLUTION_CODES as unknown as [string, ...string[]]).optional(),
+        responsibility: z.enum(RESPONSIBILITIES as unknown as [string, ...string[]]).optional(),
+        severityCode: z.enum(SEVERITY_CODES as unknown as [string, ...string[]]).optional(),
       })
       .strict(),
   )
@@ -119,6 +127,9 @@ const adminAction = createServerFn({ method: "POST" })
             disputeId: data.disputeId,
             nextStatus: "RESOLVED",
             resolution: data.resolution,
+            resolutionCode: data.resolutionCode,
+            responsibility: data.responsibility,
+            severityCode: data.severityCode,
             adminUserId: session.user.id,
           });
           if (!result.ok) return result;
@@ -127,8 +138,28 @@ const adminAction = createServerFn({ method: "POST" })
             action: "dispute_resolved",
             entityType: "DISPUTE",
             entityId: data.disputeId,
-            meta: { resolution: data.resolution ?? "" },
+            meta: {
+              resolution: data.resolution ?? "",
+              resolutionCode: data.resolutionCode ?? "",
+              responsibility: data.responsibility ?? "",
+              severityCode: data.severityCode ?? "",
+            },
           });
+          // RC4 §39: refresh the members' trust-event audit layer best-effort
+          // (scores read dispute state directly, so this is bookkeeping).
+          try {
+            const { projectUserTrustEvents } = await import("@/lib/trust/projector.server");
+            const d = (await sql.query<{ claimant_user_id: string; respondent_user_id: string }>(
+              "select claimant_user_id, respondent_user_id from disputes where id = $1",
+              [data.disputeId],
+            ))[0];
+            if (d) {
+              await projectUserTrustEvents(d.claimant_user_id, { apply: true });
+              await projectUserTrustEvents(d.respondent_user_id, { apply: true });
+            }
+          } catch {
+            // never block the admin action on projection bookkeeping
+          }
           return { ok: true };
         }
         return { ok: false, code: "invalid_action", message: "Unknown admin action." };
@@ -194,6 +225,24 @@ function AdminPage() {
                     }}
                   >
                     <input name="resolution" placeholder="Resolution note (audited)" className="h-8 rounded-sm border border-fg/20 bg-surface px-2 text-xs transition-colors duration-150 focus:border-fg/50" />
+                    <select name="resolutionCode" aria-label="Resolution code" className="h-8 rounded-sm border border-fg/20 bg-surface px-1 text-xs">
+                      <option value="">code…</option>
+                      {RESOLUTION_CODES.map((c) => (
+                        <option key={c} value={c}>{c.replace(/_/g, " ").toLowerCase()}</option>
+                      ))}
+                    </select>
+                    <select name="responsibility" aria-label="Responsibility" className="h-8 rounded-sm border border-fg/20 bg-surface px-1 text-xs">
+                      <option value="">responsibility…</option>
+                      {RESPONSIBILITIES.map((c) => (
+                        <option key={c} value={c}>{c.toLowerCase()}</option>
+                      ))}
+                    </select>
+                    <select name="severityCode" aria-label="Severity code" className="h-8 rounded-sm border border-fg/20 bg-surface px-1 text-xs">
+                      <option value="">severity…</option>
+                      {SEVERITY_CODES.map((c) => (
+                        <option key={c} value={c}>{c.replace(/_/g, " ").toLowerCase()}</option>
+                      ))}
+                    </select>
                     <button className="inline-flex h-7 items-center rounded-sm border border-fg/25 px-2 text-xs font-medium transition-colors duration-150 hover:border-fg/50">Resolve</button>
                   </form>
                 </li>

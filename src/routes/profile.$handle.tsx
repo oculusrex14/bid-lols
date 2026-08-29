@@ -29,8 +29,18 @@ const loadProfile = createServerFn({ method: "GET" })
       })(),
     ]);
     if (!profile) throw notFound();
-    const reputation = await reputationFor(profile.userId).catch(() => null);
-    return { profile, product, handle: data.handle, reputation, me: shell.me };
+    const [reputation, trust] = await Promise.all([
+      reputationFor(profile.userId).catch(() => null),
+      (async () => {
+        try {
+          const { publicTrustFor } = await import("@/lib/trust/score.server");
+          return await publicTrustFor(profile.userId);
+        } catch {
+          return null;
+        }
+      })(),
+    ]);
+    return { profile, product, handle: data.handle, reputation, trust, me: shell.me };
   });
 
 export const Route = createFileRoute("/profile/$handle")({
@@ -84,6 +94,8 @@ function ProfilePage() {
         {p.companyName ? <CompanyBlock p={p} /> : null}
         {p.skills.length > 0 || p.categories.length > 0 ? <TagsBlock p={p} /> : null}
         {p.portfolioLinks.length > 0 || p.githubUrl || p.linkedinUrl || p.websiteUrl ? <LinksBlock p={p} /> : null}
+
+        {d.trust ? <TrustBlock trust={d.trust} /> : null}
 
         {d.reputation ? <ReputationBlock reputation={d.reputation} /> : null}
 
@@ -186,6 +198,102 @@ function ReputationBlock({ reputation }: { reputation: NonNullable<Awaited<Retur
       )}
     </div>
   );
+}
+
+/**
+ * Bid Index block (RC4 §50/§51): score, band, confidence, role scores, and
+ * model dimensions as normalized values (NOT star reviews; never presented
+ * as guarantees). NR state is honest: "not enough history".
+ */
+function TrustBlock({ trust }: { trust: NonNullable<Awaited<ReturnType<typeof loadProfile>>["trust"]> }) {
+  const scored = trust.roles.filter((r) => r.status === "SCORED");
+  const restricted = trust.roles.some((r) => r.status === "RESTRICTED");
+  return (
+    <div className="mt-8 rounded-md border border-fg/15 bg-surface p-5" data-testid="bid-index">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h2 className="text-xs font-medium uppercase tracking-kicker text-subtle">
+          Bid Index · {trust.modelVersion}
+        </h2>
+        {restricted ? (
+          <p className="text-xs font-medium text-warn">Restricted · under trust review</p>
+        ) : null}
+      </div>
+      {trust.overall && trust.overall.score != null ? (
+        <>
+          <p className="mt-2 font-display-site text-4xl tracking-tight">{trust.overall.score}</p>
+          <p className="text-sm text-muted">
+            {trust.overall.band} · {trust.overall.confidenceLabel.toLowerCase()} ({Math.round(trust.overall.confidence * 100) / 100})
+          </p>
+          <div
+            className="mt-3 h-1.5 w-full max-w-md rounded-full bg-fg/10"
+            role="img"
+            aria-label={`Bid Index ${trust.overall.score} on the 300 to 900 scale`}
+          >
+            <div
+              className="h-1.5 rounded-full bg-accent"
+              style={{ width: `${Math.max(1, ((trust.overall.score - 300) / 600) * 100)}%` }}
+            />
+          </div>
+        </>
+      ) : (
+        <p className="mt-2 font-display-site text-3xl tracking-tight">NR</p>
+      )}
+      <p className="mt-1 text-xs text-subtle">
+        {trust.overall && trust.overall.score != null
+          ? "Based on verified marketplace outcomes, not followers or spending."
+          : "Not enough history. A Bid Index first appears after two completed outcomes with two independent counterparties."}
+      </p>
+
+      {scored.length > 0 ? (
+        <div className="mt-4 grid gap-3 sm:grid-cols-3">
+          {scored.map((r) => (
+            <div key={r.role} className="rounded-md border border-fg/15 bg-raised/40 p-3">
+              <p className="text-xs uppercase tracking-kicker text-subtle">{roleTitle(r.role)}</p>
+              <p className="mt-1 font-display-site text-2xl tracking-tight">{r.score ?? "NR"}</p>
+              <p className="text-xs text-muted">
+                {r.band} · {r.confidenceLabel} · {r.primaryOutcomes} verified outcome{r.primaryOutcomes === 1 ? "" : "s"}
+              </p>
+              <PillarList pillars={r.pillars} />
+            </div>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function roleTitle(role: string): string {
+  switch (role) {
+    case "PROVIDER":
+      return "Provider Index";
+    case "SPONSOR":
+      return "Sponsor Index";
+    case "CAPTAIN":
+      return "Captain Index";
+    default:
+      return role;
+  }
+}
+
+/** Model dimensions (§51): normalized values, explicitly not star reviews. */
+function PillarList({ pillars }: { pillars: Record<string, number> }) {
+  const entries = Object.entries(pillars).slice(0, 5);
+  if (entries.length === 0) return null;
+  return (
+    <dl className="mt-2 space-y-0.5 text-xs">
+      {entries.map(([pillar, value]) => (
+        <div key={pillar} className="flex items-center justify-between gap-2">
+          <dt className="text-subtle">{pillarName(pillar)}</dt>
+          <dd className="tabular font-medium">{Math.round(value * 100)}</dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
+function pillarName(pillar: string): string {
+  const p = pillar.toLowerCase().replace(/_/g, " ");
+  return p.charAt(0).toUpperCase() + p.slice(1);
 }
 
 /** Display only the host of a stored link (never echo full URLs into anchor text). */

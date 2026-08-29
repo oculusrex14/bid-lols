@@ -363,13 +363,13 @@ export const BLOG_ARTICLES: BlogArticle[] = [
       {
         kind: "callout",
         label: "Current status",
-        text: "Profiles, leaderboards, and the Bid Index are live. Because funding is not enabled yet, the verified-outcome data behind them is still forming, and the pages show exactly what exists: an honest zero until real work completes.",
+        text: "Profiles, leaderboards, the Bid Index, and Market rates are live. Because funding is not enabled yet, the verified-outcome data behind them is still forming, and the pages show exactly what exists: an honest zero until real work completes.",
       },
       {
         kind: "links",
         items: [
           { label: "See the leaderboards", to: "/leaderboards" },
-          { label: "See the Bid Index", to: "/bid-index" },
+          { label: "See the Bid Index (trust score)", to: "/bid-index" },
           { label: "Back to the Bidthrone home", to: "/" },
         ],
       },

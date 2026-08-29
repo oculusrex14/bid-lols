@@ -129,11 +129,26 @@ export async function openDispute(
   });
 }
 
-/** Admin transitions (the admin module performs the authorization + audit). */
+/** RC4 §20 vocabulary lives in the client-safe module (see dispute-vocab.ts). */
+export {
+  RESOLUTION_CODES,
+  RESPONSIBILITIES,
+  SEVERITY_CODES,
+} from "@/lib/marketplace/dispute-vocab";
+
+/**
+ * Admin transitions (the admin module performs the authorization + audit).
+ * RC4 §20: structured adjudication — resolution_code / responsibility /
+ * severity_code and finalized_at make dispute outcomes usable scoring
+ * evidence; OPEN/UNDER_REVIEW transitions never set them.
+ */
 export async function transitionDispute(opts: {
   disputeId: string;
   nextStatus: DisputeStatus;
   resolution?: string;
+  resolutionCode?: string;
+  responsibility?: string;
+  severityCode?: string;
   adminUserId: string;
 }): Promise<{ ok: true } | { ok: false; code: string; message: string }> {
   const sql = await getSql();
@@ -152,11 +167,19 @@ export async function transitionDispute(opts: {
         message: `${current.status} -> ${opts.nextStatus} is illegal.`,
       };
     }
+    // finalized_at is set once, at the RESOLVED transition — never rewritten
+    // by later states. Structured fields widen additively (§20).
     await tx.query(
       `update disputes set status=$2, resolution=coalesce($3, resolution),
+         resolution_code = coalesce($5, resolution_code),
+         responsibility = coalesce($6, responsibility),
+         severity_code = coalesce($7, severity_code),
+         finalized_at = coalesce($8, finalized_at),
          resolved_by=$4, updated_at=now()
        where id=$1`,
-      [opts.disputeId, opts.nextStatus, opts.resolution ?? null, opts.adminUserId],
+      [opts.disputeId, opts.nextStatus, opts.resolution ?? null, opts.adminUserId,
+        opts.resolutionCode ?? null, opts.responsibility ?? null,
+        opts.severityCode ?? null, opts.nextStatus === "RESOLVED" ? new Date().toISOString() : null],
     );
     for (const party of [current.claimant_user_id, current.respondent_user_id]) {
       await notify(tx, {

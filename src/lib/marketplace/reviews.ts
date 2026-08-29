@@ -17,6 +17,8 @@ const reviewInput = z
     communication: z.number().int().min(1).max(5).optional(),
     timeliness: z.number().int().min(1).max(5).optional(),
     clarity: z.number().int().min(1).max(5).optional(),
+    value: z.number().int().min(1).max(5).optional(),
+    fairness: z.number().int().min(1).max(5).optional(),
     body: z.string().trim().max(4000).default(""),
   })
   .strict();
@@ -38,6 +40,8 @@ export const createReviewFn = createServerFn({ method: "POST" })
           communication: data.communication,
           timeliness: data.timeliness,
           clarity: data.clarity,
+          value: data.value,
+          fairness: data.fairness,
           body: data.body,
         });
         return { ok: true, revieweeUserId: result.revieweeUserId };

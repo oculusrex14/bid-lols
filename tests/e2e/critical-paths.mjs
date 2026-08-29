@@ -312,9 +312,25 @@ async function bidthrone(browser) {
   await page.goto(url("bidthrone.lol", "/bid-index"), { waitUntil: "networkidle" });
   const idx = await page.textContent("main");
   ok(
-    "bid index gates on sample size (empty or insufficient labels, never zero prices)",
-    /Not enough verified data yet|Insufficient sample/.test(idx ?? "") && !/Insufficient sample\s*₹0/.test(idx ?? ""),
+    "bid-index is the trust methodology surface (BI-1.0, bands, no fake scores)",
+    /How it works/.test(idx ?? "") && /BI-1\.0/.test(idx ?? "") && !/₹0/.test(idx ?? ""),
   );
+  ok("bid-index keeps the not-a-credit-score disclaimer", /not a credit score/.test(idx ?? ""));
+
+  await page.goto(url("bidthrone.lol", "/market-rates"), { waitUntil: "networkidle" });
+  const rates = await page.textContent("main");
+  ok(
+    "market-rates gates on sample size (insufficient labels, never zero prices)",
+    /Not enough verified data yet|Insufficient sample/.test(rates ?? "") && !/Insufficient sample\s*₹0/.test(rates ?? ""),
+  );
+  ok("market rates are separate from the trust score", /that is the Bid Index/i.test(rates ?? "") || /Market rates/.test(rates ?? ""));
+
+  // RC4 P0: versioned social card assets reachable over HTTP (loopback +
+  // Host header, same mechanism as the browser resolver map).
+  const cardResp = await page.request.get(`http://127.0.0.1:${PORT}/og/trust-v1/bidthrone.png`, {
+    headers: { host: "bidthrone.lol" },
+  });
+  ok("bidthrone social card serves 200 png", cardResp.ok(), String(cardResp.status()));
   await context.close();
 }
 

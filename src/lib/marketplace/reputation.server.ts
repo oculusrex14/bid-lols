@@ -1,18 +1,12 @@
 import { getSql } from "@/lib/db.server";
 
 /**
- * Bidthrone reputation read model (Phase 04, FR-2/FR-3/FR-4).
- *
- * Everything here is DERIVED from the authoritative tables — there is no
- * stored reputation number that can drift, be bought, or be fabricated. A
- * member with no verified outcomes gets an honest empty reputation, never
- * seeded/fake activity.
- *
- * The composite `score` is intentionally interpretable (not a magic 0–100):
- *   score = experience + 10 * reliability + 10 * quality
- * where experience = count of verified completions, reliability is the
- * completion ratio (0..1), quality is the mean review rating (0..5). The
- * formula is documented in PHASE_04_BIDTHRONE.md so it is never a black box.
+ * Bidthrone FACTUAL read model (Phase 04, FR-2/FR-3/FR-4). RC4 §10/§55: the
+ * old headline composite (experience + 10*reliability + 10*quality) is
+ * RETIRED — the headline number is the BI-1.0 Bid Index from the trust
+ * layer. This module stays as the verifiable factual counters (wins,
+ * completions, captained units, review means, dispute counts) for the
+ * public profile's factual block.
  */
 
 export type ReputationMetrics = {
@@ -29,8 +23,6 @@ export type ReputationMetrics = {
   reviewsReceived: number;
   disputesAsClaimant: number;
   disputesAsRespondent: number;
-  // Composite (documented formula, not a purchaseable rank)
-  score: number;
 };
 
 /** Mean of a list of 1..5 ratings; 0 when empty. */
@@ -100,10 +92,10 @@ export async function reputationFor(userId: string): Promise<ReputationMetrics> 
   // where they are the provider/respondent) as the denominator — disputes are
   // the only negative signal that is itself verifiable. This keeps it honest
   // and in [0..1].
+  // RC4: the old composite score is retired; the public headline number is
+  // the BI-1.0 Bid Index (trust layer). These remain verifiable facts.
   const negative = disputesAsRespondent;
   const reliability = experience + negative === 0 ? 0 : experience / (experience + negative);
-
-  const score = experience + 10 * reliability + 10 * quality;
   return {
     userId,
     experience,
@@ -116,7 +108,6 @@ export async function reputationFor(userId: string): Promise<ReputationMetrics> 
     reviewsReceived,
     disputesAsClaimant,
     disputesAsRespondent,
-    score,
   };
 }
 
@@ -133,8 +124,8 @@ export type LeaderboardRow = {
   metric: number;
   /** Derived only for context; the rank uses `metric`. */
   experience: number;
-  score: number;
-  /** RC3 S-28: primary skills from the public profile (display only). */
+  /** RC4 §55: the old headline composite was retired. Score boards carry
+   * the real BI-1.0 number in `metric` instead. */
   skills: string[];
 };
 
@@ -145,8 +136,13 @@ export const BOARD_NAMES = [
   "top_captains", // captained completions
   "top_sponsors", // sponsor-side verified completed work
   "most_quality", // mean review quality (min 3 reviews)
-  "most_reliable", // completion ratio (min sample)
   "rising", // verified completions in the trailing 90 days
+  // RC4 §54: score boards. Empty stays empty — stricter eligibility than
+  // display (score-eligible, confidence>=0.45, n_eff>=5, >=3 counterparties).
+  "highest_bid_index",
+  "top_providers_bid_index",
+  "top_sponsors_bid_index",
+  "top_captains_bid_index",
 ] as const;
 
 /** Minimum verified outcomes before a member may appear on ANY board. */
@@ -165,7 +161,6 @@ type UserFacts = {
   captained: number;
   reviewsReceived: number;
   quality: number;
-  reliability: number;
   recent90: number;
   sponsorCompleted: number;
   sponsorReviews: number;
@@ -244,7 +239,6 @@ async function loadFacts(): Promise<UserFacts[]> {
       captained,
       reviewsReceived: r.reviews_received ?? 0,
       quality,
-      reliability: 0, // computed per-user below from reputationFor (ledger-accurate)
       recent90: r.recent90 ?? 0,
       sponsorCompleted: r.sponsor_completed ?? 0,
       sponsorReviews: r.sponsor_reviews ?? 0,
@@ -264,6 +258,57 @@ export async function leaderboard(
   limit = 10,
   minSample = LEADERBOARD_MIN_SAMPLE,
 ): Promise<LeaderboardRow[]> {
+  // RC4 §55: the old implementation ranked most_reliable by a bulk-loaded
+  // `reliability: 0` — every row tied at zero. The board now reads real
+  // BI-1.0 provider evidence from the snapshot service (never a zero).
+  if (board === "most_reliable") {
+    const { bidIndexLeaderboard } = await import("@/lib/trust/score.server");
+    const rows = await bidIndexLeaderboard("PROVIDER", limit);
+    return rows.map((r) => ({
+      userId: r.userId,
+      handle: r.handle,
+      displayName: r.displayName,
+      metric: r.score,
+      experience: r.primaryOutcomes,
+      skills: [],
+    }));
+  }
+  if (board === "highest_bid_index") {
+    // "Highest Bid Index" ranks the Overall blend; single-role members land
+    // on their role score by construction (§36).
+    const { bidIndexLeaderboardOverall } = await import("@/lib/trust/score.server");
+    const rows = await bidIndexLeaderboardOverall(limit);
+    return rows.map((r) => ({
+      userId: r.userId,
+      handle: r.handle,
+      displayName: r.displayName,
+      metric: r.score,
+      experience: r.primaryOutcomes,
+      skills: [],
+    }));
+  }
+  if (
+    board === "top_providers_bid_index" ||
+    board === "top_sponsors_bid_index" ||
+    board === "top_captains_bid_index"
+  ) {
+    const role =
+      board === "top_providers_bid_index"
+        ? "PROVIDER"
+        : board === "top_sponsors_bid_index"
+          ? "SPONSOR"
+          : "CAPTAIN";
+    const { bidIndexLeaderboard } = await import("@/lib/trust/score.server");
+    const rows = await bidIndexLeaderboard(role, limit);
+    return rows.map((r) => ({
+      userId: r.userId,
+      handle: r.handle,
+      displayName: r.displayName,
+      metric: r.score,
+      experience: r.primaryOutcomes,
+      skills: [],
+    }));
+  }
   const facts = await loadFacts();
   const rows = facts
     .filter((f) => {
@@ -293,9 +338,6 @@ export async function leaderboard(
         case "most_quality":
           metric = f.quality;
           break;
-        case "most_reliable":
-          metric = f.reliability;
-          break;
         case "rising":
           metric = f.recent90;
           break;
@@ -316,7 +358,6 @@ export async function leaderboard(
         skills: f.skills,
         metric,
         experience: f.experience,
-        score: f.experience + 10 * f.reliability + 10 * f.quality,
       };
     })
     // stable tie-breaks: metric desc, then experience desc, then handle asc
@@ -326,13 +367,14 @@ export async function leaderboard(
 
 
 /**
- * Bid Index sample (RC1, R9). Aggregates REAL verified money amounts for a
- * product+category and publishes ONLY when the sample meets the threshold
- * (10). A sample is a genuine completed/settled outcome — created/unfunded
- * or awarded-but-unsettled work never counts. Never exposes individual
- * deals; only anonymized aggregates with the sample size disclosed.
+ * Market Rates sample (RC4 §3/§56; renamed from "Bid Index"). Aggregates
+ * REAL verified money amounts for a product+category and publishes ONLY
+ * when the sample meets the threshold (10). A sample is a genuine
+ * completed/settled outcome — created/unfunded or awarded-but-unsettled
+ * work never counts. Never exposes individual deals; only anonymized
+ * aggregates with the sample size disclosed.
  */
-export type BidIndexSample = {
+export type MarketRateSample = {
   /** null = network-wide sample. */
   product: string | null;
   category: string;
@@ -343,18 +385,18 @@ export type BidIndexSample = {
   sufficient: boolean;
 };
 
-export const BID_INDEX_MIN_SAMPLE = 10;
+export const MARKET_RATE_MIN_SAMPLE = 10;
 
 /**
  * `product` null = network-wide aggregation (the Bidthrone surface, which
  * hosts no bounties of its own). A product key keeps the RC1 R9
  * product/category isolation for engine tests.
  */
-export async function bidIndexFor(
+export async function marketRateFor(
   product: string | null,
   category: string,
-  threshold = BID_INDEX_MIN_SAMPLE,
-): Promise<BidIndexSample> {
+  threshold = MARKET_RATE_MIN_SAMPLE,
+): Promise<MarketRateSample> {
   const sql = await getSql();
   // verified = completed/settled outcomes only (RC1, R9): a merely-created or
   // unfunded opportunity is not a price point; awarded-but-unsettled work is

@@ -93,6 +93,9 @@ export type CreateReviewInput = {
   communication?: number;
   timeliness?: number;
   clarity?: number;
+  /** RC4 §42: extra nullable dimensions. Missing is NOT zero. */
+  value?: number;
+  fairness?: number;
   body?: string;
 };
 
@@ -113,8 +116,8 @@ export async function createReview(input: CreateReviewInput): Promise<{ id: stri
       await tx.query(
         `insert into reviews
           (id, work_type, work_id, reviewer_user_id, reviewee_user_id, direction,
-           quality, communication, timeliness, clarity, body)
-         values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
+           quality, communication, timeliness, clarity, value, fairness, body)
+         values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
         [
           id,
           input.workType,
@@ -126,6 +129,8 @@ export async function createReview(input: CreateReviewInput): Promise<{ id: stri
           input.communication ?? null,
           input.timeliness ?? null,
           input.clarity ?? null,
+          input.value ?? null,
+          input.fairness ?? null,
           (input.body ?? "").slice(0, 4000),
         ],
       );
@@ -154,18 +159,25 @@ export async function createReview(input: CreateReviewInput): Promise<{ id: stri
   );
 }
 
-/** Public reviews for a profile (newest first). */
+/**
+ * Public reviews for a profile (newest first) — BLIND-GATED (RC4 §26/§49):
+ * a review is visible only after reciprocal reveal (both sides submitted OR
+ * the 14-day window elapsed). The predicate is the shared reveal condition,
+ * mirroring exactly what the Bid Index scoring evidence consumes.
+ */
 export async function reviewsForUser(
   userId: string,
   limit = 20,
-): Promise<Array<{ quality: number | null; communication: number | null; timeliness: number | null; clarity: number | null; body: string; createdAt: string; reviewerHandle: string | null }>> {
+): Promise<Array<{ quality: number | null; communication: number | null; timeliness: number | null; clarity: number | null; value: number | null; fairness: number | null; body: string; createdAt: string; reviewerHandle: string | null }>> {
   const sql = await getSql();
+  const { revealSqlCondition } = await import("@/lib/marketplace/review-reveal");
   return sql.query(
-    `select r.quality, r.communication, r.timeliness, r.clarity, r.body,
+    `select r.quality, r.communication, r.timeliness, r.clarity, r.value, r.fairness, r.body,
             r.created_at as "createdAt", pr.handle as "reviewerHandle"
      from reviews r
      left join profiles pr on pr.user_id = r.reviewer_user_id
      where r.reviewee_user_id = $1
+       and ${revealSqlCondition()}
      order by r.created_at desc limit $2`,
     [userId, limit],
   );

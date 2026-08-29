@@ -74,8 +74,8 @@ export async function homePreview(productKey: ProductKey): Promise<HomePreview> 
       for (const b of boards) {
         out.push({ ...b, rows: await leaderboard(b.key, 3) });
       }
-      // The Bid Index publishes only with a real sample; surface whether any
-      // category currently qualifies (truthful "market data exists" signal).
+      // RC4: this flag now drives the MARKET RATES section (the aggregate
+      // pricing product; RC4 §3/§56 renamed it away from "Bid Index").
       const sql = await getSql();
       const idx = await sql.query<{ n: number }>(
         `select count(*)::int as n from (

@@ -168,3 +168,8 @@ Architecturally, we are **not** building in Phase 00:
 - Third-party analytics or a PWA.
 - Multi-region or multi-database sharding.
 - Any rewrite of the TanStack Start / Vite / Nitro runtime itself.
+
+
+## RC4: Bid Index trust layer
+
+BI-1.0 is a pure-TS scoring core (src/lib/trust/model-v1.ts + score-core.ts) fed by authoritative state reads (evidence.server.ts) and cached in trust_score_snapshots through score.server.ts. The audit layer (trust_events) is written only by the projector (projector.server.ts / scripts/rebuild-trust-events.mjs). Routes: /bid-index (methodology + personal report), /market-rates (the renamed aggregate pricing), /settings/trust (private explanation), /leaderboards (score boards, gated). See docs/BID_INDEX_METHODOLOGY.md and docs/ops/TRUST_SCORE.md.

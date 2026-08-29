@@ -121,3 +121,13 @@ plus `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cro
 - `style-src 'unsafe-inline'`: **kept, audited and justified** — sonner (toast library) injects a runtime `<style>` element and the Toaster passes inline `style` objects to toast options; both require `unsafe-inline` and no per-request nonce alternative exists in sonner 2.x. Re-audit if the toaster is replaced or sonner gains nonce support.
 - `img-src 'self' data:`: **not loosened** — this is why graveyard listing screenshots are stored (validated https URLs, max 6) but not rendered today (RC3 spec 7.2). Remote screenshot display needs an image proxy or a deliberate `img-src` expansion with subdomain pinning; that is a future explicit decision, not a silent relaxation.
 - `connect-src 'self'`, `form-action 'self'`, `base-uri 'self'`, `object-src 'none'`, `frame-ancestors 'none'`: unchanged, verified in the preview/production smoke battery.
+
+
+## RC4: trust-layer security
+
+- Only trusted server services write trust_events; there is NO generic createTrustEvent endpoint and client input can never supply score, weight, severity, or outcome values (RC4 §9/§68).
+- Admin adjudication (structured dispute resolution) is audited in audit_events; admins may correct FACTS via reversal events but can never type a score.
+- trust_risk_flags with SUSPECTED states have zero effect on Bid Index until confirmed through adjudication (prevents false-positive punishment).
+- Blind reciprocal review reveal shares one eligibility definition between the public review listing and scoring evidence; a hidden review cannot leak through HTML, server functions, or score breakdowns.
+- Verification scaffolding (verification_cases/events) has no public surface and TRUST_VERIFICATION_LIVE remains 0; payment could never move the score.
+- IDOR/authorization: /settings/trust is session-scoped; public trust blocks expose aggregates only; private disputed amounts stay private.

@@ -39,11 +39,14 @@ export function BidthroneHome({ me, preview }: { me?: ShellMe | null; preview: H
           the reviews written by the people involved.
         </p>
         <div className="mt-7 flex flex-wrap gap-3">
-          <ButtonLink href="/leaderboards" size="lg">
-            See the leaderboards
+          <ButtonLink href="/bid-index" size="lg">
+            The Bid Index
           </ButtonLink>
-          <ButtonLink href="/bid-index" variant="secondary" size="lg">
-            See the Bid Index
+          <ButtonLink href="/leaderboards" variant="secondary" size="lg">
+            Leaderboards
+          </ButtonLink>
+          <ButtonLink href="/market-rates" variant="secondary" size="lg">
+            Market rates
           </ButtonLink>
           {me ? (
             <a href="/dashboard" className="inline-flex h-11 items-center px-1 text-sm font-medium text-accent underline underline-offset-4">
@@ -58,6 +61,7 @@ export function BidthroneHome({ me, preview }: { me?: ShellMe | null; preview: H
       </section>
 
       <LiveBoards boards={boards} />
+      <BidIndexTeaser />
       <MarketSignal bidIndexReady={bidIndexReady} />
       <Principles />
       {/* The rest of the network. */}
@@ -180,37 +184,61 @@ function LiveBoards({ boards }: { boards: HomeBoards }) {
   
   );
 }
-/** The market: the sample-gated Bid Index signal. */
+/** Market rates: the sample-gated aggregate pricing product (RC4 §56). */
 function MarketSignal({ bidIndexReady }: { bidIndexReady: boolean }) {
   return (
-        <section className="canvas-wide mt-12">
-          <SectionHeader title="Bid Index" />
-          {bidIndexReady ? (
-            <div className="mt-4">
-              <p className="max-w-2xl text-sm leading-relaxed text-muted">
-                Market benchmarks now exist: categories with enough verified,
-                settled outcomes publish their median, range, and sample size on
-                the Bid Index.
-              </p>
-              <a href="/bid-index" className="mt-3 inline-block text-sm font-medium text-accent underline underline-offset-4">
-                See the market data
-              </a>
-            </div>
-          ) : (
-            <div className="mt-4">
-              <p className="max-w-2xl text-sm leading-relaxed text-muted">
-                The Bid Index publishes only when a category has at least ten
-                verified, settled outcomes. Until then it shows{" "}
-                <span className="font-medium">Insufficient sample</span> instead
-                of inventing a price. That is the product working as designed.
-              </p>
-              <a href="/bid-index" className="mt-3 inline-block text-sm font-medium text-accent underline underline-offset-4">
-                See the current state
-              </a>
-            </div>
-          )}
-        </section>
-  
+    <section className="canvas-wide mt-12">
+      <SectionHeader
+        title="Market rates"
+        aside={
+          <a href="/market-rates" className="text-xs font-medium text-accent underline underline-offset-4">
+            See the market data
+          </a>
+        }
+      />
+      {bidIndexReady ? (
+        <div className="mt-4">
+          <p className="max-w-2xl text-sm leading-relaxed text-muted">
+            Market benchmarks exist: categories with enough verified, settled
+            outcomes publish their median, range, and sample size under Market
+            rates.
+          </p>
+        </div>
+      ) : (
+        <div className="mt-4">
+          <p className="max-w-2xl text-sm leading-relaxed text-muted">
+            Market rates publish only when a category has at least ten
+            verified, settled outcomes. Until then it shows{" "}
+            <span className="font-medium">Insufficient sample</span> instead of
+            inventing a price. That is the product working as designed.
+          </p>
+        </div>
+      )}
+    </section>
+  );
+}
+
+/** Bid Index: the trust score methodology teaser (RC4 §57). */
+function BidIndexTeaser() {
+  return (
+    <section className="canvas-wide mt-12">
+      <SectionHeader
+        title="Bid Index"
+        aside={
+          <a href="/bid-index" className="text-xs font-medium text-accent underline underline-offset-4">
+            Methodology and your report
+          </a>
+        }
+      />
+      <p className="mt-4 max-w-2xl text-sm leading-relaxed text-muted">
+        The Bid Index is a 300 to 900 marketplace trust score built from what
+        actually happened: work completed, commitments honoured, disputes
+        resolved, and the size and difficulty of the obligations involved.
+        Three role scores (Provider, Sponsor, Captain) keep the picture
+        honest. It is not a credit score, it cannot be bought, and it starts
+        as NR until real evidence exists.
+      </p>
+    </section>
   );
 }
 /** The principles, quiet: type + rules, not a card wall. */

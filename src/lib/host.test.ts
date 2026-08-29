@@ -75,13 +75,13 @@ test("canonical is the CANONICAL-origin URL per domain + path", () => {
   const meta = seoMeta("foundersbid", "/terms");
   assert.equal(meta.canonical, "https://foundersbid.lol/terms");
   assert.equal(meta.ogUrl, "https://foundersbid.lol/terms");
-  assert.equal(meta.ogImage, "https://foundersbid.lol/og.jpg");
+  assert.equal(meta.ogImage, "https://foundersbid.lol/og/trust-v1/foundersbid.png");
   assert.equal(pageTitleFor("foundersbid", "/terms"), "Terms of service | FoundersBid");
   // culturebid: the working origin, not the broken apex
   const cb = seoMeta("culturebid", "/bounties");
   assert.equal(cb.canonical, "https://www.culturebid.lol/bounties");
   assert.equal(cb.ogUrl, "https://www.culturebid.lol/bounties");
-  assert.equal(cb.ogImage, "https://www.culturebid.lol/og.jpg");
+  assert.equal(cb.ogImage, "https://www.culturebid.lol/og/trust-v1/culturebid.png");
 });
 
 test("product-aware /bounties title (RC2, C1)", () => {

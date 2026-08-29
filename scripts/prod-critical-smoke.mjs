@@ -35,6 +35,7 @@ const ROUTES = [
   "https://bidthrone.lol/",
   "https://bidthrone.lol/leaderboards",
   "https://bidthrone.lol/bid-index",
+  "https://bidthrone.lol/market-rates",
   // Account surfaces
   "https://foundersbid.lol/signin",
   "https://foundersbid.lol/signup",

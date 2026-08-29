@@ -30,8 +30,27 @@ const TITLES: Record<string, { title: string; blurb: string }> = {
   top_captains: { title: "Top captains", blurb: "Team projects captained to completion." },
   top_sponsors: { title: "Top sponsors", blurb: "Sponsors with the most funded, completed work on the network." },
   most_quality: { title: "Highest rated", blurb: "Average review quality from completed work. Requires at least three reviews to appear." },
-  most_reliable: { title: "Most reliable", blurb: "Completion ratio: completed work over started work, with a minimum of two completions to appear." },
+  most_reliable: {
+    title: "Most reliable",
+    blurb: "Provider Bid Index: real BI-1.0 evidence from completed, settled work. Requires full score eligibility, so the board is empty until providers establish history.",
+  },
   rising: { title: "Rising", blurb: "Verified completions in the last 90 days." },
+  highest_bid_index: {
+    title: "Highest Bid Index",
+    blurb: "Overall Bid Index leaders. Score-eligible members only, with confidence 0.45 or higher, at least five effective independent outcomes, and three or more unrelated counterparties.",
+  },
+  top_providers_bid_index: {
+    title: "Top Provider Index",
+    blurb: "Providers by Bid Index. Score-eligible only: confidence 0.45+, five effective outcomes, three unrelated counterparties.",
+  },
+  top_sponsors_bid_index: {
+    title: "Top Sponsor Index",
+    blurb: "Sponsors by Bid Index. Score-eligible only: confidence 0.45+, five effective outcomes, three unrelated counterparties.",
+  },
+  top_captains_bid_index: {
+    title: "Top Captain Index",
+    blurb: "Captains by Bid Index. Score-eligible only: confidence 0.45+, five effective outcomes, three unrelated counterparties.",
+  },
 };
 
 /** How the board's own metric value reads on a row. */
@@ -48,7 +67,11 @@ function metricLabel(board: string, row: LeaderboardRow): string {
     case "most_quality":
       return `quality ${Number(row.metric).toFixed(2)} avg`;
     case "most_reliable":
-      return `${Math.round(row.metric * 100)}% completion rate`;
+    case "highest_bid_index":
+    case "top_providers_bid_index":
+    case "top_sponsors_bid_index":
+    case "top_captains_bid_index":
+      return `Bid Index ${Math.round(row.metric)} · model BI-1.0`;
     case "rising":
       return `${row.metric} in 90 days`;
     case "most_experience":
@@ -87,7 +110,7 @@ function LeaderboardsPage() {
         <PageHeader
           kicker="Bidthrone"
           title="Leaderboards"
-          lead="Each board ranks one thing, and it comes from the marketplace, not from a member's self-report: completed bounties, completed projects, captained teams, and the reviews attached to them. Boards are network-wide, because reputation crosses products."
+          lead="Each board ranks one thing, and it comes from the marketplace, not from a member's self-report: completed bounties, completed projects, captained teams, and the reviews attached to them. Boards are network-wide, because reputation crosses products. The score boards are the Bid Index itself: earned evidence, never a purchase."
         />
 
         {!anyData ? (

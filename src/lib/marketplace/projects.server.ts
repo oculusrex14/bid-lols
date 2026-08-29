@@ -298,7 +298,7 @@ export async function selectProposal(opts: {
         [opts.projectId],
       );
       await tx.query(
-        "update project_milestones set status='ACTIVE', updated_at=now() where project_id=$1 and seq=1",
+        "update project_milestones set status='ACTIVE', active_at=now(), updated_at=now() where project_id=$1 and seq=1",
         [opts.projectId],
       );
     }
@@ -345,9 +345,9 @@ export async function verifyProjectFunding(opts: {
     [opts.projectId],
   );
   if (claimed.length === 0) return "alreadyActive";
-  // Activate the first milestone.
+  // Activate the first milestone (RC4 §23.3: authoritative activation stamp).
   await sql.query(
-    "update project_milestones set status='ACTIVE', updated_at=now() where project_id=$1 and seq=1",
+    "update project_milestones set status='ACTIVE', active_at=now(), updated_at=now() where project_id=$1 and seq=1",
     [opts.projectId],
   );
   return "active";
@@ -418,7 +418,7 @@ export async function decideMilestone(opts: {
       );
       if (next.length > 0) {
         await tx.query(
-          "update project_milestones set status='ACTIVE', updated_at=now() where id=$1",
+          "update project_milestones set status='ACTIVE', active_at=now(), updated_at=now() where id=$1",
           [next[0].id],
         );
       }
@@ -436,6 +436,78 @@ export async function decideMilestone(opts: {
       [m.id],
     );
     return { ok: true, status: "REJECTED" };
+  });
+}
+
+/**
+ * RC4 §23.3: sponsor-approved deadline extension. Allowed only BEFORE
+ * breach (the current due date has not passed and the milestone is not yet
+ * submitted) and never backwards; the extension row is append-only and the
+ * Bid Index treats an approved pre-breach extension as neutral — the
+ * effective due date becomes the extended date.
+ */
+export async function extendMilestone(opts: {
+  milestoneId: string;
+  sponsorUserId: string;
+  newDueAt: Date;
+  reason?: string;
+}): Promise<{ ok: true } | { ok: false; code: string; message: string }> {
+  const sql = await getSql();
+  return sql.transaction(async (tx) => {
+    const rows = await tx.query<{
+      id: string; sponsor_user_id: string; status: string; due_at: string | null;
+    }>(
+      `select m.id, p.sponsor_user_id, m.status, m.due_at
+       from project_milestones m join projects p on p.id = m.project_id
+       where m.id = $1 for update of m`,
+      [opts.milestoneId],
+    );
+    const m = rows[0];
+    if (!m) return { ok: false, code: "not_found", message: "Milestone not found." };
+    if (m.sponsor_user_id !== opts.sponsorUserId) {
+      return { ok: false, code: "forbidden", message: "Only the sponsor may extend the deadline." };
+    }
+    if (m.status !== "ACTIVE") {
+      return { ok: false, code: "invalid_state", message: "Only an active milestone can be extended." };
+    }
+    if (!m.due_at) {
+      return { ok: false, code: "no_due_date", message: "This milestone has no due date to extend." };
+    }
+    const currentDue = new Date(m.due_at).getTime();
+    if (Number.isNaN(currentDue)) {
+      return { ok: false, code: "no_due_date", message: "This milestone has no due date to extend." };
+    }
+    if (Date.now() > currentDue) {
+      return { ok: false, code: "past_breach", message: "Breached milestones cannot be extended." };
+    }
+    const newDue = new Date(opts.newDueAt).getTime();
+    if (!Number.isFinite(newDue)) {
+      return { ok: false, code: "bad_date", message: "The new due date is invalid." };
+    }
+    if (newDue <= currentDue) {
+      return { ok: false, code: "not_forward", message: "An extension must move the deadline forward." };
+    }
+    const latest = await tx.query<{ new_due_at: string }>(
+      `select new_due_at from project_milestone_extensions
+       where milestone_id = $1 order by created_at desc limit 1`,
+      [opts.milestoneId],
+    );
+    const previousDue = latest[0]
+      ? new Date(latest[0].new_due_at)
+      : new Date(m.due_at);
+    await tx.query(
+      `insert into project_milestone_extensions (id, milestone_id, previous_due_at, new_due_at, approved_by, reason)
+       values ($1,$2,$3,$4,$5,$6)`,
+      [
+        makeId("mex_"),
+        opts.milestoneId,
+        previousDue.toISOString(),
+        new Date(newDue).toISOString(),
+        opts.sponsorUserId,
+        (opts.reason ?? "").slice(0, 2000),
+      ],
+    );
+    return { ok: true };
   });
 }
 

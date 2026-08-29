@@ -270,3 +270,33 @@ export const submitMilestoneFn = createServerFn({ method: "POST" })
       return { ok: false, code: "error", message: "Could not submit milestone." };
     }
   });
+
+/** RC4 §23.3: sponsor-approved pre-breach deadline extension (neutral in BI-1.0). */
+export const extendMilestoneFn = createServerFn({ method: "POST" })
+  .validator(
+    z
+      .object({
+        milestoneId: z.string().trim().min(8).max(64),
+        newDueAt: z.string().trim().min(4).max(64),
+        reason: z.string().trim().max(2000).default(""),
+      })
+      .strict()
+      .parse,
+  )
+  .handler(async ({ data }) => {
+    try {
+      await assertMilestoneProjectOnHost(data.milestoneId);
+      const session = await requireUser();
+      const { extendMilestone } = await import("@/lib/marketplace/projects.server");
+      return await extendMilestone({
+        milestoneId: data.milestoneId,
+        sponsorUserId: session.user.id,
+        newDueAt: new Date(data.newDueAt),
+        reason: data.reason,
+      });
+    } catch (err) {
+      const mapped = toErrorResponse(err);
+      if (mapped) return { ok: false, ...mapped.body };
+      return { ok: false, code: "error", message: "Could not extend the deadline." };
+    }
+  });

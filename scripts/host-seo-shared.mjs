@@ -58,6 +58,47 @@ export const THEME_COLORS = {
 };
 
 /**
+ * RC4 P0: versioned social-card URLs. The legacy /og.jpg carried pre-pivot
+ * "pay-to-rank" artwork and is crawl-cached by X; every current reference
+ * must use a NEW centralized versioned path, never the same old filename.
+ * The single source of truth is this constant; the PNGs are rendered
+ * deterministically by scripts/generate-og-assets.mjs into public/og/.
+ */
+export const OG_ASSET_VERSION = "trust-v1";
+
+/** One card per product + the neutral network card that replaced og.jpg. @type {Record<string, string>} */
+export const OG_IMAGE_ALTS = {
+  bidthrone: "Bidthrone · reputation built from completed work on the Bid Network",
+  foundersbid: "FoundersBid · get startup work done. Bounties, projects, verified outcomes",
+  culturebid: "CultureBid · paid creative briefs with fair rules on the Bid Network",
+  bidception: "Bidception · one project, one budget, a team forms around the work",
+  network: "The Bid Network · foundersbid.lol, culturebid.lol, bidception.lol, bidthrone.lol",
+};
+
+const OG_CARD_PRODUCTS = new Set(["bidthrone", "foundersbid", "culturebid", "bidception"]);
+
+/**
+ * Versioned social-card URL for a product; unknown keys get the neutral
+ * network card at /og.jpg (the legacy filename now serves the CURRENT
+ * card, so a stray historical reference can never resurrect the old
+ * pay-to-rank artwork). CultureBid keeps its working www canonical origin
+ * for image URLs until its apex DNS is fixed.
+ * @param {string} productKey
+ * @returns {string} absolute URL to the 1200x630 PNG card
+ */
+export function ogImageFor(productKey) {
+  const origin = seoOrigin(productKey);
+  return OG_CARD_PRODUCTS.has(productKey)
+    ? `${origin}/og/${OG_ASSET_VERSION}/${productKey}.png`
+    : `${origin}/og.jpg`;
+}
+
+/** Alt text for a product's card (or the network card). @param {string} productKey @returns {string} */
+export function ogImageAltFor(productKey) {
+  return OG_IMAGE_ALTS[productKey] ?? OG_IMAGE_ALTS.network;
+}
+
+/**
  * @param {string} key
  * @returns {string} light theme-color for the product
  */
@@ -298,7 +339,16 @@ export function capabilityForPath(pathname) {
   if (pathname === "/projects" || pathname.startsWith("/projects/")) return "projects";
   if (pathname === "/graveyard" || pathname.startsWith("/graveyard/")) return "graveyard";
   if (pathname === "/bidception" || pathname.startsWith("/bidception/")) return "bidception";
-  if (pathname === "/leaderboards" || pathname === "/bid-index") return "reputation";
+  // RC4: Bidthrone's reputation surfaces are the Bid Index methodology page,
+  // the Market Rates aggregate, and the leaderboards. All three are
+  // bidthrone-canonical.
+  if (
+    pathname === "/leaderboards" ||
+    pathname === "/bid-index" ||
+    pathname === "/market-rates"
+  ) {
+    return "reputation";
+  }
   return null;
 }
 
@@ -332,6 +382,7 @@ const PATH_TITLES = {
   "/signup": "Create an account",
   "/dashboard": "Dashboard",
   "/settings/profile": "Profile settings",
+  "/settings/trust": "Your trust report",
   "/admin": "Admin",
   "/projects": "Open projects",
   "/blog": "Blog",
@@ -353,7 +404,12 @@ const PRIVATE_PATHS = new Set([
   // Gated aggregate (Phase 04, FR-4): only publishable once a sample
   // threshold is met per category, which the static middleware cannot know,
   // so the aggregate page itself stays noindex; no deal-level data exposed.
+  // RC4: the aggregate product is /market-rates (Bid Index is now the trust
+  // score). Same policy: aggregate stays noindex until samples exist.
   "/bid-index",
+  "/market-rates",
+  // RC4, S-3.1: the private trust score report never indexes.
+  "/settings/trust",
   // RC3, S-7.3: thin chooser page, useful but not search content.
   "/post",
 ]);
@@ -388,6 +444,7 @@ function marketplacePathMeta(productKey, pathname) {
   if (pathname === "/graveyard" || pathname.startsWith("/graveyard/")) return { suffix: "Graveyard" };
   if (pathname === "/bidception" || pathname.startsWith("/bidception/")) return { suffix: "Team projects" };
   if (pathname === "/leaderboards") return { suffix: "Leaderboards" };
+  if (pathname === "/market-rates") return { suffix: "Market rates" };
   if (pathname === "/bid-index") return { suffix: "Bid Index" };
   if (pathname.startsWith("/profile/")) return { suffix: "Member profile" };
   if (pathname.startsWith("/test/")) return { suffix: "Test" };
@@ -415,7 +472,7 @@ export { pageTitleFor };
  * @returns {{
  *   title: string, description: string, canonical: string,
  *   ogTitle: string, ogDescription: string, ogUrl: string,
- *   ogImage: string, ogType: string, robots: string
+ *   ogImage: string, ogImageAlt: string, ogType: string, robots: string
  * }}
  */
 export function seoMeta(productKey, pathname) {
@@ -423,6 +480,8 @@ export function seoMeta(productKey, pathname) {
   const origin = seoOrigin(productKey);
   const canonical = `${origin}${pathname}`;
   const title = pageTitleFor(productKey, pathname);
+  const image = ogImageFor(productKey);
+  const imageAlt = ogImageAltFor(productKey);
   return {
     title,
     description: p.description,
@@ -430,7 +489,8 @@ export function seoMeta(productKey, pathname) {
     ogTitle: title,
     ogDescription: p.description,
     ogUrl: canonical,
-    ogImage: `${origin}/og.jpg`,
+    ogImage: image,
+    ogImageAlt: imageAlt,
     ogType: "website",
     robots: robotsMetaFor(productKey, pathname),
   };
@@ -502,6 +562,8 @@ export function renderSeoHeadTags(productKey, pathname) {
 export function renderHeadTags(productKey, m) {
   void productKey;
   const extra = Array.isArray(m.extraHeadTags) ? m.extraHeadTags : [];
+  const image = m.ogImage;
+  const imageAlt = m.ogImageAlt ?? ogImageAltFor(productKey);
   return [
     `<title>${esc(m.title)}</title>`,
     `<meta name="robots" content="${m.robots}">`,
@@ -511,9 +573,18 @@ export function renderHeadTags(productKey, m) {
     `<meta property="og:title" content="${esc(m.ogTitle)}">`,
     `<meta property="og:description" content="${esc(m.ogDescription)}">`,
     `<meta property="og:url" content="${esc(m.ogUrl)}">`,
-    `<meta property="og:image" content="${esc(m.ogImage)}">`,
     `<meta property="og:type" content="${esc(m.ogType)}">`,
+    `<meta property="og:image" content="${esc(image)}">`,
+    `<meta property="og:image:secure_url" content="${esc(image)}">`,
+    `<meta property="og:image:type" content="image/png">`,
+    `<meta property="og:image:width" content="1200">`,
+    `<meta property="og:image:height" content="630">`,
+    `<meta property="og:image:alt" content="${esc(imageAlt)}">`,
     `<meta name="twitter:card" content="summary_large_image">`,
+    `<meta name="twitter:title" content="${esc(m.ogTitle)}">`,
+    `<meta name="twitter:description" content="${esc(m.ogDescription)}">`,
+    `<meta name="twitter:image" content="${esc(image)}">`,
+    `<meta name="twitter:image:alt" content="${esc(imageAlt)}">`,
     ...extra.map((t) => (t.startsWith("<") ? t : `<meta property="${esc(t)}">`)),
   ].join("\n");
 }
@@ -527,6 +598,7 @@ export function renderHeadTags(productKey, m) {
  * @property {string} ogDescription
  * @property {string} ogUrl
  * @property {string} ogImage
+ * @property {string} [ogImageAlt]
  * @property {string} ogType
  * @property {string} robots
  * @property {string[]} [extraHeadTags]
@@ -557,7 +629,8 @@ export function buildEntityMeta(productKey, pathname, e) {
     ogTitle: e.title,
     ogDescription: e.description,
     ogUrl: canonical,
-    ogImage: `${origin}/og.jpg`,
+    ogImage: ogImageFor(productKey),
+    ogImageAlt: ogImageAltFor(productKey),
     ogType: e.ogType ?? "website",
     robots: e.indexable === false ? "noindex,follow" : "index,follow",
     extraHeadTags: e.extraHeadTags ?? [],
@@ -587,6 +660,7 @@ export function injectSeoHead(html, productKey, pathname, status = 200, entityMe
     /<meta\s+name="description"\s+content="[^"]*"[^>]*\/?>/g,
     /<link\s+rel="canonical"\s+href="[^"]*"[^>]*\/?>/g,
     /<meta\s+property="og:[^"]*"\s+content="[^"]*"[^>]*\/?>/g,
+    /<meta\s+name="twitter:[^"]*"\s+content="[^"]*"[^>]*\/?>/g,
     /<meta\s+name="robots"\s+content="[^"]*"[^>]*\/?>/g,
     /<meta\s+name="theme-color"\s+content="[^"]*"[^>]*\/?>/g,
   ];

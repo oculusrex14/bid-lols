@@ -47,7 +47,7 @@ test("assertSchemaCurrent: resolves on a current ledger", async () => {
 test("assertSchemaCurrent: rejects naming the missing migration(s)", async () => {
   await assert.rejects(
     () => assertSchemaCurrent(ledgerSql(["0002_boards.sql"])),
-    /database schema is behind: _migrations missing \[0003_hype\.sql, .*0017_bidception_child_link\.sql\]/,
+    /database schema is behind: _migrations missing \[0003_hype\.sql, .*0018_trust_bid_index\.sql\]/,
   );
 });
 

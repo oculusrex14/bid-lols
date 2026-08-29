@@ -70,3 +70,29 @@
 | `user` / `session` / `account` / `verification` (`auth/0001`, never applied) | **RESOLVED (Phase 00)** | Do not apply: the Grok-coupled Better Auth scaffold is removed, and the new `users`/`sessions` above are the identity foundation. The file is archived with the scaffold. |
 
 **Phase 00 safety rule:** no destructive deletions. No production data is dropped or altered by Phase 00 migrations — every Phase 00 schema change is additive (new tables, new columns). `DROP LATER` candidates (`activity`, the legacy shape of `site_stats`, optionally `crown_*`) are retained read-only until a later phase has exported what it wants.
+
+## RC4: trust layer (migration 0018, strictly additive)
+
+Bid Index trust infrastructure (BI-1.0):
+
+- `trust_events` — append-only scoring inputs, idempotent on
+  (source_type, source_id, user_id, role, event_kind); corrections append
+  REVERSAL rows (`reverses_event_id`); indexed by user/role/time, work, source.
+- `trust_score_snapshots` — per (user, role, model_version) cache/audit
+  records fingerprinted by `input_hash`; never authoritative; scores recompute
+  from state plus reversals.
+- `trust_score_appeals` — fact challenges (OPEN -> UNDER_REVIEW -> UPHELD /
+  CORRECTED / REJECTED); a correction goes through reversal trust events only.
+- `trust_risk_flags` — internal signals; SUSPECTED states never lower a score
+  by themselves; only CONFIRMED misconduct may become adjudicated evidence.
+- `verification_cases` / `verification_events` — future verification
+  infrastructure behind `TRUST_VERIFICATION_LIVE=0`; identity documents are
+  never stored (provider references and results only).
+- `disputes` += `resolution_code`, `responsibility`, `severity_code`,
+  `finalized_at` (structured adjudication; OPEN/UNDER_REVIEW have zero effect).
+- `reviews` += nullable `value`, `fairness` dimensions (missing is not zero).
+- `project_milestones` += `active_at` (authoritative activation stamp);
+  `project_milestone_extensions` (append-only, approved pre-breach forward
+  moves; the latest approved extension is the effective due date).
+DOCS
+echo appended

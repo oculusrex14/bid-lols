@@ -64,3 +64,8 @@ Order (ledger row): `pending → paid` (provider-verified) | `pending → failed
 ## India-First (currently applicable, not hard-coded forever)
 
 Today, India-first shows up concretely as: INR-only charging (USD→INR FX), Cashfree as the sole gateway, `en-IN` currency formatting (`formatInr`), and a dummy Indian phone number on gateway orders. These are **initial-market defaults, not invariants**: the `currency` column, per-market gateway selection, and a pluggable FX source keep the launch India-first while leaving USD/EUR (or a non-Cashfree provider) as configuration rather than a rewrite.
+
+
+## RC4 terminology (binding)
+
+**Bid Index** = the personal marketplace trust score (BI-1.0, 300-900, model-versioned; docs/BID_INDEX_METHODOLOGY.md). The aggregate pricing benchmark is **Market Rates** (/market-rates, code `marketRateFor`/`MARKET_RATE_MIN_SAMPLE`) and must never be called Bid Index again. Paid verification (future, behind TRUST_VERIFICATION_LIVE=0) earns zero Bid Index effect: payment alone is never evidence.

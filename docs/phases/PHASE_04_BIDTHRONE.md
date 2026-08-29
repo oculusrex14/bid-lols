@@ -9,13 +9,13 @@
 - public per-member profiles showing verified marketplace outcomes,
 - interpretable reputation dimensions (not one opaque magic number),
 - leaderboards derived ONLY from real production data with meaningful empty/new-network states,
-- the Bid Index (aggregate pricing benchmarks) — architecture exists, but pages publish only when the underlying sample is sufficient.
+- Market Rates (aggregate pricing benchmarks; renamed from "Bid Index" in RC4) — architecture exists, but pages publish only when the underlying sample is sufficient. **Bid Index now means the personal trust score (RC4 §3).**
 
 ## User roles
 
 | Role | Powers |
 |---|---|
-| visitor | browse public profiles, leaderboards, (gated) Bid Index |
+| visitor | browse public profiles, leaderboards, (gated) Market Rates |
 | member | view their own profile/reputation, set privacy controls |
 | admin | as shared (moderation) |
 
@@ -26,7 +26,7 @@ Reputation cannot be purchased; no payment path writes into it.
 - **FR-1 Public profile** (`/profile/:handle` on bidthrone host): identity, specialties, network roles, verified completion count, bounty wins, project completions, captain completions, creator wins, sponsor/provider reviews, repeat counterparties, total earnings ONLY if the member opts in, badges from verified facts, portfolio. Honesty: numbers are derived from the ledger/awards/reviews; a member with no verified outcomes shows an empty (not fabricated) profile.
 - **FR-2 Interpretable reputation** (avoid one opaque number): dimensions = Reliability, Quality (avg rating), Experience (completed work count), Recent activity. If a composite score is shown, its formula is documented and public. No payment/featured placement can alter it.
 - **FR-3 Leaderboards**: Top Builders, Top Creators, Top Captains, Rising, Most Reliable, Most Wins, Most Completed, Top Sponsors — derived from genuine production data ONLY. If sample size is below a documented threshold, show a meaningful "new network / not enough data yet" state. Never seed fake people.
-- **FR-4 Bid Index (gated)**: aggregate pricing pages (FoundersBid landing-page quote ranges, automation/design prices, CultureBid UGC ranges, Bidception captain-fee ranges, cross-network category trends). Rules: anonymize, aggregate, publish sample size + methodology, suppress tiny samples, never expose private deal details, do NOT publish a benchmark without enough data. SEO pages indexable only when the sample threshold is met (noindex below it).
+- **FR-4 Market Rates (gated; renamed from "Bid Index" in RC4)**: aggregate pricing pages (FoundersBid landing-page quote ranges, automation/design prices, CultureBid UGC ranges, Bidception captain-fee ranges, cross-network category trends). Rules: anonymize, aggregate, publish sample size + methodology, suppress tiny samples, never expose private deal details, do NOT publish a benchmark without enough data. SEO pages indexable only when the sample threshold is met (noindex below it).
 - **FR-5 Privacy controls**: per-member opt-out of earnings display; the profile respects it. (Account-level global opt-out is an extension.)
 - **FR-6 Repeat counterparties**: derived from shared sponsor↔provider history across completed work.
 
@@ -46,7 +46,7 @@ No new money flows. Reads only. Any "earnings" figure is the sum of PAYOUT_SETTL
 
 - Public profile reads no PII; earnings hidden unless opted in.
 - Leaderboard queries are aggregate-only (no deal-level detail exposed).
-- Bid Index suppresses samples below threshold server-side (never client-trusted).
+- Market Rates suppresses samples below threshold server-side (never client-trusted).
 
 ## Analytics
 

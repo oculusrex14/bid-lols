@@ -15,6 +15,7 @@ import { Route as BidIndexRouteImport } from './routes/bid-index'
 import { Route as ContactRouteImport } from './routes/contact'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as LeaderboardsRouteImport } from './routes/leaderboards'
+import { Route as MarketRatesRouteImport } from './routes/market-rates'
 import { Route as PostRouteImport } from './routes/post'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as RefundRouteImport } from './routes/refund'
@@ -38,6 +39,7 @@ import { Route as ProjectsIndexRouteImport } from './routes/projects.index'
 import { Route as ProjectsIdRouteImport } from './routes/projects.$id'
 import { Route as ProjectsNewRouteImport } from './routes/projects.new'
 import { Route as SettingsProfileRouteImport } from './routes/settings.profile'
+import { Route as SettingsTrustRouteImport } from './routes/settings.trust'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as ApiDevStateRouteImport } from './routes/api.dev.state'
 import { Route as ApiDevVerifyEmailRouteImport } from './routes/api.dev.verify-email'
@@ -72,6 +74,11 @@ const DashboardRoute = DashboardRouteImport.update({
 const LeaderboardsRoute = LeaderboardsRouteImport.update({
   id: '/leaderboards',
   path: '/leaderboards',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MarketRatesRoute = MarketRatesRouteImport.update({
+  id: '/market-rates',
+  path: '/market-rates',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PostRoute = PostRouteImport.update({
@@ -189,6 +196,11 @@ const SettingsProfileRoute = SettingsProfileRouteImport.update({
   path: '/settings/profile',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SettingsTrustRoute = SettingsTrustRouteImport.update({
+  id: '/settings/trust',
+  path: '/settings/trust',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   id: '/api/auth/$',
   path: '/api/auth/$',
@@ -222,6 +234,7 @@ export interface FileRoutesByFullPath {
   '/contact': typeof ContactRoute
   '/dashboard': typeof DashboardRoute
   '/leaderboards': typeof LeaderboardsRoute
+  '/market-rates': typeof MarketRatesRoute
   '/post': typeof PostRoute
   '/privacy': typeof PrivacyRoute
   '/refund': typeof RefundRoute
@@ -240,6 +253,7 @@ export interface FileRoutesByFullPath {
   '/projects/$id': typeof ProjectsIdRoute
   '/projects/new': typeof ProjectsNewRoute
   '/settings/profile': typeof SettingsProfileRoute
+  '/settings/trust': typeof SettingsTrustRoute
   '/bidception/': typeof BidceptionIndexRoute
   '/blog/': typeof BlogIndexRoute
   '/bounties/': typeof BountiesIndexRoute
@@ -258,6 +272,7 @@ export interface FileRoutesByTo {
   '/contact': typeof ContactRoute
   '/dashboard': typeof DashboardRoute
   '/leaderboards': typeof LeaderboardsRoute
+  '/market-rates': typeof MarketRatesRoute
   '/post': typeof PostRoute
   '/privacy': typeof PrivacyRoute
   '/refund': typeof RefundRoute
@@ -276,6 +291,7 @@ export interface FileRoutesByTo {
   '/projects/$id': typeof ProjectsIdRoute
   '/projects/new': typeof ProjectsNewRoute
   '/settings/profile': typeof SettingsProfileRoute
+  '/settings/trust': typeof SettingsTrustRoute
   '/bidception': typeof BidceptionIndexRoute
   '/blog': typeof BlogIndexRoute
   '/bounties': typeof BountiesIndexRoute
@@ -295,6 +311,7 @@ export interface FileRoutesById {
   '/contact': typeof ContactRoute
   '/dashboard': typeof DashboardRoute
   '/leaderboards': typeof LeaderboardsRoute
+  '/market-rates': typeof MarketRatesRoute
   '/post': typeof PostRoute
   '/privacy': typeof PrivacyRoute
   '/refund': typeof RefundRoute
@@ -313,6 +330,7 @@ export interface FileRoutesById {
   '/projects/$id': typeof ProjectsIdRoute
   '/projects/new': typeof ProjectsNewRoute
   '/settings/profile': typeof SettingsProfileRoute
+  '/settings/trust': typeof SettingsTrustRoute
   '/bidception/': typeof BidceptionIndexRoute
   '/blog/': typeof BlogIndexRoute
   '/bounties/': typeof BountiesIndexRoute
@@ -333,6 +351,7 @@ export interface FileRouteTypes {
     | '/contact'
     | '/dashboard'
     | '/leaderboards'
+    | '/market-rates'
     | '/post'
     | '/privacy'
     | '/refund'
@@ -351,6 +370,7 @@ export interface FileRouteTypes {
     | '/projects/$id'
     | '/projects/new'
     | '/settings/profile'
+    | '/settings/trust'
     | '/bidception/'
     | '/blog/'
     | '/bounties/'
@@ -369,6 +389,7 @@ export interface FileRouteTypes {
     | '/contact'
     | '/dashboard'
     | '/leaderboards'
+    | '/market-rates'
     | '/post'
     | '/privacy'
     | '/refund'
@@ -387,6 +408,7 @@ export interface FileRouteTypes {
     | '/projects/$id'
     | '/projects/new'
     | '/settings/profile'
+    | '/settings/trust'
     | '/bidception'
     | '/blog'
     | '/bounties'
@@ -405,6 +427,7 @@ export interface FileRouteTypes {
     | '/contact'
     | '/dashboard'
     | '/leaderboards'
+    | '/market-rates'
     | '/post'
     | '/privacy'
     | '/refund'
@@ -423,6 +446,7 @@ export interface FileRouteTypes {
     | '/projects/$id'
     | '/projects/new'
     | '/settings/profile'
+    | '/settings/trust'
     | '/bidception/'
     | '/blog/'
     | '/bounties/'
@@ -442,6 +466,7 @@ export interface RootRouteChildren {
   ContactRoute: typeof ContactRoute
   DashboardRoute: typeof DashboardRoute
   LeaderboardsRoute: typeof LeaderboardsRoute
+  MarketRatesRoute: typeof MarketRatesRoute
   PostRoute: typeof PostRoute
   PrivacyRoute: typeof PrivacyRoute
   RefundRoute: typeof RefundRoute
@@ -460,6 +485,7 @@ export interface RootRouteChildren {
   ProjectsIdRoute: typeof ProjectsIdRoute
   ProjectsNewRoute: typeof ProjectsNewRoute
   SettingsProfileRoute: typeof SettingsProfileRoute
+  SettingsTrustRoute: typeof SettingsTrustRoute
   BidceptionIndexRoute: typeof BidceptionIndexRoute
   BlogIndexRoute: typeof BlogIndexRoute
   BountiesIndexRoute: typeof BountiesIndexRoute
@@ -514,6 +540,13 @@ declare module '@tanstack/react-router' {
       path: '/leaderboards'
       fullPath: '/leaderboards'
       preLoaderRoute: typeof LeaderboardsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/market-rates': {
+      id: '/market-rates'
+      path: '/market-rates'
+      fullPath: '/market-rates'
+      preLoaderRoute: typeof MarketRatesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/post': {
@@ -677,6 +710,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SettingsProfileRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/settings/trust': {
+      id: '/settings/trust'
+      path: '/settings/trust'
+      fullPath: '/settings/trust'
+      preLoaderRoute: typeof SettingsTrustRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/auth/$': {
       id: '/api/auth/$'
       path: '/api/auth/$'
@@ -722,6 +762,7 @@ const rootRouteChildren: RootRouteChildren = {
   ContactRoute: ContactRoute,
   DashboardRoute: DashboardRoute,
   LeaderboardsRoute: LeaderboardsRoute,
+  MarketRatesRoute: MarketRatesRoute,
   PostRoute: PostRoute,
   PrivacyRoute: PrivacyRoute,
   RefundRoute: RefundRoute,
@@ -740,6 +781,7 @@ const rootRouteChildren: RootRouteChildren = {
   ProjectsIdRoute: ProjectsIdRoute,
   ProjectsNewRoute: ProjectsNewRoute,
   SettingsProfileRoute: SettingsProfileRoute,
+  SettingsTrustRoute: SettingsTrustRoute,
   BidceptionIndexRoute: BidceptionIndexRoute,
   BlogIndexRoute: BlogIndexRoute,
   BountiesIndexRoute: BountiesIndexRoute,

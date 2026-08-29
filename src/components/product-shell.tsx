@@ -47,9 +47,11 @@ function navFor(site: ProductKey): { label: string; href: string }[] {
     case "bidception":
       return [{ label: "Team projects", href: "/bidception" }];
     case "bidthrone":
+      // RC4 §3.1: the navigation concept is Bid Index · Leaderboards · Market rates.
       return [
-        { label: "Leaderboards", href: "/leaderboards" },
         { label: "Bid Index", href: "/bid-index" },
+        { label: "Leaderboards", href: "/leaderboards" },
+        { label: "Market rates", href: "/market-rates" },
       ];
   }
 }
