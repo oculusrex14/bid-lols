@@ -235,7 +235,10 @@ test("security.txt is host-aware, standards-shaped, and expires ~90 days out (RC
   for (const key of ["bidthrone", "foundersbid", "culturebid", "bidception"] as const) {
     const txt = securityTxtFor(key, new Date("2026-08-28T00:00:00Z"));
     const apex = key === "culturebid" ? "www.culturebid.lol" : `${key}.lol`;
-    assert.ok(txt.includes(`Contact: mailto:contact@${key}.lol`), `${key}: existing contact channel only`);
+    // Single business inbox for the whole network (2026-08-29 operator
+    // decision): every domain lists contact@foundersbid.lol, nothing else.
+    assert.ok(txt.includes("Contact: mailto:contact@foundersbid.lol"), `${key}: single network business inbox`);
+    assert.ok(!/contact@(bidthrone|culturebid|bidception)\.lol/.test(txt), `${key}: no per-domain business mailbox`);
     assert.ok(txt.includes(`Policy: https://${apex}/terms`), `${key}: policy on the reachable origin`);
     assert.ok(txt.includes(`Canonical: https://${apex}/.well-known/security.txt`));
     assert.ok(txt.includes("Preferred-Languages: en"));

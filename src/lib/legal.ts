@@ -67,9 +67,9 @@ export function legalDoc(productKey: ProductKey, slug: LegalSlug): {
     case "privacy":
       return privacyDoc(cfg, email);
     case "refund":
-      return refundDoc(email);
+      return refundDoc(cfg, email);
     default:
-      return contactDoc(productKey, email);
+      return contactDoc(cfg, email);
   }
 }
 
@@ -224,7 +224,7 @@ function privacyDoc(cfg: ReturnType<typeof product>, email: string): {
   };
 }
 
-function refundDoc(email: string): {
+function refundDoc(cfg: ReturnType<typeof product>, email: string): {
   title: string;
   updated: string;
   intro: string;
@@ -253,7 +253,7 @@ function refundDoc(email: string): {
       {
         heading: "Past payments",
         body: [
-          "If a payment was initiated on this domain by an earlier version of the service, it remains under the terms in effect at the time. Write to " +
+          `If a payment was initiated on ${cfg.apex} by an earlier version of the service, it remains under the terms in effect at the time. Write to ` +
             email +
             " with your payment reference to ask for its status.",
           "Do not send new payments for earlier versions of the service — this site cannot process them.",
@@ -267,7 +267,7 @@ function refundDoc(email: string): {
   };
 }
 
-function contactDoc(productKey: ProductKey, email: string): {
+function contactDoc(cfg: ReturnType<typeof product>, email: string): {
   title: string;
   updated: string;
   intro: string;
@@ -281,11 +281,7 @@ function contactDoc(productKey: ProductKey, email: string): {
       {
         heading: "Email",
         body: [
-          `contact@${productKey}.lol — ${
-            productKey === "bidthrone"
-              ? "the address for the Bid Network umbrella."
-              : `the address for ${productKey}.lol.`
-          }`,
+          `On ${cfg.apex}, like on every other domain of the network, the single business address is ${email}. There are no per-site mailboxes: a message from any of the four sites lands in the same inbox.`,
           "Say what you need in the subject.",
         ],
       },

@@ -78,7 +78,9 @@ export const PRODUCTS = {
     description:
       "Public profiles and leaderboards built from completed work on the Bid Network. Bounties won, projects delivered, teams captained. When a category has enough settled outcomes, see what the market pays.",
     oneLine: "Reputation from completed work, not self-promotion.",
-    contactEmail: "contact@bidthrone.lol",
+    // Single business inbox for the whole network on every domain
+    // (2026-08-29 operator decision) — keep all four products on this value.
+    contactEmail: "contact@foundersbid.lol",
   },
   foundersbid: {
     key: "foundersbid",
@@ -104,7 +106,7 @@ export const PRODUCTS = {
     description:
       "Brands post paid creative briefs with a clear reward, a deadline, and a capped number of creator slots. Creators know the rules before they start. Video, photography, design, writing, naming.",
     oneLine: "A better way to commission creative work.",
-    contactEmail: "contact@culturebid.lol",
+    contactEmail: "contact@foundersbid.lol", // single network inbox
   },
   bidception: {
     key: "bidception",
@@ -117,7 +119,7 @@ export const PRODUCTS = {
     description:
       "Fund one big project with a single budget. A captain you choose splits it into work packages, each with its own budget and deadline. Specialists take the parts they are good at. Every rupee reconciles to the parent budget.",
     oneLine: "Big project. One budget. The right people for each part.",
-    contactEmail: "contact@bidception.lol",
+    contactEmail: "contact@foundersbid.lol", // single network inbox
   },
 };
 
