@@ -2,7 +2,8 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { renderToString } from "react-dom/server";
 import { createElement } from "react";
-import { AppErrorComponent, errorDetail } from "@/lib/error-component";
+import { AppErrorComponent } from "@/lib/error-component";
+import { errorDetail } from "@/lib/error-copy";
 
 const SQL_ERROR = "column b.creative does not exist";
 

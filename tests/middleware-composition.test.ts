@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import requestIdMiddleware from "../server/middleware/request-id";
+import requestIdMiddleware, { scrubErrorPayload } from "../server/middleware/request-id";
 import { staleServerFnGuard } from "../src/lib/serverfn-guard";
 
 /**
@@ -193,6 +193,36 @@ test("404 HTML (designed NotFoundPage) gets no request-id line", async () => {
     }),
   ) as Response);
   assert.equal(await res.text(), source, "only 5xx documents are annotated");
+});
+
+test("SSR 500 hydration payload: internal error strings are scrubbed from the script channel", async () => {
+  const source =
+    '<!doctype html><html><body><!--$--><main><h1>Something went wrong</h1></main>' +
+    '<script>$_TSR.router=($R=>$R[13]={i:"",s:"error",e:$R[14]=new Error("column b.creative does not exist")})</script>' +
+    "</body></html>";
+  const res = (await requestIdMiddleware(htmlEvent("/bounties"), async () =>
+    new Response(source, { status: 500, headers: { "content-type": "text/html" } }),
+  )) as Response;
+  const body = await res.text();
+  assert.ok(
+    !body.includes("column b.creative does not exist"),
+    "SQL error text must not ship in the dehydrated payload",
+  );
+  assert.ok(
+    body.includes('new Error("Something went wrong")'),
+    "payload carries the sanitized placeholder",
+  );
+});
+
+test("scrubErrorPayload: escaped quotes inside the serialized message stay redacted", () => {
+  assert.equal(
+    scrubErrorPayload('new Error("drop table \\"orders\\" now")'),
+    'new Error("Something went wrong")',
+  );
+  assert.equal(
+    scrubErrorPayload("plain text with no errors"),
+    "plain text with no errors",
+  );
 });
 
 test("healthy serverFn result passes through the composed chain untouched", async () => {

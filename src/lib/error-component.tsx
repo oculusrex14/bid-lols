@@ -1,4 +1,5 @@
 import type { ErrorComponentProps } from "@tanstack/react-router";
+import { errorDetail } from "./error-copy";
 import { TriangleAlert } from "lucide-react";
 
 /**
@@ -27,15 +28,6 @@ import { TriangleAlert } from "lucide-react";
  * copy — which is exactly the behavior you want to verify before release.
  */
 const IS_PRODUCTION = import.meta.env?.PROD === true;
-
-/**
- * Pure copy decision (unit-tested): production never echoes the raw message;
- * dev surfaces it.
- */
-export function errorDetail(isProduction: boolean, message?: string): string {
-  if (isProduction) return "Try again or contact support.";
-  return message ?? "An unexpected error occurred. Try reloading the page.";
-}
 
 export function AppErrorComponent({ error }: ErrorComponentProps) {
   if (typeof window === "undefined") {

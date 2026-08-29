@@ -126,6 +126,21 @@ function logError(requestId: string, event: RequestIdEvent, status: number): voi
  * applies (not a 5xx, not HTML, or no <body> to anchor into) so the caller
  * passes the original response through untouched.
  */
+/**
+ * Second payload channel of P0 #2: Start's dehydrated SSR state special-cases
+ * `Error` instances as `new Error("message")` inside the hydration script.
+ * That message is internal text (SQL errors, driver failures, our own wrap
+ * messages) and must not ship to the browser even though the rendered DOM is
+ * already sanitized. Replace every serialized error with the placeholder the
+ * error component renders. Only 5xx HTML documents are touched.
+ */
+export function scrubErrorPayload(html: string): string {
+  return html.replace(
+    /new Error\((["'])(?:\\.|[^\\])*?\1\)/g,
+    'new Error($1Something went wrong$1)',
+  );
+}
+
 async function annotatedErrorResponse(
   result: Response,
   status: number,
@@ -136,7 +151,11 @@ async function annotatedErrorResponse(
   if (!(headers.get("content-type") ?? "").includes("text/html")) return null;
   const body = await result.text(); // consumes the body — rebuilt below
   if (!body.includes("<body")) return null;
-  return new Response(injectRequestLine(body, requestId), {
+  // Keep the local dev server's full diagnostic payload (NODE_ENV=development);
+  // every deployed runtime (production, previews, built local previews) scrubs.
+  const scrubbed =
+    process.env.NODE_ENV === "development" ? body : scrubErrorPayload(body);
+  return new Response(injectRequestLine(scrubbed, requestId), {
     status,
     statusText: result.statusText,
     headers,
