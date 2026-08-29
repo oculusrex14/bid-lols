@@ -138,7 +138,10 @@ async function builderAppliesAndSubmits(page, bountyPath) {
   // continuing (on slow CI runners the reload hydration loses the race
   // otherwise and the Submit-work toggle would be a no-op).
   await page.waitForFunction(
-    () => document.querySelector("main")?.textContent?.includes("Work started"),
+    // Deliberately the POST-RELOAD participation line — the transient action
+    // note ("Work started. Deliver before the deadline.") also contains the
+    // words and must NOT satisfy this wait.
+    () => document.querySelector("main")?.textContent?.includes("Participation: Work started"),
     { timeout: 30000 },
   );
   await waitForHydration(page, '[data-testid="viewer-actions"]');
