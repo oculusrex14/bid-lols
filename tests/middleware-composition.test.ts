@@ -117,6 +117,84 @@ test("genuine handler failure after all middleware: NOT masked, stays an error",
   assert.notEqual(body.code, "stale_client_bundle");
 });
 
+// ---- P0 #2: SSR error-document sanitization + request-id line injection ----
+
+function htmlEvent(path: string): NitroEvent {
+  return {
+    url: new URL(`http://test.local${path}`),
+    req: { method: "GET", headers: new Headers({ accept: "text/html" }) },
+  };
+}
+
+/**
+ * What the Start SSR pipeline hands the middleware for a 500: the
+ * AppErrorComponent document — sanitized copy, real body/marker shape.
+ */
+function ssr500Document(): string {
+  return (
+    '<!doctype html><html><head></head>' +
+    '<body class="min-h-screen bg-bg text-fg"><!--$-->' +
+    '<main class="flex min-h-screen"><h1 class="font-display">Something went wrong</h1>' +
+    "<p class=\"max-w-md\">Try again or contact support.</p></main></body></html>"
+  );
+}
+
+test("SSR 500 HTML gets a quotable request-id line matching the header", async () => {
+  const res = (await requestIdMiddleware(htmlEvent("/bounties"), async () =>
+    new Response(ssr500Document(), {
+      status: 500,
+      headers: { "content-type": "text/html; charset=utf-8" },
+    }),
+  ) as Response);
+  assert.equal(res.status, 500);
+  const id = res.headers.get("x-request-id");
+  assert.ok(id, "response carries x-request-id");
+  const body = await res.text();
+  assert.ok(body.includes(`Request ID: ${id}`), "injected line carries the header's id");
+  assert.ok(
+    body.indexOf(`Request ID: ${id}`) < body.indexOf("<!--$-->"),
+    "the line sits BEFORE the hydration marker, outside the React tree",
+  );
+  assert.ok(body.includes("Something went wrong"), "sanitized copy survives intact");
+});
+
+test("the middleware rewrite is exactly the request-id line, nothing else", async () => {
+  const source = ssr500Document();
+  const res = (await requestIdMiddleware(htmlEvent("/bounties"), async () =>
+    new Response(source, {
+      status: 500,
+      headers: { "content-type": "text/html" },
+    }),
+  ) as Response);
+  const body = await res.text();
+  const id = res.headers.get("x-request-id") ?? "";
+  assert.equal(body.replace(/<p style="position:fixed;[^>]*>Request ID: [^<]*<\/p>/, ""), source);
+  assert.ok(id.length > 0);
+});
+
+test("200 HTML documents pass through byte-identical (no body read side effects)", async () => {
+  const source = '<!doctype html><html><body><!--$-->hello</body></html>';
+  const res = (await requestIdMiddleware(htmlEvent("/"), async () =>
+    new Response(source, {
+      status: 200,
+      headers: { "content-type": "text/html" },
+    }),
+  ) as Response);
+  assert.equal(res.status, 200);
+  assert.equal(await res.text(), source, "no rewrite on 200");
+});
+
+test("404 HTML (designed NotFoundPage) gets no request-id line", async () => {
+  const source = '<!doctype html><html><body><!--$--><main>404 not found</main></body></html>';
+  const res = (await requestIdMiddleware(htmlEvent("/no/such/page"), async () =>
+    new Response(source, {
+      status: 404,
+      headers: { "content-type": "text/html" },
+    }),
+  ) as Response);
+  assert.equal(await res.text(), source, "only 5xx documents are annotated");
+});
+
 test("healthy serverFn result passes through the composed chain untouched", async () => {
   const run = composed(healthyHandler());
   const res = await run(jsonEvent("/_serverFn/knownfn0000"));

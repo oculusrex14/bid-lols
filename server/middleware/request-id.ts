@@ -116,6 +116,43 @@ function logError(requestId: string, event: RequestIdEvent, status: number): voi
   );
 }
 
+/**
+ * P0 error sanitization: an SSR 5xx document gets a fixed-position
+ * "Request ID: <id>" line injected right after the <body> open tag —
+ * before Start's hydration marker, so it sits OUTSIDE the React tree and
+ * client hydration can never wipe it. The value equals the `x-request-id`
+ * response header and the `[request <id>] ... -> 500` log line: one id the
+ * user can quote that correlates all three. Returns null when no annotation
+ * applies (not a 5xx, not HTML, or no <body> to anchor into) so the caller
+ * passes the original response through untouched.
+ */
+async function annotatedErrorResponse(
+  result: Response,
+  status: number,
+  headers: Headers,
+  requestId: string,
+): Promise<Response | null> {
+  if (status < 500) return null;
+  if (!(headers.get("content-type") ?? "").includes("text/html")) return null;
+  const body = await result.text(); // consumes the body — rebuilt below
+  if (!body.includes("<body")) return null;
+  return new Response(injectRequestLine(body, requestId), {
+    status,
+    statusText: result.statusText,
+    headers,
+  });
+}
+
+function injectRequestLine(html: string, requestId: string): string {
+  const line =
+    `<p style="position:fixed;bottom:8px;right:12px;margin:0;font-size:11px;` +
+    `line-height:1.4;opacity:.7;z-index:50">Request ID: ${requestId}</p>`;
+  return html.replace(
+    /(<body[^>]*>)(\s*<!--\$-->)?/,
+    (_m, bodyTag: string, marker?: string) => bodyTag + line + (marker ?? ""),
+  );
+}
+
 /** True when a JSON body carries handler-authored { code, requestId } fields. */
 function hasSpecificEnvelope(body: string): boolean {
   try {
@@ -190,6 +227,12 @@ export default async function requestIdMiddleware(
     });
     return genericEnvelopeResponse(envelope, result, status, headers);
   }
+
+  // P0 #2: give the SSR 5xx error document a quotable request id (the
+  // sanitized copy itself lives in AppErrorComponent; JSON 5xx already carry
+  // their id in the envelope above).
+  const annotated = await annotatedErrorResponse(result, status, headers, requestId);
+  if (annotated) return annotated;
 
   return new Response(result.body, {
     status,
