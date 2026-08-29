@@ -2,7 +2,7 @@
 
 Current phase: RC3 NETWORK SPINE / UI V2
 Status: COMPLETE (production release; see docs/reports/RC3_NETWORK_SPINE_REPORT.md)
-Production: RC3 runtime + style pass + boot schema gate + H1 fix + error-page sanitization (app SHA 1fccb8f; deployment dpl_EfRsnBWF9VJqQdJUVFmZPRUSd9wT / bidthrone-fzxtzfmz1; previous good deployments dpl_HaHbAwGeiojAgG3Fzpg1mxtfXd8Z, dpl_5WugdV9fwyvWthw6kBVR6DLva58i, dpl_8EUVrSncC6fPQ14237Tc1jGFoBNR, dpl_7hLTtmKTR3vPwt2o5z3CbQZctkeE, dpl_E2UdhbQVjJq3kPqKRBHaLCk8MhUQ)
+Production: RC3 runtime + style pass + boot schema gate + H1 fix + error-page sanitization + single business inbox (app SHA 801776f; deployment dpl_7dzaSDwdvFtP6CgyGBjYi9Az5BDQ / bidthrone-42omw9s7t; previous good deployments dpl_EfRsnBWF9VJqQdJUVFmZPRUSd9wT, dpl_HaHbAwGeiojAgG3Fzpg1mxtfXd8Z, dpl_5WugdV9fwyvWthw6kBVR6DLva58i, dpl_8EUVrSncC6fPQ14237Tc1jGFoBNR, dpl_7hLTtmKTR3vPwt2o5z3CbQZctkeE, dpl_E2UdhbQVjJq3kPqKRBHaLCk8MhUQ)
 Funding: OFF (no MARKETPLACE_MONEY_LIVE on any target; nothing takes payment)
 Objective: complete
 Next: post-RC3 product growth / real marketplace liquidity (GSC/Bing verification remains an operator follow-up; IndexNow first submission done 2026-08-29)
@@ -21,6 +21,7 @@ RC3 summary:
 - Founders H1 copy fix (2026-08-29): a stray `);` text node rendered inside the hero heading (").; Get startup work done"). Removed; the homepage E2E guard is now prefix-match + no code punctuation in the H1, so a prepended artifact fails CI instead of passing the old substring check.
 - Error-page sanitization (2026-08-29, P0 #2): production 500s must never leak internal error strings. AppErrorComponent now shows fixed copy ("Something went wrong" / "Try again or contact support.") in production builds (dev keeps diagnostics); the real error goes to the server log. The request-id middleware annotates every SSR 5xx document with a fixed-position "Request ID: <id>" line (injected before the hydration marker, so it survives; value === x-request-id header === log-line id) and scrubs the dehydrated `new Error("...")` payload channel. Intentional domain envelopes, 404 page, and 4xx/2xx bodies are untouched. Regression tests incl. a forced-SSR-500 end-to-end on a production build.
 - Release gates (2026-08-29, P0 #4/#5): 7-point schema preflight documented in DEPLOYMENT.md step 4 (operator-side; prod DATABASE_URL never in CI); scripts/prod-critical-smoke.mjs (16 critical routes) now mandatory after every production deploy (step 10). Both executed on the current deployment: 16/16 at 200, zero 5xx, funding OFF.
+- Single business inbox (2026-08-29): operator decision that contact@foundersbid.lol is the ONLY business email listed anywhere on any of the four domains. All four PRODUCTS contactEmail values, every legal doc (/terms /privacy /refund /contact), the footer, and security.txt now resolve to it; the /contact doc states there are no per-site mailboxes, and host.test.ts asserts the single-inbox invariant (no per-domain business mailbox). Verified live on all 24 surface x domain combinations.
 
 Previous phases:
 - Phase 00 (W1–W11), 00.5 (2a8edf7), 00.6 (c50cbdb): foundation, clean-SHA release, guardrails.
