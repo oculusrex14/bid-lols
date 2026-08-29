@@ -4,8 +4,16 @@
 
 ## Release
 
-- Branch: `rc3-network-spine` (6 commits ahead of `main` @ `7315ad0`); final
-  pre-release SHA: (below — filled at merge/deploy)
+- Branch: `rc3-network-spine` -> fast-forwarded to `main` (7 commits after
+  `7315ad0`); final release SHA `85c2dc4` (app code) + docs commits.
+- CI on the release SHA: run `33239509984` SUCCESS (gates: lint, typecheck,
+  1454 mjs + 220 ts tests, build, artifact sanity, complexity gate,
+  npm-audit-high; e2e: funded marketplace journey + critical paths on
+  Playwright chromium). Iterations to green: workflow-parse fix (unquoted
+  colon in a step name), then two E2E runner-race fixes (hydration and
+  action-note early-match on slow runners) — each reproducing locally first.
+- Preview: `dpl_EX2WMK9rUB6E8Mnd5rWD5CzD3JVT` from `0e28a02` (app-identical),
+  verified (heads, switcher, robots, sitemap, IndexNow, security.txt).
 
 ## Release
 
