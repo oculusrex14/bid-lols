@@ -1,4 +1,5 @@
 import { pendingMigrations } from "../../scripts/migration-plan.mjs";
+import { assertSchemaCurrent } from "./schema-ledger";
 
 /** Which database backend is active. */
 export type DbSource = "neon" | "pglite";
@@ -183,6 +184,12 @@ function createNeonSql(): Promise<Sql> {
         client.release();
       }
     };
+    // Boot gate: on a real Postgres the deployed code must run only against a
+    // schema at least as new as REQUIRED_MIGRATIONS, or fail loudly here with
+    // an operator message. PGLite self-migrates to head and never needs it.
+    // (Runbook: scripts/migrate.mjs is the gated pre-deploy step — a pending
+    // migration must never be absorbed as a route-level 500.)
+    await assertSchemaCurrent(sql);
     return sql;
   })().catch((err) => {
     globalRef.__pgSqlPromise__ = undefined;
