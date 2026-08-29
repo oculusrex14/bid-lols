@@ -65,7 +65,7 @@ jobs:
           }
           echo "build artifact shape OK"
 
-      - name: Complexity gate (production code: CC<=15, depth<=5, fns<=120 lines)
+      - name: "Complexity gate (production code: CC<=15, depth<=5, fns<=120 lines)"
         run: node scripts/complexity-report.mjs --gate
 
       - name: Runtime dependency security gate (prod deps only, high+)
