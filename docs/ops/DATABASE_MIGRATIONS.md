@@ -1,10 +1,11 @@
 # DATABASE_MIGRATIONS.md — Migration Operations
 
-**Status:** Runbook for schema changes. `0009_foundation` is authored and pending the gated prod apply; everything after it follows this runbook.
+**Status:** Runbook for schema changes. Prod is at head (`0002_boards` through `0017_bidception_child_link` applied; verified 2026-08-29); every new file follows this runbook.
 
 ## Current mechanism (verified)
 
-- **Files:** `migrations/NNNN_name.sql`, applied in filename order. Prod today: `0002_boards` through `0008_crown` applied; `0009_foundation` pending. (`0001` was the auth opt-in under `migrations/auth/`, archived and never applied; the glob is non-recursive.)
+- **Files:** `migrations/NNNN_name.sql`, applied in filename order. Prod today: `0002_boards` through `0017_bidception_child_link` applied (verified 2026-08-29; 0017 was the pending gap found by the post-RC3 incident sweep and applied through the gated step — RC3 report addendum). (`0001` was the auth opt-in under `migrations/auth/`, archived and never applied; the glob is non-recursive.)
+- **Boot gate (post-RC3 incident):** deployed code must not run on a schema older than the ledger. The Neon path in `db.server.ts` asserts `_migrations` ⊇ `REQUIRED_MIGRATIONS` (`src/lib/schema-ledger.ts`) before the first query; missing files fail loudly at boot with the exact names (an unreadable ledger fails loudly too). PGLite self-migrates to head and is exempt. A CI test pins `REQUIRED_MIGRATIONS` to the `migrations/` directory, so a new file without a ledger update fails in CI, not in production.
 - **Ledger:** `_migrations(name, applied_at)` on each backend; files keyed by **basename**, applied once, never re-run. Bookkeeping shared by both appliers (`scripts/migration-plan.mjs`: `pendingMigrations`/`isMigrationFile`/`projectRoot`).
 - **Prod applier:** `scripts/migrate.mjs` — `pg` against `DATABASE_URL`, each file in one transaction, ledger insert in the same transaction; `--dry-run` lists pending without applying; skips (with a message) when `DATABASE_URL` is unset.
 - **Local applier:** `src/lib/db.server.ts` PGLite (hermetic dev/preview runtimes) applies the same `migrations/*.sql` set at startup — via the Vite glob when bundled, via a disk read in plain Node (the test runner). Keep the glob + the `pgliteBootstrapPlugin` in `vite.config.ts` together or the loop breaks.

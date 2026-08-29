@@ -228,7 +228,6 @@ assertions; the PNGs are committed for the operator to review.
 ## Known non-blocking follow-ups
 
 - GSC/Bing verification for the four properties (RC2 external action).
-- First IndexNow submission (operator).
 - E2E visual-diff in CI: intentionally release-QA only (font/render
   variance); the programmatic design assertions cover the regressions that
   matter.
@@ -444,7 +443,6 @@ assertions; the PNGs are committed for the operator to review.
 ## Known non-blocking follow-ups
 
 - GSC/Bing verification for the four properties (RC2 external action).
-- First IndexNow submission (operator).
 - E2E visual-diff in CI: intentionally release-QA only (font/render
   variance); the programmatic design assertions cover the regressions that
   matter.
@@ -452,6 +450,39 @@ assertions; the PNGs are committed for the operator to review.
   documented img-src decision).
 - RC1 R6 leftovers outside RC3 scope: none — captain picker + child-kind UI
   shipped in RC3.
+
+## Post-release addendum (2026-08-29)
+
+**IndexNow first submission — done.** 18 public URLs (from the four
+production sitemaps; culturebid via www, the only reachable origin)
+submitted with `scripts/indexnow-submit.mjs --apply`; all four hosts
+answered 202 (accepted). The key file (`/<key>key.txt`) had been serving
+200 on the prod hosts since the RC2 release.
+
+**Production schema-drift incident — found and fixed.** A full-surface
+production sweep (beyond the theme-token probes) found
+`foundersbid.lol/bounties` and `www.culturebid.lol/bounties` returning 500:
+`column b.creative does not exist`. Root cause: the shared browse query
+introduced in this release (a369c90) selects `bounties.creative`, added by
+migration 0017; the production ledger had 0002–0016 but 0017 had never
+been applied. Every other surface returned 200, and the app booted fine on
+the stale schema — so the drift surfaced at the route, not at deploy time.
+
+Fix:
+- 0017 applied to production through the gated step
+  (`scripts/migrate.mjs` dry-run → apply → verify): strictly additive
+  (`bounties.creative jsonb`, `parent_work_id` links, `child_works.kind`).
+  Both /bounties returned 200 immediately; no code change was needed for
+  the data fix.
+- New boot gate (`src/lib/schema-ledger.ts`, commit d28d380, shipped in the
+  post-incident deployment): the Neon path asserts
+  `_migrations` contains `REQUIRED_MIGRATIONS` before the first query;
+  missing files fail loudly at boot with the exact names, and an
+  unreadable ledger fails loudly too. A CI test pins REQUIRED_MIGRATIONS
+  to the `migrations/` directory. DEPLOYMENT.md step 4 is now enforced,
+  not just documented: a skipped apply fails the smoke test instead of a
+  user's page two releases later. PGLite (local hermetic runtime)
+  self-migrates to head and is exempt.
 
 ## Final checklist (updated at release)
 
