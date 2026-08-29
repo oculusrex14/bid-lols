@@ -2,7 +2,7 @@
 
 Current phase: RC3 NETWORK SPINE / UI V2
 Status: COMPLETE (production release; see docs/reports/RC3_NETWORK_SPINE_REPORT.md)
-Production: RC3 runtime (app SHA 85c2dc4; final deployment dpl_E2UdhbQVjJq3kPqKRBHaLCk8MhUQ)
+Production: RC3 runtime + style-consistency pass (app SHA 48d5ba3; deployment dpl_7hLTtmKTR3vPwt2o5z3CbQZctkeE / bidthrone-nff5xd2fw; previous good deployment dpl_E2UdhbQVjJq3kPqKRBHaLCk8MhUQ)
 Funding: OFF (no MARKETPLACE_MONEY_LIVE on any target; nothing takes payment)
 Objective: complete
 Next: post-RC3 product growth / real marketplace liquidity (GSC/Bing verification, IndexNow first submission remain operator follow-ups)
