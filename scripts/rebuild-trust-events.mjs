@@ -16,21 +16,23 @@ import { pendingMigrations } from "./migration-plan.mjs";
 const APPLY = process.argv.includes("--apply");
 const LIMIT = Number(process.argv.find((a) => a.startsWith("--limit="))?.slice(8) ?? 5000);
 
-if (process.env.DATABASE_URL) {
+if (process.env.DATABASE_URL && process.env.USE_REAL_DB !== "1") {
   console.error(
-    "[rebuild] this build targets the local/hermetic database by default." +
-      " For the production DB, run it with the gated preflight in" +
-      " docs/ops/DEPLOYMENT.md (DATABASE_URL is never read from CI).",
+    "[rebuild] refusing to run against an implicit DATABASE_URL." +
+      " Hermetic by default; for the production ledger use the gated" +
+      " preflight invocation from docs/ops/TRUST_SCORE.md" +
+      " (USE_REAL_DB=1 + DATABASE_URL, never in CI).",
   );
   process.exit(2);
 }
 
-// Boot the hermetic app DB (PGLite migrates itself to head).
-const { getPglite } = await import("../src/lib/db.server.ts");
-await getPglite();
-
-// Hermetic guard: refuse to run a projector rebuild against a database that
-// is not at head (the schema-ledger boot gate does this for Neon).
+// Boot the app database. Without USE_REAL_DB this is the hermetic PGLite
+// (migrates itself to head); the explicit production path boots Neon instead.
+const usingRealDb = process.env.USE_REAL_DB === "1" && Boolean(process.env.DATABASE_URL);
+if (!usingRealDb) {
+  const { getPglite } = await import("../src/lib/db.server.ts");
+  await getPglite();
+}
 const entries = (await import("node:fs/promises")).readdir
   ? await (await import("node:fs/promises")).readdir(new URL("../migrations/", import.meta.url))
   : [];
