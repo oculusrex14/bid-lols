@@ -267,6 +267,64 @@ Fix:
   user's page two releases later. PGLite (local hermetic runtime)
   self-migrates to head and is exempt.
 
+**Founders home H1 typo — found and fixed.** The hero heading rendered as
+"); Get startup work done" (a stray `);` text node inside the `<h1>`).
+The home-H1 E2E guard used a substring match, which a prepended artifact
+cannot fail; it is now a prefix match plus a no-code-punctuation rule.
+Fix: 40a2a16, deployment dpl_HaHbAwGeiojAgG3Fzpg1mxtfXd8Z, verified on the
+live domain.
+
+**Error-page sanitization (P0 #2) — two channels closed.** The schema
+incident above is how the need was found: `AppErrorComponent` rendered raw
+`error.message`, and Start's dehydrated hydration state additionally
+serializes `Error` instances as `new Error("message")` inside the SSR
+script payload — both reached the browser on every 500.
+- Production copy is now fixed: "Something went wrong" / "Try again or
+  contact support." (`import.meta.env.PROD` gate; the local built preview
+  is a production build and sanitizes too, which is what you want to
+  verify). Dev keeps diagnostics. The real error is written to the server
+  log (`[route-error]` + the middleware's `[request <id>] ... -> 500`).
+- The SSR 5xx document gets a fixed-position "Request ID: <id>" line
+  injected by the request-id middleware BEFORE the hydration marker
+  (outside the React tree, so hydration cannot wipe it), and every
+  serialized `new Error("...")` in the payload is scrubbed to the
+  sanitized placeholder (deployed runtimes only; local dev keeps the full
+  payload). The injected value equals the `x-request-id` response header
+  and both server log lines: one id the user can quote that correlates all
+  three. Verified end-to-end on a production build by forcing a real SSR
+  500 (unreachable DB) on the local built preview: the served document
+  carries only the neutral copy + request line, zero internal strings,
+  while the server log retains the full error under that exact id.
+- Intentionally untouched: designed domain errors keep their mapped
+  envelopes (`{ code, message, requestId }`) and in-form notices; 404s
+  keep the designed page; 4xx/2xx HTML and JSON bodies pass through
+  byte-identical. Regression tests: copy function, rendered page,
+  injection placement, payload scrub (incl. escaped quotes), pass-throughs.
+
+**Critical-route smoke + release preflight (P0 #4 / P0 #5).**
+- `scripts/prod-critical-smoke.mjs`: 16-route production smoke (all four
+  homepages + browse/detail + account + search/disclosure surfaces),
+  production URLs or `--local` against a dev/built server with per-route
+  Host headers. Mandatory after every production deploy (DEPLOYMENT.md
+  step 10); homepage-only verification is explicitly insufficient.
+- DEPLOYMENT.md step 4 now carries the explicit 7-point schema preflight
+  (latest migration → dry-run → no deploy while pending → additive apply →
+  zero pending → exact-SHA deploy → smoke), documented as an
+  operator/runtime-side gate: the production DATABASE_URL never enters
+  ordinary CI.
+- Both ran on the final state below: 16/16 on the production deployment.
+
+**Final verified production state (closeout).** App SHA `1fccb8f` →
+deployment `dpl_EfRsnBWF9VJqQdJUVFmZPRUSd9wT` (`bidthrone-fzxtzfmz1`),
+preview-verified first (`dpl_FY8xTpwcFtGE2ngaoW1Wt1XyvWRU`), CI green on
+the exact SHA. All 16 critical routes 200; all four homepages + themes +
+theme-colors correct; wrong-host 301s intact; funding OFF (no
+MARKETPLACE_MONEY_LIVE on any target); production logs clean; both
+/bounties 200; H1 clean. Rollback chain: dpl_EfRsnBWF9VJqQdJUVFmZPRUSd9w
+→ dpl_HaHbAwGeiojAgG3Fzpg1mxtfXd8Z → dpl_5WugdV9fwyvWthw6kBVR6DLva58i →
+dpl_8EUVrSncC6fPQ14237Tc1jGFoBNR → dpl_E2UdhbQVjJq3kPqKRBHaLCk8MhUQ (RC3
+original).
+
 ## Final checklist (updated at release)
 
 - [x] gates green locally (lint/typecheck/test/build/complexity/audit)
