@@ -51,9 +51,9 @@ export const PRODUCT_KEYS = [
  * @type {Record<string, { light: string; dark: string }>}
  */
 export const THEME_COLORS = {
-  bidthrone: { light: "#f3efe6", dark: "#0a0a0a" },
+  bidthrone: { light: "#f1f2f4", dark: "#0a0a0a" },
   foundersbid: { light: "#f4efe4", dark: "#1a1612" },
-  culturebid: { light: "#f1efe8", dark: "#141613" },
+  culturebid: { light: "#f0eff4", dark: "#141613" },
   bidception: { light: "#f3f3f5", dark: "#09090b" },
 };
 

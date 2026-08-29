@@ -58,5 +58,7 @@ function safeHost(raw: string) {
 
 function monogramSvg(letter: string) {
   const safe = /[A-Z0-9]/.test(letter) ? letter : "?";
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64"><rect width="64" height="64" fill="#e3dac8"/><text x="32" y="42" text-anchor="middle" font-size="32" font-family="Georgia, 'Iowan Old Style', serif" fill="#1c1712">${safe}</text></svg>`;
+  // Neutral porcelain tile (bidthrone default skin) so the monogram does not
+  // leak one product's warm paper onto another product's page.
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64"><rect width="64" height="64" fill="#dfe0e5"/><text x="32" y="42" text-anchor="middle" font-size="32" font-family="Georgia, 'Iowan Old Style', serif" fill="#15171c">${safe}</text></svg>`;
 }

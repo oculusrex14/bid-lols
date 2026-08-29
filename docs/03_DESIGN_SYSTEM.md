@@ -102,6 +102,8 @@
 - Color never the only status signal (badges labeled; `up`/`danger` always with text).
 - `focus-visible` ring on every interactive element (existing `ring-2` pattern); landmarks; one `h1` per page; `aria-label` on icon-only controls; toasts `aria-live`.
 - `prefers-reduced-motion` honored across all animation.
+- **Measured contrast guard:** `scripts/contrast-audit.test.mjs` parses `styles.css` and asserts every text role (fg/muted/subtle/accent + up/danger/warn) clears WCAG AA (≥4.5:1) on every surface it can sit on, for all four products in light and dark, and that the `theme-color` meta equals the CSS page background. Run it whenever a palette changes. This is what caught the pre-existing gaps (bidthrone light `muted` on `surface` at 4.48:1, `subtle` on `raised` below 4.5 in every skin, `up`/`warn` on `raised` in light).
+- **Temperature harmony (light mode):** the paper and the accent must sit in the same temperature family. Bidthrone (indigo) and CultureBid (violet) use cool stone/porcelain paper; FoundersBid (copper) keeps warm paper; Bidception (teal) uses graphite. A cool accent on warm beige is the specific clash this rule exists to prevent (style pass 2026-08-29).
 
 ## Brand Personality
 

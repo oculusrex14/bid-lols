@@ -17,8 +17,11 @@
      efficient inside product surfaces.
    - 1px hairline borders are the default; 2px is reserved for focus,
      selected states and high-emphasis CTAs.
-   - Product accents are contrast-verified (>=4.5:1 as text on every
-     product surface, light and dark) and used sparingly.
+   - Every text role is WCAG-AA (>=4.5:1) on every surface it can sit on,
+     light and dark, for all four products: enforced by
+     scripts/contrast-audit.test.mjs (a CI gate). Paper temperature
+     matches accent temperature per product (cool accent -> cool paper).
+   - Product accents are used sparingly.
    ========================================================================== */
 
 @theme {
@@ -56,33 +59,39 @@
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-/* ---- Bidthrone skin (the umbrella default): royal indigo --------------- */
+/* ---- Bidthrone skin (the umbrella default): royal indigo ---------------
+   Paper is cool porcelain, not beige: the indigo accent sits on a neutral
+   with a slight cool lean so light mode reads as one family. (Style pass
+   2026-08-29: the original warm cream paper clashed with the cool accent;
+   text tiers are WCAG-AA verified by scripts/contrast-audit.test.mjs.) */
 :root {
-  --bg: #f3efe6;
-  --surface: #ebe6db;
-  --raised: #e4ddd0;
-  --fg: #1c1814;
-  --muted: #6f675c;
-  --subtle: #8f877c;
+  --bg: #f1f2f4;
+  --surface: #e9eaee;
+  --raised: #dfe0e5;
+  --fg: #15171c;
+  --muted: #545a66;
+  --subtle: #596070;
   --accent: #4f46e5;
   --accent-fg: #ffffff;
   --accent-soft: color-mix(in oklab, var(--accent) 10%, transparent);
   --border: color-mix(in oklab, var(--fg) 14%, transparent);
   --ring: color-mix(in oklab, var(--accent) 45%, transparent);
-  --up: #3f7a4e;
-  --danger: #a24b44;
-  --warn: #8a6a1f;
+  --up: #33683d;
+  --danger: #9c453e;
+  --warn: #7a5a14;
   --font-display-active: var(--font-display);
 }
 
-/* ---- FoundersBid skin: warm copper / burnt orange ---------------------- */
+/* ---- FoundersBid skin: warm copper / burnt orange ----------------------
+   Warm paper stays (the copper accent is warm: harmonious by design); the
+   text tiers were deepened to clear AA on every surface. */
 [data-theme="founders"] {
   --bg: #f4efe4;
   --surface: #ebe4d6;
   --raised: #e3dac8;
   --fg: #1c1712;
-  --muted: #6d655a;
-  --subtle: #8e867a;
+  --muted: #645c50;
+  --subtle: #675e50;
   --accent: #97431d;
   --accent-fg: #ffffff;
   --accent-soft: color-mix(in oklab, var(--accent) 10%, transparent);
@@ -91,14 +100,16 @@
   --font-display-active: var(--font-display);
 }
 
-/* ---- CultureBid skin: violet / cobalt ----------------------------------- */
+/* ---- CultureBid skin: violet / cool stone --------------------------------
+   Cool violet-leaned stone paper (the documented "cool stone" intent): the
+   violet accent and the neutral finally live in the same temperature. */
 [data-theme="culture"] {
-  --bg: #f1efe8;
-  --surface: #e8e6de;
-  --raised: #dedcd3;
-  --fg: #1a1c19;
-  --muted: #5f635c;
-  --subtle: #8a8e86;
+  --bg: #f0eff4;
+  --surface: #e8e7ee;
+  --raised: #dedce5;
+  --fg: #17161d;
+  --muted: #565464;
+  --subtle: #585464;
   --accent: #6d28d9;
   --accent-fg: #ffffff;
   --accent-soft: color-mix(in oklab, var(--accent) 10%, transparent);
@@ -107,14 +118,14 @@
   --font-display-active: var(--font-sans);
 }
 
-/* ---- Bidception skin: teal / indigo ------------------------------------- */
+/* ---- Bidception skin: teal / graphite ----------------------------------- */
 [data-theme="bidception"] {
   --bg: #f3f3f5;
   --surface: #eaeaee;
   --raised: #e1e1e6;
   --fg: #18181b;
   --muted: #5c5c66;
-  --subtle: #8a8a93;
+  --subtle: #5f606e;
   --accent: #0c6b62;
   --accent-fg: #ffffff;
   --accent-soft: color-mix(in oklab, var(--accent) 10%, transparent);
@@ -135,7 +146,7 @@ html[data-mode="dark"] {
   --raised: #1a1917;
   --fg: #f3efe6;
   --muted: #a39e94;
-  --subtle: #6e6a63;
+  --subtle: #85827c;
   --accent: #a5b4fc;
   --accent-fg: #0a0a0a;
   --accent-soft: color-mix(in oklab, var(--accent) 16%, transparent);
@@ -153,7 +164,7 @@ html[data-mode="dark"][data-theme="founders"] {
   --raised: #2c2620;
   --fg: #f4efe4;
   --muted: #b7aea0;
-  --subtle: #8a8074;
+  --subtle: #968d82;
   --accent: #e8a15f;
   --accent-fg: #1a1612;
   --accent-soft: color-mix(in oklab, var(--accent) 16%, transparent);
@@ -168,7 +179,7 @@ html[data-mode="dark"][data-theme="culture"] {
   --raised: #252822;
   --fg: #ecebe4;
   --muted: #b0b3aa;
-  --subtle: #7e827a;
+  --subtle: #8b8f87;
   --accent: #c4b5fd;
   --accent-fg: #141613;
   --accent-soft: color-mix(in oklab, var(--accent) 16%, transparent);
@@ -183,7 +194,7 @@ html[data-mode="dark"][data-theme="bidception"] {
   --raised: #18181b;
   --fg: #ececef;
   --muted: #a1a1aa;
-  --subtle: #71717a;
+  --subtle: #818189;
   --accent: #5eead4;
   --accent-fg: #09090b;
   --accent-soft: color-mix(in oklab, var(--accent) 16%, transparent);

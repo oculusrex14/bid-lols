@@ -41,7 +41,7 @@ export const Route = createRootRoute({
       // Umbrella default only. On deployed runtimes the host-aware SEO
       // middleware replaces this per product (RC3, S-38); in dev it stands
       // as the bidthrone (default product) light color.
-      { name: "theme-color", content: "#f3efe6" },
+      { name: "theme-color", content: "#f1f2f4" },
     ],
     links: [
       { rel: "icon", type: "image/svg+xml", href: "/favicon.svg" },
