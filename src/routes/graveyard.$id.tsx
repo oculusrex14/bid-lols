@@ -143,144 +143,12 @@ function GraveyardDetailBody({ data }: { data: NonNullable<Awaited<ReturnType<ty
 
         <div className="mt-8 grid grid-cols-1 gap-10 lg:grid-cols-12">
           <div className="lg:col-span-8">
-            <section aria-labelledby="h-project">
-              <h2 id="h-project" className="text-sm font-semibold uppercase tracking-kicker text-subtle">The project</h2>
-              <p className="mt-3 whitespace-pre-wrap text-[15px] leading-relaxed">{l.description}</p>
-            </section>
-            {l.reason_of_death ? (
-              <section className="mt-8">
-                <h2 className="text-sm font-semibold uppercase tracking-kicker text-subtle">Why it was paused</h2>
-                <p className="mt-3 whitespace-pre-wrap text-[15px] leading-relaxed">{l.reason_of_death}</p>
-              </section>
-            ) : null}
-            {l.includes.length > 0 ? (
-              <section className="mt-8">
-                <h2 className="text-sm font-semibold uppercase tracking-kicker text-subtle">Included</h2>
-                <ul className="mt-3 grid gap-1.5 text-[15px] sm:grid-cols-2">
-                  {l.includes.map((k) => (
-                    <li key={k} className="flex items-center gap-2">
-                      <span aria-hidden="true" className="text-accent">✓</span>
-                      {k}
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            ) : null}
-            {l.liabilities ? (
-              <section className="mt-8">
-                <h2 className="text-sm font-semibold uppercase tracking-kicker text-subtle">Known liabilities</h2>
-                <p className="mt-3 whitespace-pre-wrap text-[15px] leading-relaxed">{l.liabilities}</p>
-              </section>
-            ) : null}
-            {l.history_self_reported ? (
-              <section className="mt-8">
-                <h2 className="text-sm font-semibold uppercase tracking-kicker text-subtle">History (self-reported)</h2>
-                <p className="mt-3 whitespace-pre-wrap text-[15px] leading-relaxed text-muted">{l.history_self_reported}</p>
-              </section>
-            ) : null}
+            <GraveyardMain l={l} />
           </div>
 
           <div className="lg:col-span-4">
             <StickyPanel>
-              <div className="rounded-md border border-fg/10 bg-surface/60 p-4">
-                {l.asking_price_minor != null ? (
-                  <>
-                    <MoneyValue minor={Number(l.asking_price_minor)} currency={l.currency} size="xl" className="text-accent" />
-                    <p className="mt-0.5 text-xs text-subtle">asking price</p>
-                  </>
-                ) : (
-                  <p className="text-sm font-medium">Open to offers</p>
-                )}
-              </div>
-
-              {/* Seller controls (status-driven via graveyardControls). */}
-              {data.isSeller ? (
-                <div className="mt-4 space-y-3">
-                  {controls.canPublish ? (
-                    <div className="rounded-md border border-accent/40 bg-raised/40 p-4">
-                      <p className="text-sm font-medium">Publish this listing</p>
-                      <p className="mt-1 text-xs text-muted">It becomes visible in The Graveyard once published.</p>
-                      <Button className="mt-3 w-full" disabled={busy} onClick={() => void run(() => publishListingFn({ data: { listingId: String(l.id) } }), "Listing is live in the graveyard.")}>
-                        Publish
-                      </Button>
-                    </div>
-                  ) : null}
-                  {controls.canMarkTransferred ? (
-                    <Button className="w-full" disabled={busy} onClick={() => void run(() => markTransferredFn({ data: { listingId: String(l.id), checklistConfirmed: true } }), "Marked transferred.")}>
-                      Mark transferred (checklist done)
-                    </Button>
-                  ) : null}
-                  {controls.canWithdraw ? (
-                    <Button variant="danger" size="sm" className="w-full" disabled={busy} onClick={() => void run(() => withdrawListingFn({ data: { listingId: String(l.id) } }), "Listing withdrawn.")}>
-                      Withdraw listing
-                    </Button>
-                  ) : null}
-                </div>
-              ) : null}
-
-              {/* Buyer: offer box. */}
-              {controls.canOffer ? <OfferBox listingId={String(l.id)} currency={l.currency} onDone={(m) => setMessage(m)} /> : null}
-
-              {!data.isSeller && viewerOffer ? (
-                <div className="mt-4 rounded-md border border-fg/10 bg-surface/60 p-4" data-testid="my-offer">
-                  <p className="text-xs font-semibold uppercase tracking-kicker text-subtle">Your offer</p>
-                  <p className="mt-2 flex items-baseline justify-between gap-3 text-sm">
-                    <MoneyValue minor={Number(viewerOffer.amount_minor)} currency={l.currency} />
-                    <StatusBadge status={viewerOffer.status} />
-                  </p>
-                  {controls.canRetractOffer ? (
-                    <Button variant="ghost" size="sm" className="mt-2" disabled={busy} onClick={() => void run(() => retractOfferFn({ data: { offerId: String(viewerOffer.id) } }), "Offer retracted.")}>
-                      Retract offer
-                    </Button>
-                  ) : null}
-                </div>
-              ) : null}
-
-              {/* Seller: all offers. */}
-              {data.isSeller && data.offers.length > 0 ? (
-                <div className="mt-4 rounded-md border border-fg/10 bg-surface/60 p-4" data-testid="seller-offers">
-                  <p className="text-xs font-semibold uppercase tracking-kicker text-subtle">Offers ({data.offers.length})</p>
-                  <ul className="mt-3 space-y-3">
-                    {data.offers.map((o) => (
-                      <li key={o.id} className="border-t border-fg/10 pt-3 first:border-t-0 first:pt-0">
-                        <div className="flex flex-wrap items-baseline justify-between gap-2">
-                          <p className="tabular text-sm font-medium">
-                            <MoneyValue minor={Number(o.amount_minor)} currency={l.currency} size="sm" /> · {statusLabel(o.status)}
-                          </p>
-                          <p className="text-xs text-subtle">
-                            {o.buyer_name ?? "member"}
-                            {o.buyer_handle ? ` (@${o.buyer_handle})` : ""}
-                          </p>
-                        </div>
-                        {o.message ? <p className="mt-1 text-sm text-muted">{o.message}</p> : null}
-                        {o.status === "PENDING" && controls.canDecideOffers ? (
-                          <div className="mt-2 flex gap-2">
-                            <Button
-                              size="sm"
-                              disabled={busy}
-                              onClick={() => void run(() => decideOfferFn({ data: { offerId: String(o.id), decision: "ACCEPT" } }), "Offer accepted. Coordinate the handover directly.")}
-                            >
-                              Accept
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              disabled={busy}
-                              onClick={() => void run(() => decideOfferFn({ data: { offerId: String(o.id), decision: "REJECT" } }), "Offer rejected.")}
-                            >
-                              Reject
-                            </Button>
-                          </div>
-                        ) : null}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ) : null}
-
-              <p className="px-1 text-xs leading-relaxed text-subtle">
-                Accepted offers are commitments completed directly between the buyer and the seller. The platform does not hold funds or credentials.
-              </p>
+              <GraveyardPanel l={l} isSeller={data.isSeller} offers={data.offers} viewerOffer={viewerOffer} controls={controls} busy={busy} onRun={run} onDone={(m) => setMessage(m)} />
             </StickyPanel>
           </div>
         </div>
@@ -294,6 +162,191 @@ function GraveyardDetailBody({ data }: { data: NonNullable<Awaited<ReturnType<ty
         />
       </div>
     </ProductShell>
+  );
+}
+
+/** The asset story: what it is, why it paused, what is included (RC3 S-31). */
+function GraveyardMain({ l }: { l: NonNullable<Awaited<ReturnType<typeof loadDetail>>>["listing"] }) {
+  return (
+    <>
+      <section aria-labelledby="h-project">
+        <h2 id="h-project" className="text-sm font-semibold uppercase tracking-kicker text-subtle">The project</h2>
+        <p className="mt-3 whitespace-pre-wrap text-[15px] leading-relaxed">{l.description}</p>
+      </section>
+      {l.reason_of_death ? (
+        <section className="mt-8">
+          <h2 className="text-sm font-semibold uppercase tracking-kicker text-subtle">Why it was paused</h2>
+          <p className="mt-3 whitespace-pre-wrap text-[15px] leading-relaxed">{l.reason_of_death}</p>
+        </section>
+      ) : null}
+      {l.includes.length > 0 ? (
+        <section className="mt-8">
+          <h2 className="text-sm font-semibold uppercase tracking-kicker text-subtle">Included</h2>
+          <ul className="mt-3 grid gap-1.5 text-[15px] sm:grid-cols-2">
+            {l.includes.map((k) => (
+              <li key={k} className="flex items-center gap-2">
+                <span aria-hidden="true" className="text-accent">✓</span>
+                {k}
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+      {l.liabilities ? (
+        <section className="mt-8">
+          <h2 className="text-sm font-semibold uppercase tracking-kicker text-subtle">Known liabilities</h2>
+          <p className="mt-3 whitespace-pre-wrap text-[15px] leading-relaxed">{l.liabilities}</p>
+        </section>
+      ) : null}
+      {l.history_self_reported ? (
+        <section className="mt-8">
+          <h2 className="text-sm font-semibold uppercase tracking-kicker text-subtle">History (self-reported)</h2>
+          <p className="mt-3 whitespace-pre-wrap text-[15px] leading-relaxed text-muted">{l.history_self_reported}</p>
+        </section>
+      ) : null}
+    </>
+  );
+}
+
+/** Price, seller controls (status-driven), offer box, offer threads. */
+function GraveyardPanel({
+  l,
+  isSeller,
+  offers,
+  viewerOffer,
+  controls,
+  busy,
+  onRun,
+  onDone,
+}: {
+  l: NonNullable<Awaited<ReturnType<typeof loadDetail>>>["listing"];
+  isSeller: boolean;
+  offers: NonNullable<Awaited<ReturnType<typeof loadDetail>>>["offers"];
+  viewerOffer: NonNullable<Awaited<ReturnType<typeof loadDetail>>>["offers"][number] | null;
+  controls: ReturnType<typeof graveyardControls>;
+  busy: boolean;
+  onRun: (fn: () => Promise<{ ok: boolean; message?: string }>, okNote: string) => Promise<void>;
+  onDone: (m: string) => void;
+}) {
+  return (
+    <>
+      <div className="rounded-md border border-fg/10 bg-surface/60 p-4">
+        {l.asking_price_minor != null ? (
+          <>
+            <MoneyValue minor={Number(l.asking_price_minor)} currency={l.currency} size="xl" className="text-accent" />
+            <p className="mt-0.5 text-xs text-subtle">asking price</p>
+          </>
+        ) : (
+          <p className="text-sm font-medium">Open to offers</p>
+        )}
+      </div>
+
+      {/* Seller controls (status-driven via graveyardControls). */}
+      {isSeller ? (
+        <div className="mt-4 space-y-3">
+          {controls.canPublish ? (
+            <div className="rounded-md border border-accent/40 bg-raised/40 p-4">
+              <p className="text-sm font-medium">Publish this listing</p>
+              <p className="mt-1 text-xs text-muted">It becomes visible in The Graveyard once published.</p>
+              <Button className="mt-3 w-full" disabled={busy} onClick={() => void onRun(() => publishListingFn({ data: { listingId: String(l.id) } }), "Listing is live in the graveyard.")}>
+                Publish
+              </Button>
+            </div>
+          ) : null}
+          {controls.canMarkTransferred ? (
+            <Button className="w-full" disabled={busy} onClick={() => void onRun(() => markTransferredFn({ data: { listingId: String(l.id), checklistConfirmed: true } }), "Marked transferred.")}>
+              Mark transferred (checklist done)
+            </Button>
+          ) : null}
+          {controls.canWithdraw ? (
+            <Button variant="danger" size="sm" className="w-full" disabled={busy} onClick={() => void onRun(() => withdrawListingFn({ data: { listingId: String(l.id) } }), "Listing withdrawn.")}>
+              Withdraw listing
+            </Button>
+          ) : null}
+        </div>
+      ) : null}
+
+      {/* Buyer: offer box. */}
+      {controls.canOffer ? <OfferBox listingId={String(l.id)} currency={l.currency} onDone={onDone} /> : null}
+
+      {!isSeller && viewerOffer ? (
+        <div className="mt-4 rounded-md border border-fg/10 bg-surface/60 p-4" data-testid="my-offer">
+          <p className="text-xs font-semibold uppercase tracking-kicker text-subtle">Your offer</p>
+          <p className="mt-2 flex items-baseline justify-between gap-3 text-sm">
+            <MoneyValue minor={Number(viewerOffer.amount_minor)} currency={l.currency} />
+            <StatusBadge status={viewerOffer.status} />
+          </p>
+          {controls.canRetractOffer ? (
+            <Button variant="ghost" size="sm" className="mt-2" disabled={busy} onClick={() => void onRun(() => retractOfferFn({ data: { offerId: String(viewerOffer.id) } }), "Offer retracted.")}>
+              Retract offer
+            </Button>
+          ) : null}
+        </div>
+      ) : null}
+
+      {/* Seller: all offers. */}
+      {isSeller ? <SellerOffers l={l} offers={offers} busy={busy} canDecide={controls.canDecideOffers} onRun={onRun} /> : null}
+
+      <p className="px-1 text-xs leading-relaxed text-subtle">
+        Accepted offers are commitments completed directly between the buyer and the seller. The platform does not hold funds or credentials.
+      </p>
+    </>
+  );
+}
+
+function SellerOffers({
+  l,
+  offers,
+  busy,
+  canDecide,
+  onRun,
+}: {
+  l: NonNullable<Awaited<ReturnType<typeof loadDetail>>>["listing"];
+  offers: NonNullable<Awaited<ReturnType<typeof loadDetail>>>["offers"];
+  busy: boolean;
+  canDecide: boolean;
+  onRun: (fn: () => Promise<{ ok: boolean; message?: string }>, okNote: string) => Promise<void>;
+}) {
+  if (offers.length === 0) return null;
+  return (
+    <div className="mt-4 rounded-md border border-fg/10 bg-surface/60 p-4" data-testid="seller-offers">
+      <p className="text-xs font-semibold uppercase tracking-kicker text-subtle">Offers ({offers.length})</p>
+      <ul className="mt-3 space-y-3">
+        {offers.map((o) => (
+          <li key={o.id} className="border-t border-fg/10 pt-3 first:border-t-0 first:pt-0">
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <p className="tabular text-sm font-medium">
+                <MoneyValue minor={Number(o.amount_minor)} currency={l.currency} size="sm" /> · {statusLabel(o.status)}
+              </p>
+              <p className="text-xs text-subtle">
+                {o.buyer_name ?? "member"}
+                {o.buyer_handle ? ` (@${o.buyer_handle})` : ""}
+              </p>
+            </div>
+            {o.message ? <p className="mt-1 text-sm text-muted">{o.message}</p> : null}
+            {o.status === "PENDING" && canDecide ? (
+              <div className="mt-2 flex gap-2">
+                <Button
+                  size="sm"
+                  disabled={busy}
+                  onClick={() => void onRun(() => decideOfferFn({ data: { offerId: String(o.id), decision: "ACCEPT" } }), "Offer accepted. Coordinate the handover directly.")}
+                >
+                  Accept
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  disabled={busy}
+                  onClick={() => void onRun(() => decideOfferFn({ data: { offerId: String(o.id), decision: "REJECT" } }), "Offer rejected.")}
+                >
+                  Reject
+                </Button>
+              </div>
+            ) : null}
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 

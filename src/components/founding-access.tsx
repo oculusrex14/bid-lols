@@ -148,23 +148,70 @@ export function FoundingAccess({
         </p>
 
         {status.state === "success" ? (
-          <div
-            role="status"
-            aria-live="polite"
-            className="mt-5 flex items-start gap-3 rounded-md border border-up/40 bg-raised/50 p-4"
-          >
-            <Check className="mt-0.5 size-5 shrink-0 text-up" aria-hidden="true" />
-            <div>
-              <p className="text-sm font-medium">
-                You're on the list for {cfg.name}.
-              </p>
-              <p className="mt-1 text-sm text-muted">
-                We'll write to {status.email} when {cfg.name} opens. No counts,
-                no promises of timing. One email when it is real.
-              </p>
-            </div>
-          </div>
+          <SentNotice name={cfg.name} email={status.email} />
         ) : (
+          <CaptureForm
+            formRef={formRef}
+            onSubmit={onSubmit}
+            busy={status.state === "submitting"}
+            error={status.state === "error" ? status.message : null}
+            role={role}
+            setRole={setRole}
+            options={options}
+            ctaLabel={ctaLabel ?? "Notify me"}
+          />
+        )}
+      </div>
+    </div>
+  );
+}
+
+/** The success notice (RC3 split; the ternary stays at the call site). */
+function SentNotice({ name, email }: { name: string; email: string }) {
+  return (
+            <div
+              role="status"
+              aria-live="polite"
+              className="mt-5 flex items-start gap-3 rounded-md border border-up/40 bg-raised/50 p-4"
+            >
+              <Check className="mt-0.5 size-5 shrink-0 text-up" aria-hidden="true" />
+              <div>
+                <p className="text-sm font-medium">
+                  You're on the list for {name}.
+                </p>
+                <p className="mt-1 text-sm text-muted">
+                  We'll write to {email} when {name} opens. No counts,
+                  no promises of timing. One email when it is real.
+                </p>
+              </div>
+            </div>
+  );
+}
+
+/** The capture form (RC3 split): names/ids are the submit contract; */
+/** status display rides props (busy/error) instead of closure state. */
+function CaptureForm({
+  formRef,
+  onSubmit,
+  busy,
+  error,
+  role,
+  setRole,
+  options,
+  ctaLabel,
+}: {
+  formRef: React.RefObject<HTMLFormElement | null>;
+  onSubmit: (e: React.FormEvent<HTMLFormElement>) => Promise<void> | void;
+  busy: boolean;
+  error: string | null;
+  role: WaitlistRole;
+  setRole: (r: WaitlistRole) => void;
+  options: Array<{ value: WaitlistRole; label: string }>;
+  ctaLabel: string;
+}) {
+  const inputClasses = "h-10 w-full rounded-md border border-fg/20 bg-surface px-3 text-sm outline-none focus:border-fg/50";
+  return (
+
           <form ref={formRef} onSubmit={onSubmit} noValidate className="mt-5">
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
@@ -225,21 +272,21 @@ export function FoundingAccess({
               <span>{WAITLIST_CONSENT_TEXT}.</span>
             </label>
 
-            {status.state === "error" ? (
+            {error ? (
               <p role="alert" className="mt-3 text-sm font-medium text-danger">
-                {status.message}
+                {error}
               </p>
             ) : null}
 
             <button
               type="submit"
-              disabled={status.state === "submitting"}
+              disabled={busy}
               className={cn(
                 "mt-5 inline-flex h-11 items-center justify-center gap-2 rounded-md bg-accent px-5 text-sm font-semibold text-accent-fg",
                 "disabled:cursor-not-allowed disabled:opacity-60",
               )}
             >
-              {status.state === "submitting" ? (
+              {busy ? (
                 <>
                   <Loader2 className="size-4 animate-spin" aria-hidden="true" />
                   Saving…
@@ -249,8 +296,5 @@ export function FoundingAccess({
               )}
             </button>
           </form>
-        )}
-      </div>
-    </div>
   );
 }

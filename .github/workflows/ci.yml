@@ -1,10 +1,20 @@
-# Phase 00.6, WS5 — independent release gate.
+# RC3 (S-44): full release gate.
 #
-# Runs on every pull request and on pushes to main. No secrets are required
-# or used: the build and the whole test suite are hermetic (PGLite local
-# database, fake provider credentials in tests). A red run blocks the
-# release: the deployment protocol in docs/ops/DEPLOYMENT.md requires a
-# green CI status on the release SHA.
+# Jobs:
+#   gates    — lint · typecheck · unit/integration (hermetic PGLite) · build
+#              · artifact sanity · complexity gate · runtime dependency audit
+#   e2e      — Playwright: the funded marketplace journey (fake provider) and
+#              the cross-product critical paths, against a local dev server
+#   codeql   — separate workflow (codeql.yml), runs on schedule + PR
+#
+# No secrets are required or used: every step is hermetic (in-memory PGLite,
+# fake payment provider in explicit test runtimes only). A red run blocks the
+# release per docs/ops/DEPLOYMENT.md.
+#
+# Action pinning (RC3, S-10.7): third-party actions are pinned to immutable
+# commit SHAs. Intended upstream versions are noted beside each pin.
+#   actions/checkout@v4.4.0     -> 11d5960a326750d5838078e36cf38b85af677262
+#   actions/setup-node@v4.4.0   -> 49933ea5288caeca8642d1e84afbd3f7d6820020
 name: CI
 
 on:
@@ -24,10 +34,10 @@ jobs:
     timeout-minutes: 15
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
       - name: Setup Node 24
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 24
           cache: npm
@@ -54,3 +64,49 @@ jobs:
             echo "server function output missing — build shape changed?"; exit 1;
           }
           echo "build artifact shape OK"
+
+      - name: Complexity gate (production code: CC<=15, depth<=5, fns<=120 lines)
+        run: node scripts/complexity-report.mjs --gate
+
+      - name: Runtime dependency security gate (prod deps only, high+)
+        run: npm audit --omit=dev --audit-level=high
+
+  e2e:
+    name: Playwright critical paths
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - name: Setup Node 24
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install (npm ci)
+        run: npm ci
+
+      - name: Install Playwright browser (chromium)
+        run: npx playwright install --with-deps chromium
+
+      - name: Start dev server (fake provider, money machinery on test-only)
+        run: |
+          PAYMENT_PROVIDER=fake MARKETPLACE_MONEY_LIVE=1 \
+            nohup npx vite dev --host 0.0.0.0 --port 8080 >/tmp/dev.log 2>&1 &
+          for i in $(seq 1 60); do
+            if curl -sf http://127.0.0.1:8080/ >/dev/null; then echo "dev server ready"; exit 0; fi
+            sleep 1
+          done
+          echo "dev server did not become ready"; tail -40 /tmp/dev.log; exit 1
+
+      - name: Funded marketplace journey (E2E, fake provider; never real rails)
+        run: PAYMENT_PROVIDER=fake node scripts/marketplace-e2e.mjs
+
+      - name: Cross-product critical paths (E2E)
+        run: node tests/e2e/critical-paths.mjs
+
+      - name: Dump dev server log on failure
+        if: failure()
+        run: tail -60 /tmp/dev.log

@@ -168,146 +168,12 @@ function ProjectDetailBody({ data }: { data: Data }) {
 
         <div className="mt-8 grid grid-cols-1 gap-10 lg:grid-cols-12">
           <div className="lg:col-span-8">
-            <section aria-labelledby="h-brief">
-              <h2 id="h-brief" className="text-sm font-semibold uppercase tracking-kicker text-subtle">The brief</h2>
-              <p className="mt-3 whitespace-pre-wrap text-[15px] leading-relaxed">{String(p.description)}</p>
-            </section>
-
-            {data.proposals.length > 0 ? (
-              <section className="mt-10">
-                <h2 className="text-sm font-semibold uppercase tracking-kicker text-subtle">Proposals ({data.proposals.length})</h2>
-                <ul className="mt-4 space-y-4">
-                  {data.proposals.map((pr) => (
-                    <li key={pr.id} className="rounded-md border border-fg/10 bg-surface/60 p-4">
-                      <div className="flex flex-wrap items-baseline justify-between gap-2">
-                        <p className="tabular text-sm font-semibold">{formatMinor(Number(pr.quoted_minor))} · {pr.timeline_weeks ?? "?"} wk</p>
-                        <p className="text-xs text-subtle">
-                          {pr.display_name ?? "provider"}
-                          {pr.handle ? ` (@${pr.handle})` : ""} · {statusLabel(pr.status)}
-                        </p>
-                      </div>
-                      <p className="mt-2 whitespace-pre-wrap text-sm text-muted">{pr.approach}</p>
-                      {data.isSponsor && pr.status === "SUBMITTED" && status === "OPEN_FOR_PROPOSALS" ? (
-                        <Button
-                          size="sm"
-                          className="mt-3"
-                          disabled={busy}
-                          onClick={async () => {
-                            await run(() => selectProposalFn({ data: { projectId: String(p.id), proposalId: pr.id } }), "Proposal selected. Funding is next.");
-                          }}
-                        >
-                          Select this provider
-                        </Button>
-                      ) : null}
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            ) : null}
-
-            {showPropose && !data.isSponsor ? <ProposalBox projectId={String(p.id)} onDone={(m) => { setMessage(m); setShowPropose(false); }} /> : null}
+            <ProjectMain data={data} status={status} busy={busy} showPropose={showPropose} onRun={run} onOpenPropose={(m) => { setMessage(m); setShowPropose(false); }} />
           </div>
 
           <div className="lg:col-span-4">
             <StickyPanel>
-              <div className="rounded-md border border-fg/10 bg-surface/60 p-4">
-                <p className="text-xs uppercase tracking-kicker text-subtle">Budget</p>
-                <p className="tabular mt-1 text-xl font-semibold text-accent">
-                  {p.selected_quoted_minor != null ? formatMinor(Number(p.selected_quoted_minor), String(p.currency)) : "Set by the selected proposal"}
-                </p>
-                <dl className="mt-4 space-y-2.5 text-sm">
-                  <div className="flex items-baseline justify-between gap-3">
-                    <dt className="text-xs uppercase tracking-kicker text-subtle">Stage</dt>
-                    <dd className="font-medium">{statusLabel(status)}</dd>
-                  </div>
-                  {p.proposal_deadline ? (
-                    <div className="flex items-baseline justify-between gap-3">
-                      <dt className="text-xs uppercase tracking-kicker text-subtle">Proposals due</dt>
-                      <dd className="tabular" title={absoluteDate(String(p.proposal_deadline))}>{deadlinePhrase(String(p.proposal_deadline))}</dd>
-                    </div>
-                  ) : null}
-                  {p.funding_payment_id ? (
-                    <div className="flex items-baseline justify-between gap-3">
-                      <dt className="text-xs uppercase tracking-kicker text-subtle">Funding</dt>
-                      <dd className="font-medium text-up">Funded</dd>
-                    </div>
-                  ) : null}
-                </dl>
-
-                {data.isSponsor && status === "DRAFT" ? (
-                  <div className="mt-4 border-t border-fg/10 pt-4">
-                    <p className="text-xs text-subtle">Draft. Open it for proposals when the brief is final.</p>
-                    <Button
-                      className="mt-2 w-full"
-                      disabled={busy}
-                      onClick={async () => {
-                        await run(async () => publishProjectFn({ data: { projectId: String(p.id) } }), "Project is open for proposals.");
-                      }}
-                    >
-                      Open for proposals
-                    </Button>
-                  </div>
-                ) : null}
-
-                {data.isSponsor && status === "PROPOSAL_SELECTED" ? (
-                  <div className="mt-4 border-t border-fg/10 pt-4" data-testid="sponsor-fund">
-                    <p className="text-xs text-subtle">
-                      {data.milestones[0]
-                        ? `Quoted ${formatMinor(Number(p.selected_quoted_minor))} across ${data.milestones.length} milestones.`
-                        : "Funding starts the checkout."}
-                    </p>
-                    <Button
-                      className="mt-2 w-full"
-                      disabled={busy}
-                      onClick={async () => {
-                        await run(async () => fundProjectFn({ data: { projectId: String(p.id) } }), "Funding checkout started.");
-                      }}
-                    >
-                      Fund project
-                    </Button>
-                  </div>
-                ) : null}
-
-                {!data.isSponsor && status === "OPEN_FOR_PROPOSALS" ? (
-                  <div className="mt-4 border-t border-fg/10 pt-4">
-                    {data.mine ? (
-                      <p className="text-sm">Your proposal: {statusLabel(data.mine.status)}</p>
-                    ) : (
-                      <>
-                        <Button className="mt-0 w-full" onClick={() => setShowPropose((v) => !v)}>
-                          Submit a proposal
-                        </Button>
-                        <p className="mt-2 text-xs text-subtle">
-                          Proposals describe approach + evidence + milestone plan. Never submit the finished work.
-                        </p>
-                      </>
-                    )}
-                  </div>
-                ) : null}
-              </div>
-
-              {data.milestones.length > 0 ? (
-                <div className="mt-4 rounded-md border border-fg/10 bg-surface/60 p-4" data-testid="milestones">
-                  <div className="flex items-baseline justify-between">
-                    <h2 className="text-sm font-semibold">Milestones</h2>
-                    <span className="tabular text-xs text-subtle">{paidMilestones}/{data.milestones.length} paid</span>
-                  </div>
-                  <ProgressBar value={paidMilestones} max={data.milestones.length} className="mt-2" label="" />
-                  <ul className="mt-3 space-y-2">
-                    {data.milestones.map((m) => (
-                      <li key={m.id} className="flex items-baseline justify-between gap-2 text-sm">
-                        <span className="min-w-0 truncate">
-                          <span className="text-subtle">#{m.seq}</span> {m.title}
-                        </span>
-                        <span className="shrink-0">
-                          <span className="tabular mr-2 font-medium">{formatMinor(Number(m.amount_minor), m.currency)}</span>
-                          <StatusBadge status={m.status} />
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ) : null}
+              <ProjectPanel data={data} status={status} busy={busy} onRun={run} onTogglePropose={() => setShowPropose((v) => !v)} />
             </StickyPanel>
           </div>
         </div>
@@ -321,6 +187,187 @@ function ProjectDetailBody({ data }: { data: Data }) {
         />
       </div>
     </ProductShell>
+  );
+}
+
+/** The brief and the proposals (RC3 S-24). */
+function ProjectMain({
+  data,
+  status,
+  busy,
+  showPropose,
+  onRun,
+  onOpenPropose,
+}: {
+  data: Data;
+  status: string;
+  busy: boolean;
+  showPropose: boolean;
+  onRun: (fn: () => Promise<{ ok: boolean; message?: string; checkoutUrl?: string }>, okNote: string) => Promise<void>;
+  onOpenPropose: (m: string) => void;
+}) {
+  const p = data.project;
+  return (
+    <>
+      <section aria-labelledby="h-brief">
+        <h2 id="h-brief" className="text-sm font-semibold uppercase tracking-kicker text-subtle">The brief</h2>
+        <p className="mt-3 whitespace-pre-wrap text-[15px] leading-relaxed">{String(p.description)}</p>
+      </section>
+
+      {data.proposals.length > 0 ? (
+        <section className="mt-10">
+          <h2 className="text-sm font-semibold uppercase tracking-kicker text-subtle">Proposals ({data.proposals.length})</h2>
+          <ul className="mt-4 space-y-4">
+            {data.proposals.map((pr) => (
+              <li key={pr.id} className="rounded-md border border-fg/10 bg-surface/60 p-4">
+                <div className="flex flex-wrap items-baseline justify-between gap-2">
+                  <p className="tabular text-sm font-semibold">{formatMinor(Number(pr.quoted_minor))} · {pr.timeline_weeks ?? "?"} wk</p>
+                  <p className="text-xs text-subtle">
+                    {pr.display_name ?? "provider"}
+                    {pr.handle ? ` (@${pr.handle})` : ""} · {statusLabel(pr.status)}
+                  </p>
+                </div>
+                <p className="mt-2 whitespace-pre-wrap text-sm text-muted">{pr.approach}</p>
+                {data.isSponsor && pr.status === "SUBMITTED" && status === "OPEN_FOR_PROPOSALS" ? (
+                  <Button
+                    size="sm"
+                    className="mt-3"
+                    disabled={busy}
+                    onClick={async () => {
+                      await onRun(() => selectProposalFn({ data: { projectId: String(p.id), proposalId: pr.id } }), "Proposal selected. Funding is next.");
+                    }}
+                  >
+                    Select this provider
+                  </Button>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
+      {showPropose && !data.isSponsor ? <ProposalBox projectId={String(p.id)} onDone={onOpenPropose} /> : null}
+    </>
+  );
+}
+
+/** Budget, stage, lifecycle actions, milestones (the decision data). */
+function ProjectPanel({
+  data,
+  status,
+  busy,
+  onRun,
+  onTogglePropose,
+}: {
+  data: Data;
+  status: string;
+  busy: boolean;
+  onRun: (fn: () => Promise<{ ok: boolean; message?: string; checkoutUrl?: string }>, okNote: string) => Promise<void>;
+  onTogglePropose: () => void;
+}) {
+  const p = data.project;
+  const paidMilestones = data.milestones.filter((m) => m.status === "PAID_OUT").length;
+  return (
+    <>
+      <div className="rounded-md border border-fg/10 bg-surface/60 p-4">
+        <p className="text-xs uppercase tracking-kicker text-subtle">Budget</p>
+        <p className="tabular mt-1 text-xl font-semibold text-accent">
+          {p.selected_quoted_minor != null ? formatMinor(Number(p.selected_quoted_minor), String(p.currency)) : "Set by the selected proposal"}
+        </p>
+        <dl className="mt-4 space-y-2.5 text-sm">
+          <div className="flex items-baseline justify-between gap-3">
+            <dt className="text-xs uppercase tracking-kicker text-subtle">Stage</dt>
+            <dd className="font-medium">{statusLabel(status)}</dd>
+          </div>
+          {p.proposal_deadline ? (
+            <div className="flex items-baseline justify-between gap-3">
+              <dt className="text-xs uppercase tracking-kicker text-subtle">Proposals due</dt>
+              <dd className="tabular" title={absoluteDate(String(p.proposal_deadline))}>{deadlinePhrase(String(p.proposal_deadline))}</dd>
+            </div>
+          ) : null}
+          {p.funding_payment_id ? (
+            <div className="flex items-baseline justify-between gap-3">
+              <dt className="text-xs uppercase tracking-kicker text-subtle">Funding</dt>
+              <dd className="font-medium text-up">Funded</dd>
+            </div>
+          ) : null}
+        </dl>
+
+        {data.isSponsor && status === "DRAFT" ? (
+          <div className="mt-4 border-t border-fg/10 pt-4">
+            <p className="text-xs text-subtle">Draft. Open it for proposals when the brief is final.</p>
+            <Button
+              className="mt-2 w-full"
+              disabled={busy}
+              onClick={async () => {
+                await onRun(async () => publishProjectFn({ data: { projectId: String(p.id) } }), "Project is open for proposals.");
+              }}
+            >
+              Open for proposals
+            </Button>
+          </div>
+        ) : null}
+
+        {data.isSponsor && status === "PROPOSAL_SELECTED" ? (
+          <div className="mt-4 border-t border-fg/10 pt-4" data-testid="sponsor-fund">
+            <p className="text-xs text-subtle">
+              {data.milestones[0]
+                ? `Quoted ${formatMinor(Number(p.selected_quoted_minor))} across ${data.milestones.length} milestones.`
+                : "Funding starts the checkout."}
+            </p>
+            <Button
+              className="mt-2 w-full"
+              disabled={busy}
+              onClick={async () => {
+                await onRun(async () => fundProjectFn({ data: { projectId: String(p.id) } }), "Funding checkout started.");
+              }}
+            >
+              Fund project
+            </Button>
+          </div>
+        ) : null}
+
+        {!data.isSponsor && status === "OPEN_FOR_PROPOSALS" ? (
+          <div className="mt-4 border-t border-fg/10 pt-4">
+            {data.mine ? (
+              <p className="text-sm">Your proposal: {statusLabel(data.mine.status)}</p>
+            ) : (
+              <>
+                <Button className="mt-0 w-full" onClick={onTogglePropose}>
+                  Submit a proposal
+                </Button>
+                <p className="mt-2 text-xs text-subtle">
+                  Proposals describe approach + evidence + milestone plan. Never submit the finished work.
+                </p>
+              </>
+            )}
+          </div>
+        ) : null}
+      </div>
+
+      {data.milestones.length > 0 ? (
+        <div className="mt-4 rounded-md border border-fg/10 bg-surface/60 p-4" data-testid="milestones">
+          <div className="flex items-baseline justify-between">
+            <h2 className="text-sm font-semibold">Milestones</h2>
+            <span className="tabular text-xs text-subtle">{paidMilestones}/{data.milestones.length} paid</span>
+          </div>
+          <ProgressBar value={paidMilestones} max={data.milestones.length} className="mt-2" label="" />
+          <ul className="mt-3 space-y-2">
+            {data.milestones.map((m) => (
+              <li key={m.id} className="flex items-baseline justify-between gap-2 text-sm">
+                <span className="min-w-0 truncate">
+                  <span className="text-subtle">#{m.seq}</span> {m.title}
+                </span>
+                <span className="shrink-0">
+                  <span className="tabular mr-2 font-medium">{formatMinor(Number(m.amount_minor), m.currency)}</span>
+                  <StatusBadge status={m.status} />
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+    </>
   );
 }
 

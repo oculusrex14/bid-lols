@@ -212,47 +212,13 @@ function Browse({
   return (
     <>
       <div className="mt-6">
-        <FilterBar resultCount={`${items.length} shown`}>
-          {categories.map((c) => (
-            <FilterChip
-              key={c}
-              active={search.category === c}
-              onClick={() => setFilter({ category: search.category === c ? undefined : c })}
-            >
-              {c.charAt(0).toUpperCase() + c.slice(1)}
-            </FilterChip>
-          ))}
-          <SortControl
-            label="Sort"
-            value={search.sort ?? "newest"}
-            options={[
-              { value: "newest", label: "Newest" },
-              { value: "ending_soon", label: "Ending soon" },
-              { value: "reward", label: "Top reward" },
-            ]}
-            onChange={(v) => setFilter({ sort: v === "newest" ? undefined : v })}
-          />
-          <label className="flex items-center gap-1.5 text-xs text-muted">
-            <span>Min reward (₹)</span>
-            <input
-              type="number"
-              min={0}
-              value={search.rewardMin ?? ""}
-              onChange={(e) => setFilter({ rewardMin: e.target.value ? Number(e.target.value) : undefined })}
-              placeholder="Any"
-              className="h-9 w-28 rounded-sm border border-fg/20 bg-surface px-2 text-xs tabular"
-            />
-          </label>
-          {hasFilters ? (
-            <button
-              type="button"
-              onClick={() => setFilter({ category: undefined, sort: undefined, rewardMin: undefined })}
-              className="h-9 px-2 text-xs text-subtle underline underline-offset-2"
-            >
-              Clear
-            </button>
-          ) : null}
-        </FilterBar>
+        <BountyFilters
+          categories={categories}
+          search={search}
+          resultCount={`${items.length} shown`}
+          hasFilters={hasFilters}
+          onFilter={setFilter}
+        />
       </div>
 
       {isCulture ? (
@@ -359,3 +325,61 @@ function CultureCard({ bounty: b }: { bounty: Awaited<ReturnType<typeof loadBoun
   );
 }
 
+/** URL-backed browse filters (RC3, S-24): every control maps to a real query param. */
+function BountyFilters({
+  categories,
+  search,
+  resultCount,
+  hasFilters,
+  onFilter,
+}: {
+  categories: string[];
+  search: { category?: string; sort?: "newest" | "ending_soon" | "reward"; cursor?: string; rewardMin?: number };
+  resultCount: string;
+  hasFilters: boolean;
+  onFilter: (patch: Record<string, string | number | undefined>) => void;
+}) {
+  return (
+    <FilterBar resultCount={resultCount}>
+      {categories.map((c) => (
+        <FilterChip
+          key={c}
+          active={search.category === c}
+          onClick={() => onFilter({ category: search.category === c ? undefined : c })}
+        >
+          {c.charAt(0).toUpperCase() + c.slice(1)}
+        </FilterChip>
+      ))}
+      <SortControl
+        label="Sort"
+        value={search.sort ?? "newest"}
+        options={[
+          { value: "newest", label: "Newest" },
+          { value: "ending_soon", label: "Ending soon" },
+          { value: "reward", label: "Top reward" },
+        ]}
+        onChange={(v) => onFilter({ sort: v === "newest" ? undefined : v })}
+      />
+      <label className="flex items-center gap-1.5 text-xs text-muted">
+        <span>Min reward (₹)</span>
+        <input
+          type="number"
+          min={0}
+          value={search.rewardMin ?? ""}
+          onChange={(e) => onFilter({ rewardMin: e.target.value ? Number(e.target.value) : undefined })}
+          placeholder="Any"
+          className="h-9 w-28 rounded-sm border border-fg/20 bg-surface px-2 text-xs tabular"
+        />
+      </label>
+      {hasFilters ? (
+        <button
+          type="button"
+          onClick={() => onFilter({ category: undefined, sort: undefined, rewardMin: undefined })}
+          className="h-9 px-2 text-xs text-subtle underline underline-offset-2"
+        >
+          Clear
+        </button>
+      ) : null}
+    </FilterBar>
+  );
+}

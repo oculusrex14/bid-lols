@@ -66,17 +66,31 @@ async function signUp(page, user) {
 async function createFundedBounty(page) {
   await page.goto(`${BASE}/bounties/new`);
   await waitForHydration(page, '[data-testid="create-bounty-form"]');
+
+  // RC3 progressive disclosure: 5 steps with per-step Continue buttons and a
+  // live server-computed money plan on the Reward step. Both the desktop and
+  // the mobile (sticky) action bars render; the :visible locator picks the
+  // one that matches the current viewport.
+  const CONTINUE = '[data-testid="continue-step"]:visible';
+  const step = async () => {
+    await page.locator(CONTINUE).first().click();
+  };
   await page.fill("#bn-title", "E2E bounty: wire up an onboarding checklist");
-  await page.fill('textarea[name="description"]', "We need a crisp onboarding checklist flow for new workspaces, with progress states and a final checklist export.");
   await page.fill("#bn-cat", "development");
-  await page.fill("#bn-reward", "9000");
-  await page.fill("#bn-sub-deadline", "2026-10-01T18:00");
+  await page.fill("#bn-desc", "We need a crisp onboarding checklist flow for new workspaces, with progress states and a final checklist export.");
+  await step();
+  await step(); // "done" (optional fields)
   await page.fill("#bn-cap", "3");
+  await page.fill("#bn-sub-deadline", "2026-10-01T18:00");
   await page.selectOption('select[name="qualificationMode"]', "APPLICATION_ONLY");
-  await page.waitForTimeout(1200);
+  await step();
+  await page.fill("#bn-reward", "9000");
+  await page.waitForSelector('[data-testid="money-plan"]', { timeout: 15000 });
   const plan = await page.textContent('[data-testid="money-plan"]');
   ok("money plan shows fee decomposition", /9,900\.00/.test(plan ?? "") && /900\.00/.test(plan ?? ""), (plan ?? "").slice(0, 80));
-  await page.click('[data-testid="create-bounty-form"] button[type="submit"]');
+  await step(); // review
+  await page.waitForSelector('[data-testid="review-block"]', { timeout: 15000 });
+  await page.locator('[data-testid="create-draft"]:visible').first().click();
   await page.waitForURL("**/bounties/bnt_*", { timeout: 20000 });
   const bountyPath = new URL(page.url()).pathname;
   ok("bounty created (draft)", /bounties\/bnt_/.test(bountyPath), bountyPath);
@@ -107,24 +121,36 @@ async function builderAppliesAndSubmits(page, bountyPath) {
   await waitForHydration(page, '[data-testid="viewer-actions"] textarea');
   await page.fill('[data-testid="viewer-actions"] textarea', "I have shipped onboarding flows before — see my profile.");
   await page.click('[data-testid="viewer-actions"] button');
-  await page.waitForTimeout(2000);
-  const msg = await page.textContent('[data-testid="action-message"]');
-  ok("builder applied (APPLICATION_ONLY auto-approves)", /sent|approved/i.test(msg ?? ""), msg ?? "");
+  // Application succeeds -> the page reloads and shows the authoritative
+  // state (auto-approved in APPLICATION_ONLY mode).
+  await page.waitForFunction(
+    () => document.querySelector("main")?.textContent?.includes("Application: Approved"),
+    { timeout: 20000 },
+  );
+  ok("builder applied (APPLICATION_ONLY auto-approves)", true);
 
   await page.goto(`${BASE}${bountyPath}`);
   await page.reload();
   await waitForHydration(page, '[data-testid="viewer-actions"]');
   await page.click('button:has-text("Start work")');
-  await page.waitForTimeout(2000);
+  // run() reloads the page after the state change; wait for the reloaded
+  // UI to show the WORK_STARTED participation state before continuing.
+  await page.waitForFunction(
+    () => document.querySelector("main")?.textContent?.includes("Work started"),
+    { timeout: 20000 },
+  );
   await page.click('button:has-text("Submit work"), a:has-text("Submit work")');
   await page.waitForSelector('input[name="title"]');
   await page.fill('input[name="title"]', "Onboarding checklist v1");
   await page.fill('textarea[name="body"]', "Built the flow: checklist states, progress bar, persistence.");
   await page.fill('input[name="links"]', "https://example.com/checklist");
   await page.click('button:has-text("Save submission")');
-  await page.waitForTimeout(2500);
-  const msg2 = await page.textContent('[data-testid="action-message"]');
-  ok("builder submitted work", /saved/i.test(msg2 ?? ""), msg2 ?? "");
+  // Submission lands -> reload shows the SUBMITTED participation state.
+  await page.waitForFunction(
+    () => document.querySelector("main")?.textContent?.includes("Participation: Submitted"),
+    { timeout: 20000 },
+  );
+  ok("builder submitted work", true);
 }
 
 async function main() {

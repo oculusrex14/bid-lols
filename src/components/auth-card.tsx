@@ -77,60 +77,8 @@ export function AuthCard({
           : "Welcome back. Your session is a secure, httpOnly cookie. Moving between domains may ask you to sign in again."}
       </p>
 
-      <form
-        onSubmit={onSubmit}
-        noValidate
-        className="mt-5"
-        data-testid={isSignup ? "signup-form" : "signin-form"}
-      >
-        {isSignup ? (
-          <div className="mb-4">
-            <label htmlFor="au-name" className="mb-1.5 block text-sm font-medium">
-              Name
-            </label>
-            <input
-              id="au-name"
-              name="name"
-              type="text"
-              required
-              autoComplete="name"
-              placeholder="Ada Lovelace"
-              className={inputClasses}
-            />
-          </div>
-        ) : null}
-
-        <div className="mb-4">
-          <label htmlFor="au-email" className="mb-1.5 block text-sm font-medium">
-            Email
-          </label>
-          <input
-            id="au-email"
-            name="email"
-            type="email"
-            required
-            autoComplete="email"
-            placeholder="you@example.com"
-            className={inputClasses}
-          />
-        </div>
-
-        <div>
-          <label htmlFor="au-password" className="mb-1.5 block text-sm font-medium">
-            Password
-          </label>
-          <input
-            id="au-password"
-            name="password"
-            type="password"
-            required
-            minLength={isSignup ? 10 : undefined}
-            autoComplete={isSignup ? "new-password" : "current-password"}
-            placeholder={isSignup ? "At least 10 characters" : "Your password"}
-            className={inputClasses}
-          />
-        </div>
-
+      <form onSubmit={onSubmit} noValidate className="mt-5" data-testid={isSignup ? "signup-form" : "signin-form"}>
+        <AuthFields isSignup={isSignup} />
         {status.state === "error" ? (
           <p role="alert" className="mt-3 text-sm font-medium text-danger">
             {status.message}
@@ -197,3 +145,59 @@ export function SignOutButton({ className }: { className?: string }) {
     </button>
   );
 }
+
+/** Identity fields (RC3 split): names/ids are the submit contract. */
+function AuthFields({ isSignup }: { isSignup: boolean }) {
+  return (
+        <>
+        {isSignup ? (
+          <div className="mb-4">
+            <label htmlFor="au-name" className="mb-1.5 block text-sm font-medium">
+              Name
+            </label>
+            <input
+              id="au-name"
+              name="name"
+              type="text"
+              required
+              autoComplete="name"
+              placeholder="Ada Lovelace"
+              className={inputClasses}
+            />
+          </div>
+        ) : null}
+
+        <div className="mb-4">
+          <label htmlFor="au-email" className="mb-1.5 block text-sm font-medium">
+            Email
+          </label>
+          <input
+            id="au-email"
+            name="email"
+            type="email"
+            required
+            autoComplete="email"
+            placeholder="you@example.com"
+            className={inputClasses}
+          />
+        </div>
+
+        <div>
+          <label htmlFor="au-password" className="mb-1.5 block text-sm font-medium">
+            Password
+          </label>
+          <input
+            id="au-password"
+            name="password"
+            type="password"
+            required
+            minLength={isSignup ? 10 : undefined}
+            autoComplete={isSignup ? "new-password" : "current-password"}
+            placeholder={isSignup ? "At least 10 characters" : "Your password"}
+            className={inputClasses}
+          />
+        </div>
+        </>
+  );
+}
+

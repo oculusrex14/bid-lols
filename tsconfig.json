@@ -17,5 +17,9 @@
     "baseUrl": ".",
     "paths": { "@/*": ["./src/*"] }
   },
-  "include": ["src", "server", "tests"]
+  "include": ["src", "server", "tests"],
+  // RC3: Playwright E2E suites are plain-JS runtime scripts (node, not tsc);
+  // checkJs on them produced only implicit-any noise, so they stay linted
+  // and executed but out of the compiler's surface.
+  "exclude": ["tests/e2e"]
 }

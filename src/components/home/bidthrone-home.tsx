@@ -15,6 +15,8 @@ import { InlineNotice } from "@/components/ui/states";
  * Index ARE the page — real rows when they exist, honest empty states when
  * they don't. Explanatory chrome is minimal and secondary.
  */
+type HomeBoards = Extract<HomePreview, { kind: "boards" }>["boards"];
+
 export function BidthroneHome({ me, preview }: { me?: ShellMe | null; preview: HomePreview }) {
   const boards = preview.kind === "boards" ? preview.boards : [];
   const bidIndexReady = preview.kind === "boards" ? preview.bidIndexReady : false;
@@ -26,7 +28,7 @@ export function BidthroneHome({ me, preview }: { me?: ShellMe | null; preview: H
       <section className="canvas-wide pt-14 sm:pt-20">
         <Kicker>Bidthrone</Kicker>
         <h1 className="mt-4 max-w-3xl font-display-site text-4xl leading-none tracking-tight sm:text-5xl lg:text-6xl">
-          Reputation built from work,
+          Reputation built from work,{" "}
           <span className="block text-subtle">not self-promotion.</span>
         </h1>
         <p className="mt-5 max-w-2xl text-base leading-relaxed text-muted sm:text-lg">
@@ -60,94 +62,9 @@ export function BidthroneHome({ me, preview }: { me?: ShellMe | null; preview: H
         </div>
       </section>
 
-      {/* The data: live boards when members have verified outcomes. */}
-      <section className="canvas-wide mt-12 sm:mt-14">
-        <SectionHeader
-          title="Leaderboards"
-          aside={
-            <a href="/leaderboards" className="text-xs font-medium text-accent underline underline-offset-4">
-              All boards and methodology
-            </a>
-          }
-        />
-        {boards.some((b) => b.rows.length > 0) ? (
-          <div className="mt-4 grid gap-6 lg:grid-cols-3">
-            {boards.map((b) => (
-              <div key={b.key}>
-                <h2 className="text-sm font-semibold">{b.name}</h2>
-                <ol className="mt-2">
-                  {b.rows.map((r, i) => (
-                    <BoardRow key={r.userId} rank={i + 1} row={r} />
-                  ))}
-                </ol>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="mt-4">
-            <InlineNotice>
-              No member has enough verified outcomes to rank yet. Boards fill
-              from completed work only; nothing is seeded, and empty is
-              better than fake.
-            </InlineNotice>
-          </div>
-        )}
-      </section>
-
-      {/* The market: the sample-gated Bid Index. */}
-      <section className="canvas-wide mt-12">
-        <SectionHeader title="Bid Index" />
-        {bidIndexReady ? (
-          <div className="mt-4">
-            <p className="max-w-2xl text-sm leading-relaxed text-muted">
-              Market benchmarks now exist: categories with enough verified,
-              settled outcomes publish their median, range, and sample size on
-              the Bid Index.
-            </p>
-            <a href="/bid-index" className="mt-3 inline-block text-sm font-medium text-accent underline underline-offset-4">
-              See the market data
-            </a>
-          </div>
-        ) : (
-          <div className="mt-4">
-            <p className="max-w-2xl text-sm leading-relaxed text-muted">
-              The Bid Index publishes only when a category has at least ten
-              verified, settled outcomes. Until then it shows{" "}
-              <span className="font-medium">Insufficient sample</span> instead
-              of inventing a price. That is the product working as designed.
-            </p>
-            <a href="/bid-index" className="mt-3 inline-block text-sm font-medium text-accent underline underline-offset-4">
-              See the current state
-            </a>
-          </div>
-        )}
-      </section>
-
-      {/* The principles, quiet: type + rules, not a card wall. */}
-      <section className="canvas-wide mt-12">
-        <SectionHeader title="How the record works" />
-        <div className="mt-4 grid gap-x-8 gap-y-4 sm:grid-cols-2">
-          <Principle title="Earned from completed work">
-            A member's numbers come from outcomes the platform verified:
-            bounties won, projects carried to completion, teams captained.
-            There is no self-declared input.
-          </Principle>
-          <Principle title="Not for sale">
-            No placement fee, no featured slot, no button that boosts a
-            profile. Every value on a public profile traces back to a
-            completed outcome.
-          </Principle>
-          <Principle title="Reviews from the people involved">
-            After a piece of work completes, both sides leave a review tied to
-            that specific job. You see who wrote what, and when.
-          </Principle>
-          <Principle title="Disputes stay in the record">
-            When something goes wrong, the record shows it next to the
-            completion. An honest track record beats a curated highlight reel.
-          </Principle>
-        </div>
-      </section>
-
+      <LiveBoards boards={boards} />
+      <MarketSignal bidIndexReady={bidIndexReady} />
+      <Principles />
       {/* The rest of the network. */}
       <section className="canvas-wide mt-12">
         <SectionHeader title="What the network does" />
@@ -228,5 +145,105 @@ function Principle({ title, children }: { title: string; children: React.ReactNo
       <h2 className="text-sm font-semibold">{title}</h2>
       <p className="mt-1 text-sm leading-relaxed text-muted">{children}</p>
     </div>
+  );
+}
+/** The data: live boards when members have verified outcomes. */
+function LiveBoards({ boards }: { boards: HomeBoards }) {
+  return (
+        <section className="canvas-wide mt-12 sm:mt-14">
+          <SectionHeader
+            title="Leaderboards"
+            aside={
+              <a href="/leaderboards" className="text-xs font-medium text-accent underline underline-offset-4">
+                All boards and methodology
+              </a>
+            }
+          />
+          {boards.some((b) => b.rows.length > 0) ? (
+            <div className="mt-4 grid gap-6 lg:grid-cols-3">
+              {boards.map((b) => (
+                <div key={b.key}>
+                  <h2 className="text-sm font-semibold">{b.name}</h2>
+                  <ol className="mt-2">
+                    {b.rows.map((r, i) => (
+                      <BoardRow key={r.userId} rank={i + 1} row={r} />
+                    ))}
+                  </ol>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="mt-4">
+              <InlineNotice>
+                No member has enough verified outcomes to rank yet. Boards fill
+                from completed work only; nothing is seeded, and empty is
+                better than fake.
+              </InlineNotice>
+            </div>
+          )}
+        </section>
+  
+  );
+}
+/** The market: the sample-gated Bid Index signal. */
+function MarketSignal({ bidIndexReady }: { bidIndexReady: boolean }) {
+  return (
+        <section className="canvas-wide mt-12">
+          <SectionHeader title="Bid Index" />
+          {bidIndexReady ? (
+            <div className="mt-4">
+              <p className="max-w-2xl text-sm leading-relaxed text-muted">
+                Market benchmarks now exist: categories with enough verified,
+                settled outcomes publish their median, range, and sample size on
+                the Bid Index.
+              </p>
+              <a href="/bid-index" className="mt-3 inline-block text-sm font-medium text-accent underline underline-offset-4">
+                See the market data
+              </a>
+            </div>
+          ) : (
+            <div className="mt-4">
+              <p className="max-w-2xl text-sm leading-relaxed text-muted">
+                The Bid Index publishes only when a category has at least ten
+                verified, settled outcomes. Until then it shows{" "}
+                <span className="font-medium">Insufficient sample</span> instead
+                of inventing a price. That is the product working as designed.
+              </p>
+              <a href="/bid-index" className="mt-3 inline-block text-sm font-medium text-accent underline underline-offset-4">
+                See the current state
+              </a>
+            </div>
+          )}
+        </section>
+  
+  );
+}
+/** The principles, quiet: type + rules, not a card wall. */
+function Principles() {
+  return (
+        <section className="canvas-wide mt-12">
+          <SectionHeader title="How the record works" />
+          <div className="mt-4 grid gap-x-8 gap-y-4 sm:grid-cols-2">
+            <Principle title="Earned from completed work">
+              A member's numbers come from outcomes the platform verified:
+              bounties won, projects carried to completion, teams captained.
+              There is no self-declared input.
+            </Principle>
+            <Principle title="Not for sale">
+              No placement fee, no featured slot, no button that boosts a
+              profile. Every value on a public profile traces back to a
+              completed outcome.
+            </Principle>
+            <Principle title="Reviews from the people involved">
+              After a piece of work completes, both sides leave a review tied to
+              that specific job. You see who wrote what, and when.
+            </Principle>
+            <Principle title="Disputes stay in the record">
+              When something goes wrong, the record shows it next to the
+              completion. An honest track record beats a curated highlight reel.
+            </Principle>
+          </div>
+        </section>
+  
   );
 }

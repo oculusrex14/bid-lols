@@ -139,28 +139,8 @@ function NewListingPage() {
             </Field>
           </FormSection>
 
-          <FormSection title="The transfer" description="What a buyer has to check, and what you are asking.">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Asking price (₹, optional)" id="gy-price" hint="Leave empty to stay open to offers.">
-                <Input id="gy-price" name="askingPrice" type="number" min={0} className="tabular" />
-              </Field>
-              <Field label="Reserve / minimum (₹, optional)" id="gy-res">
-                <Input id="gy-res" name="reservePrice" type="number" min={0} className="tabular" />
-              </Field>
-            </div>
-            <Field label="Known liabilities" id="gy-liab" hint="e.g. one expired domain payment, no known trademark conflicts…">
-              <Textarea id="gy-liab" name="liabilities" rows={2} maxLength={4000} />
-            </Field>
-            <Field label="Revenue / user history (self-reported)" id="gy-hist" hint="Self-declared history. Buyers should verify anything material.">
-              <Textarea id="gy-hist" name="historySelfReported" rows={2} maxLength={4000} />
-            </Field>
-            <Field label="Transfer checklist" hint="One item per line. The handover is not done until each of these has happened." id="gy-check">
-              <Textarea id="gy-check" name="transferChecklist" rows={3} placeholder={"Transfer domain at registrar\nGrant repo access\nHand over design files"} />
-            </Field>
-            <Field label="Screenshots" id="gy-shots" hint="https URLs, comma-separated, up to six. Screenshots are stored today but not publicly displayed yet (no image proxy is configured); they will render once one is.">
-              <Input id="gy-shots" name="screenshots" placeholder="https://…" />
-            </Field>
-          </FormSection>
+          <TransferFields />
+
 
           <div className="mt-8 border-t border-fg/10 pt-5">
             <CheckRow
@@ -176,5 +156,33 @@ function NewListingPage() {
         </form>
       </div>
     </ProductShell>
+  );
+}
+
+/** The transfer group: price, liabilities, history, checklist, screenshots. */
+function TransferFields() {
+  return (
+    <FormSection title="The transfer" description="What a buyer has to check, and what you are asking.">
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field label="Asking price (₹, optional)" id="gy-price" hint="Leave empty to stay open to offers.">
+          <Input id="gy-price" name="askingPrice" type="number" min={0} className="tabular" />
+        </Field>
+        <Field label="Reserve / minimum (₹, optional)" id="gy-res">
+          <Input id="gy-res" name="reservePrice" type="number" min={0} className="tabular" />
+        </Field>
+      </div>
+      <Field label="Known liabilities" id="gy-liab" hint="e.g. one expired domain payment, no known trademark conflicts…">
+        <Textarea id="gy-liab" name="liabilities" rows={2} maxLength={4000} />
+      </Field>
+      <Field label="Revenue / user history (self-reported)" id="gy-hist" hint="Self-declared history. Buyers should verify anything material.">
+        <Textarea id="gy-hist" name="historySelfReported" rows={2} maxLength={4000} />
+      </Field>
+      <Field label="Transfer checklist" hint="One item per line. The handover is not done until each of these has happened." id="gy-check">
+        <Textarea id="gy-check" name="transferChecklist" rows={3} placeholder={"Transfer domain at registrar\nGrant repo access\nHand over design files"} />
+      </Field>
+      <Field label="Screenshots" id="gy-shots" hint="https URLs, comma-separated, up to six. Screenshots are stored today but not publicly displayed yet (no image proxy is configured); they will render once one is.">
+        <Input id="gy-shots" name="screenshots" placeholder="https://…" />
+      </Field>
+    </FormSection>
   );
 }

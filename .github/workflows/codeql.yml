@@ -1,0 +1,43 @@
+# RC3 (S-10.7): CodeQL security analysis — JavaScript/TypeScript only (the
+# repository's only compiled language; adding more would be noise).
+#
+# Runs on pushes/PRs to main and weekly. The queries use the
+# security-and-quality suite by default; no secrets are involved.
+# The GitHub API's default token is used; no repository settings required.
+#
+# Action pinning (RC3, S-10.7): github/codeql-action v3.29.11 -> 3c3833e0f8c1c83d449a7478aa59c036a9165498
+# (commit the annotated tag v3.29.11 dereferences to; re-resolve when bumping).
+name: CodeQL
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: "23 4 * * 1" # weekly, Monday
+
+jobs:
+  analyze:
+    name: Analyze (javascript-typescript)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      security-events: write
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@3c3833e0f8c1c83d449a7478aa59c036a9165498 # v3.29.11
+        with:
+          languages: javascript-typescript
+
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@3c3833e0f8c1c83d449a7478aa59c036a9165498 # v3.29.11
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@3c3833e0f8c1c83d449a7478aa59c036a9165498 # v3.29.11
+        with:
+          category: "/language:javascript-typescript"

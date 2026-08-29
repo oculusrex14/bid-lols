@@ -160,65 +160,13 @@ function AdminPage() {
           ))}
         </div>
 
-        <section className="mt-8">
-          <h2 className="text-xs font-medium uppercase tracking-kicker text-subtle">Users</h2>
-          <div className="mt-3 overflow-x-auto rounded-md border border-fg/15">
-            <table className="w-full text-sm" data-testid="admin-users">
-              <thead className="bg-raised/50 text-left text-xs uppercase tracking-kicker text-subtle">
-                <tr>
-                  <th className="p-2">Email</th><th className="p-2">Role</th><th className="p-2">Email verified</th><th className="p-2">Status</th><th className="p-2">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {d.users.map((u) => (
-                  <tr key={u.id} className="border-t-2 border-fg/10">
-                    <td className="p-2">{u.email}</td>
-                    <td className="p-2">{u.role}</td>
-                    <td className="p-2">{u.email_verified ? "yes" : "no"}</td>
-                    <td className="p-2">{u.banned || u.status === "suspended" ? "suspended" : u.status}</td>
-                    <td className="p-2">
-                      <div className="flex gap-2">
-                        {!u.email_verified ? (
-                          <form
-                            onSubmit={async (e) => {
-                              e.preventDefault();
-                              await adminAction({ data: { action: "verify-email", userId: u.id } });
-                              location.reload();
-                            }}
-                          >
-                            <button className="rounded border border-fg/20 px-2 py-0.5 text-xs">Verify email</button>
-                          </form>
-                        ) : null}
-                        {u.banned || u.status === "suspended" ? (
-                          <form
-                            onSubmit={async (e) => {
-                              e.preventDefault();
-                              await adminAction({ data: { action: "reinstate", userId: u.id } });
-                              location.reload();
-                            }}
-                          >
-                            <button className="px-2 py-0.5 text-xs underline underline-offset-2">Reinstate</button>
-                          </form>
-                        ) : (
-                          <form
-                            onSubmit={async (e) => {
-                              e.preventDefault();
-                              await adminAction({ data: { action: "suspend", userId: u.id } });
-                              location.reload();
-                            }}
-                          >
-                            <button className="px-2 py-0.5 text-xs text-danger underline underline-offset-2">Suspend</button>
-                          </form>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
-
+        <AdminUsers
+          users={d.users}
+          onAction={async (action, userId) => {
+            await adminAction({ data: { action, userId } });
+            location.reload();
+          }}
+        />
         <section className="mt-8">
           <h2 className="text-xs font-medium uppercase tracking-kicker text-subtle">Disputes</h2>
           {d.disputes.length === 0 ? (
@@ -289,5 +237,77 @@ function AdminPage() {
         </section>
       </div>
     </ProductShell>
+  );
+}
+
+/** User management (RC3 split): the actions remain the audited serverFn; */
+/** the table renders rows and delegates the action upward. */
+function AdminUsers({
+  users,
+  onAction,
+}: {
+  users: Awaited<ReturnType<typeof loadAdmin>>["users"];
+  onAction: (action: "verify-email" | "reinstate" | "suspend", userId: string) => Promise<unknown>;
+}) {
+  return (
+
+        <section className="mt-8">
+          <h2 className="text-xs font-medium uppercase tracking-kicker text-subtle">Users</h2>
+          <div className="mt-3 overflow-x-auto rounded-md border border-fg/15">
+            <table className="w-full text-sm" data-testid="admin-users">
+              <thead className="bg-raised/50 text-left text-xs uppercase tracking-kicker text-subtle">
+                <tr>
+                  <th className="p-2">Email</th><th className="p-2">Role</th><th className="p-2">Email verified</th><th className="p-2">Status</th><th className="p-2">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {users.map((u: typeof users[number]) => (
+                  <tr key={u.id} className="border-t-2 border-fg/10">
+                    <td className="p-2">{u.email}</td>
+                    <td className="p-2">{u.role}</td>
+                    <td className="p-2">{u.email_verified ? "yes" : "no"}</td>
+                    <td className="p-2">{u.banned || u.status === "suspended" ? "suspended" : u.status}</td>
+                    <td className="p-2">
+                      <div className="flex gap-2">
+                        {!u.email_verified ? (
+                          <form
+                            onSubmit={async (e) => {
+                              e.preventDefault();
+                              await onAction("verify-email", u.id);
+                              location.reload();
+                            }}
+                          >
+                            <button className="rounded border border-fg/20 px-2 py-0.5 text-xs">Verify email</button>
+                          </form>
+                        ) : null}
+                        {u.banned || u.status === "suspended" ? (
+                          <form
+                            onSubmit={async (e) => {
+                              e.preventDefault();
+                              await onAction("reinstate", u.id);
+                              location.reload();
+                            }}
+                          >
+                            <button className="px-2 py-0.5 text-xs underline underline-offset-2">Reinstate</button>
+                          </form>
+                        ) : (
+                          <form
+                            onSubmit={async (e) => {
+                              e.preventDefault();
+                              await onAction("suspend", u.id);
+                              location.reload();
+                            }}
+                          >
+                            <button className="px-2 py-0.5 text-xs text-danger underline underline-offset-2">Suspend</button>
+                          </form>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
   );
 }

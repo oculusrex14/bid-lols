@@ -24,6 +24,8 @@ const EXAMPLE_CHILDREN: Array<{ label: string; minor: number; fill: string }> = 
   { label: "Post-launch analytics", minor: 15_000_00, fill: "bg-accent/25" },
 ];
 
+type HomeParents = Extract<HomePreview, { kind: "parents" }>["items"];
+
 export function BidceptionHome({ me, preview }: { me?: ShellMe | null; preview: HomePreview }) {
   const parents = preview.kind === "parents" ? preview.items : [];
   const top = parents[0];
@@ -31,50 +33,7 @@ export function BidceptionHome({ me, preview }: { me?: ShellMe | null; preview: 
   return (
     <>
       <section className="canvas-wide grid grid-cols-1 gap-8 pt-14 sm:pt-20 lg:grid-cols-12">
-        {/* Left: the one-sentence model + actions. */}
-        <div className="lg:col-span-7">
-          <Kicker>Bidception</Kicker>
-          <h1 className="mt-4 font-display-site text-4xl leading-none tracking-tight sm:text-5xl lg:text-6xl">
-            Big project. One budget.
-            <span className="block text-subtle">The right people for each part.</span>
-          </h1>
-          <p className="mt-6 max-w-xl text-base leading-relaxed text-muted sm:text-lg">
-            A launch needs design, development, video, copy, and outreach. No
-            one freelancer does all of it well. Bidception funds the whole
-            project in a single budget, puts a captain in charge of the split,
-            and gives each part to the person suited to it. The engine refuses
-            to allocate more than exists.
-          </p>
-          <div className="mt-8 flex flex-wrap items-center gap-3">
-            <a
-              href="/bidception/new"
-              className="inline-flex h-12 items-center rounded-sm bg-accent px-5 text-sm font-semibold text-accent-fg transition-colors duration-150 hover:bg-accent/90"
-            >
-              Start a project
-            </a>
-            <a
-              href="/bidception"
-              className="inline-flex h-12 items-center rounded-sm border border-fg/25 px-5 text-sm font-semibold transition-colors duration-150 hover:border-fg/50"
-            >
-              See team projects
-            </a>
-            {me ? (
-              <a href="/dashboard" className="text-sm font-medium text-accent underline underline-offset-4">
-                Your dashboard
-              </a>
-            ) : (
-              <a href="/signup" className="text-sm font-medium text-accent underline underline-offset-4">
-                Create an account
-              </a>
-            )}
-          </div>
-          <p className="mt-5 max-w-2xl text-sm leading-relaxed text-subtle" data-testid="funding-note">
-            Parent projects can be created today. Funding is not enabled yet,
-            so funded team projects do not appear on the site at the moment,
-            and nothing on this site takes payment now.
-          </p>
-        </div>
-
+        <BidHeroLeft me={me} />
         {/* Right: the shape of the product — a tree + a reconciled budget. */}
         <div className="lg:col-span-5">
           <div className="rounded-md border border-fg/10 bg-surface/60 p-4">
@@ -127,68 +86,8 @@ export function BidceptionHome({ me, preview }: { me?: ShellMe | null; preview: 
         </div>
       </section>
 
-      {/* How it works: numbered steps, quiet, no card wall. */}
-      <section className="canvas-wide mt-14 sm:mt-16">
-        <SectionHeader title="How it works" />
-        <ol className="mt-5 space-y-5">
-          <Step n={1} title="Fund the project">
-            The sponsor sets the total budget for everything the project
-            needs. The total is public on the project page.
-          </Step>
-          <Step n={2} title="Choose a captain">
-            The sponsor picks a member for the coordination, and the captain
-            is paid for it from the budget (example: ₹10,000 of a ₹1,00,000
-            project).
-          </Step>
-          <Step n={3} title="Each part gets its own budget">
-            The captain splits the remaining budget into work packages. Each
-            package is either a competitive bounty (several people, one
-            winner) or a proposal-first project (one chosen provider).
-          </Step>
-          <Step n={4} title="The project settles">
-            When every part is done, the project settles and any unused
-            reserve goes back to the sponsor. Internally the model is a
-            nested bounty: a funded parent with funded children.
-          </Step>
-        </ol>
-      </section>
-
-      {/* The live projects, or the honest empty state. */}
-      <section className="canvas-wide py-10">
-        <SectionHeader
-          title="Team projects"
-          aside={
-            <a href="/bidception" className="text-xs font-medium text-accent underline underline-offset-4">
-              Browse all
-            </a>
-          }
-        />
-        {parents.length > 0 ? (
-          <div className="mt-4">
-            {parents.map((p) => (
-              <a
-                key={p.id}
-                href={`/bidception/${p.id}`}
-                className="row-line flex flex-wrap items-center gap-x-4 gap-y-1 px-1 py-3 transition-colors duration-150 hover:bg-surface/70"
-              >
-                <span className="min-w-0 flex-1 truncate text-sm font-medium hover:underline hover:underline-offset-4">{p.title}</span>
-                <span className="hidden text-xs text-subtle sm:block">{p.child_count} work packages</span>
-                {p.funded_budget_minor != null ? (
-                  <MoneyValue minor={p.funded_budget_minor} currency={p.currency} size="sm" className="text-accent" />
-                ) : null}
-                <StatusBadge status={p.status} />
-              </a>
-            ))}
-          </div>
-        ) : (
-          <div className="mt-4 rounded-md border border-dashed border-fg/15 bg-surface/40 p-6 text-sm leading-relaxed text-muted">
-            No funded team projects yet. A team project appears here once its
-            full budget is funded: a sponsor sets the total, a captain splits
-            it into work packages, and specialists take the parts they are
-            good at. Drafts stay private until funding happens.
-          </div>
-        )}
-      </section>
+      <BidHowItWorks />
+      <BidLiveProjects parents={parents} />
 
       <section className="canvas-wide py-6">
         <SectionHeader title="The write up" />
@@ -232,4 +131,119 @@ function Step({ n, title, children }: { n: number; title: string; children: Reac
     </li>
   );
 }
+/** How it works: numbered steps, quiet, no card wall. */
+function BidHowItWorks() {
+  return (
+      <section className="canvas-wide mt-14 sm:mt-16">
+        <ol className="mt-5 space-y-5">
+          <Step n={1} title="Fund the project">
+            The sponsor sets the total budget for everything the project
+            needs. The total is public on the project page.
+          </Step>
+          <Step n={2} title="Choose a captain">
+            The sponsor picks a member for the coordination, and the captain
+            is paid for it from the budget (example: ₹10,000 of a ₹1,00,000
+            project).
+          </Step>
+          <Step n={3} title="Each part gets its own budget">
+            The captain splits the remaining budget into work packages. Each
+            package is either a competitive bounty (several people, one
+            winner) or a proposal-first project (one chosen provider).
+          </Step>
+          <Step n={4} title="The project settles">
+            When every part is done, the project settles and any unused
+            reserve goes back to the sponsor. Internally the model is a
+            nested bounty: a funded parent with funded children.
+          </Step>
+        </ol>
+      </section>
+  );
+}
+/** The live projects, or the honest empty state. */
+function BidLiveProjects({ parents }: { parents: HomeParents }) {
+  return (
+      <section className="canvas-wide py-10">
+        <SectionHeader
+          title="Team projects"
+          aside={
+            <a href="/bidception" className="text-xs font-medium text-accent underline underline-offset-4">
+              Browse all
+            </a>
+          }
+        />
+        {parents.length > 0 ? (
+          <div className="mt-4">
+            {parents.map((p) => (
+              <a
+                key={p.id}
+                href={`/bidception/${p.id}`}
+                className="row-line flex flex-wrap items-center gap-x-4 gap-y-1 px-1 py-3 transition-colors duration-150 hover:bg-surface/70"
+              >
+                <span className="min-w-0 flex-1 truncate text-sm font-medium hover:underline hover:underline-offset-4">{p.title}</span>
+                <span className="hidden text-xs text-subtle sm:block">{p.child_count} work packages</span>
+                {p.funded_budget_minor != null ? (
+                  <MoneyValue minor={p.funded_budget_minor} currency={p.currency} size="sm" className="text-accent" />
+                ) : null}
+                <StatusBadge status={p.status} />
+              </a>
+            ))}
+          </div>
+        ) : (
+          <div className="mt-4 rounded-md border border-dashed border-fg/15 bg-surface/40 p-6 text-sm leading-relaxed text-muted">
+            No funded team projects yet. A team project appears here once its
+            full budget is funded: a sponsor sets the total, a captain splits
+            it into work packages, and specialists take the parts they are
+            good at. Drafts stay private until funding happens.
+          </div>
+        )}
+      </section>
+  );
+}
 
+/** Hero left: the one-sentence model + actions. */
+function BidHeroLeft({ me }: { me: ShellMe | null | undefined }) {
+  return (
+            <div className="lg:col-span-7">
+              <Kicker>Bidception</Kicker>
+              <h1 className="mt-4 font-display-site text-4xl leading-none tracking-tight sm:text-5xl lg:text-6xl">
+                Big project. One budget.{" "}
+                <span className="block text-subtle">The right people for each part.</span>
+              </h1>
+              <p className="mt-6 max-w-xl text-base leading-relaxed text-muted sm:text-lg">
+                A launch needs design, development, video, copy, and outreach. No
+                one freelancer does all of it well. Bidception funds the whole
+                project in a single budget, puts a captain in charge of the split,
+                and gives each part to the person suited to it. The engine refuses
+                to allocate more than exists.
+              </p>
+              <div className="mt-8 flex flex-wrap items-center gap-3">
+                <a
+                  href="/bidception/new"
+                  className="inline-flex h-12 items-center rounded-sm bg-accent px-5 text-sm font-semibold text-accent-fg transition-colors duration-150 hover:bg-accent/90"
+                >
+                  Start a project
+                </a>
+                <a
+                  href="/bidception"
+                  className="inline-flex h-12 items-center rounded-sm border border-fg/25 px-5 text-sm font-semibold transition-colors duration-150 hover:border-fg/50"
+                >
+                  See team projects
+                </a>
+                {me ? (
+                  <a href="/dashboard" className="text-sm font-medium text-accent underline underline-offset-4">
+                    Your dashboard
+                  </a>
+                ) : (
+                  <a href="/signup" className="text-sm font-medium text-accent underline underline-offset-4">
+                    Create an account
+                  </a>
+                )}
+              </div>
+              <p className="mt-5 max-w-2xl text-sm leading-relaxed text-subtle" data-testid="funding-note">
+                Parent projects can be created today. Funding is not enabled yet,
+                so funded team projects do not appear on the site at the moment,
+                and nothing on this site takes payment now.
+              </p>
+            </div>
+  );
+}

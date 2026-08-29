@@ -135,6 +135,43 @@ function NewProjectPage() {
         <div className="mt-8 grid grid-cols-1 gap-10 lg:grid-cols-12" data-testid="create-project-form">
           <div className="lg:col-span-8">
             {step === 0 ? (
+              <ProjectBriefFields draft={draft} set={set} errors={errors} />
+            ) : (
+              <ProjectRulesForm draft={draft} set={set} errors={errors} />
+            )}
+            <div className="mt-8 flex items-center justify-between gap-3 border-t border-fg/10 pt-5">
+              <Button variant="ghost" onClick={() => setStep((s) => Math.max(0, s - 1))} disabled={step === 0}>
+                Back
+              </Button>
+              {step === 0 ? (
+                <Button onClick={next}>Continue</Button>
+              ) : (
+                <Button loading={creating} onClick={doCreate}>
+                  {creating ? "Creating…" : "Create project (draft)"}
+                </Button>
+              )}
+            </div>
+          </div>
+          <div className="lg:col-span-4">
+            <ProjectSummary draft={draft} />
+          </div>
+        </div>
+      </div>
+    </ProductShell>
+  );
+}
+
+/** Step 1: the work. */
+function ProjectBriefFields({
+  draft,
+  set,
+  errors,
+}: {
+  draft: Draft;
+  set: <K extends keyof Draft>(k: K, v: Draft[K]) => void;
+  errors: Record<string, string>;
+}) {
+  return (
               <FormSection title="What needs doing?" description="One piece of work with a clear scope. If several people should compete on a bounded task, that is a bounty instead.">
                 <Field label="Title" required error={errors.title} id="pr-title">
                   <Input id="pr-title" value={draft.title} invalid={Boolean(errors.title)} onChange={(e) => set("title", e.target.value)} required minLength={8} maxLength={140} placeholder="Build an MVP billing dashboard" />
@@ -156,7 +193,20 @@ function NewProjectPage() {
                   <Textarea id="pr-desc" value={draft.description} invalid={Boolean(errors.description)} onChange={(e) => set("description", e.target.value)} rows={6} required minLength={20} maxLength={30000} />
                 </Field>
               </FormSection>
-            ) : (
+  );
+}
+
+/** Step 2: budget + rules. */
+function ProjectRulesForm({
+  draft,
+  set,
+  errors,
+}: {
+  draft: Draft;
+  set: <K extends keyof Draft>(k: K, v: Draft[K]) => void;
+  errors: Record<string, string>;
+}) {
+  return (
               <FormSection title="Budget & rules" description="The budget range guides proposals; the final amount is the quote you select.">
                 <div className="grid gap-4 sm:grid-cols-2">
                   <Field label="Budget from (₹, optional)" id="pr-bmin">
@@ -173,21 +223,11 @@ function NewProjectPage() {
                   <Textarea id="pr-ip" value={draft.ipAndConfidentiality} onChange={(e) => set("ipAndConfidentiality", e.target.value)} rows={2} maxLength={4000} />
                 </Field>
               </FormSection>
-            )}
-            <div className="mt-8 flex items-center justify-between gap-3 border-t border-fg/10 pt-5">
-              <Button variant="ghost" onClick={() => setStep((s) => Math.max(0, s - 1))} disabled={step === 0}>
-                Back
-              </Button>
-              {step === 0 ? (
-                <Button onClick={next}>Continue</Button>
-              ) : (
-                <Button loading={creating} onClick={doCreate}>
-                  {creating ? "Creating…" : "Create project (draft)"}
-                </Button>
-              )}
-            </div>
-          </div>
-          <div className="lg:col-span-4">
+  );
+}
+/** Live draft summary (RC3, S-24). */
+function ProjectSummary({ draft }: { draft: Draft }) {
+  return (
             <aside className="space-y-4 lg:sticky lg:top-20" aria-label="Draft summary">
               <div className="rounded-md border border-fg/10 bg-surface/60 p-4">
                 <p className="text-xs font-semibold uppercase tracking-kicker text-subtle">Your draft</p>
@@ -215,9 +255,5 @@ function NewProjectPage() {
                 Creating a draft is free. Projects are funded only after you select a provider, when funding is enabled.
               </p>
             </aside>
-          </div>
-        </div>
-      </div>
-    </ProductShell>
   );
 }

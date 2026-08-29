@@ -56,7 +56,9 @@ try {
         await context.addInitScript(() => {
           try {
             localStorage.setItem("bidlol.appearance", "dark");
-          } catch {}
+          } catch {
+            /* storage unavailable (private mode) — dark stays off */
+          }
         });
       }
       const p = await context.newPage();

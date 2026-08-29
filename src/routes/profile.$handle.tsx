@@ -81,80 +81,11 @@ function ProfilePage() {
 
         {p.bio ? <p className="mt-4 max-w-xl text-sm leading-relaxed">{p.bio}</p> : null}
 
-        {p.companyName ? (
-          <div className="mt-6 rounded-md border border-fg/15 bg-raised/40 p-4">
-            <p className="text-xs font-medium uppercase tracking-kicker text-subtle">Company</p>
-            <p className="mt-1 text-sm font-medium">{p.companyName}</p>
-            {p.companyAbout ? <p className="mt-1 text-sm text-muted">{p.companyAbout}</p> : null}
-            {p.companyWebsite ? (
-              <a href={p.companyWebsite} rel="nofollow ugc" className="mt-1 inline-block text-sm underline underline-offset-2">
-                {safeHost(p.companyWebsite)}
-              </a>
-            ) : null}
-          </div>
-        ) : null}
+        {p.companyName ? <CompanyBlock p={p} /> : null}
+        {p.skills.length > 0 || p.categories.length > 0 ? <TagsBlock p={p} /> : null}
+        {p.portfolioLinks.length > 0 || p.githubUrl || p.linkedinUrl || p.websiteUrl ? <LinksBlock p={p} /> : null}
 
-        {(p.skills.length > 0 || p.categories.length > 0) ? (
-          <div className="mt-6 flex flex-wrap gap-2">
-            {p.skills.map((s) => (
-              <span key={`s-${s}`} className="rounded-full border border-fg/20 px-3 py-1 text-xs">{s}</span>
-            ))}
-            {p.categories.map((c) => (
-              <span key={`c-${c}`} className="rounded-full bg-accent/10 px-3 py-1 text-xs font-medium text-accent">
-                {c}
-              </span>
-            ))}
-          </div>
-        ) : null}
-
-        {(p.portfolioLinks.length > 0 || p.githubUrl || p.linkedinUrl || p.websiteUrl) ? (
-          <div className="mt-6">
-            <p className="text-xs font-medium uppercase tracking-kicker text-subtle">Links</p>
-            <ul className="mt-2 space-y-1 text-sm">
-              {p.portfolioLinks.map((l) => (
-                <li key={l}>
-                  <a href={l} rel="nofollow ugc" className="underline underline-offset-2">{safeHost(l)}</a>
-                </li>
-              ))}
-              {p.githubUrl ? <li><a href={p.githubUrl} rel="nofollow ugc" className="underline underline-offset-2">{safeHost(p.githubUrl)}</a></li> : null}
-              {p.linkedinUrl ? <li><a href={p.linkedinUrl} rel="nofollow ugc" className="underline underline-offset-2">{safeHost(p.linkedinUrl)}</a></li> : null}
-              {p.websiteUrl ? <li><a href={p.websiteUrl} rel="nofollow ugc" className="underline underline-offset-2">{safeHost(p.websiteUrl)}</a></li> : null}
-            </ul>
-          </div>
-        ) : null}
-
-        {d.reputation ? (
-          <div className="mt-8 rounded-md border border-fg/15 bg-surface p-5" data-testid="reputation">
-            <h2 className="text-xs font-medium uppercase tracking-kicker text-subtle">Verified outcomes</h2>
-            {d.reputation.experience === 0 ? (
-              <p className="mt-2 text-sm text-muted">
-                No verified marketplace outcomes yet. This profile will fill in
-                with real wins, completions, and reviews.
-              </p>
-            ) : (
-              <>
-                <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
-                  {[
-                    ["Experience", d.reputation.experience],
-                    ["Reliability", `${Math.round(d.reputation.reliability * 100)}%`],
-                    ["Quality", d.reputation.quality ? d.reputation.quality.toFixed(1) : "n/a"],
-                    ["Reviews", d.reputation.reviewsReceived],
-                  ].map(([label, value]) => (
-                    <div key={String(label)}>
-                      <p className="text-xs uppercase tracking-kicker text-subtle">{String(label)}</p>
-                      <p className="mt-1 font-display-site text-lg tracking-tight">{String(value)}</p>
-                    </div>
-                  ))}
-                </div>
-                <p className="mt-3 text-xs text-muted">
-                  {d.reputation.bountyWins} bounty win{d.reputation.bountyWins === 1 ? "" : "s"} ·{" "}
-                  {d.reputation.projectCompletions} project completion{d.reputation.projectCompletions === 1 ? "" : "s"} ·{" "}
-                  {d.reputation.captainedCompletions} captained unit{d.reputation.captainedCompletions === 1 ? "" : "s"}
-                </p>
-              </>
-            )}
-          </div>
-        ) : null}
+        {d.reputation ? <ReputationBlock reputation={d.reputation} /> : null}
 
         {hasContent ? (
           <JsonLd
@@ -171,6 +102,89 @@ function ProfilePage() {
         ) : null}
       </div>
     </ProductShell>
+  );
+}
+
+function CompanyBlock({ p }: { p: PublicProfile }) {
+  return (
+    <div className="mt-6 rounded-md border border-fg/15 bg-raised/40 p-4">
+      <p className="text-xs font-medium uppercase tracking-kicker text-subtle">Company</p>
+      <p className="mt-1 text-sm font-medium">{p.companyName}</p>
+      {p.companyAbout ? <p className="mt-1 text-sm text-muted">{p.companyAbout}</p> : null}
+      {p.companyWebsite ? (
+        <a href={p.companyWebsite} rel="nofollow ugc" className="mt-1 inline-block text-sm underline underline-offset-2">
+          {safeHost(p.companyWebsite)}
+        </a>
+      ) : null}
+    </div>
+  );
+}
+
+function TagsBlock({ p }: { p: PublicProfile }) {
+  return (
+    <div className="mt-6 flex flex-wrap gap-2">
+      {p.skills.map((s) => (
+        <span key={`s-${s}`} className="rounded-full border border-fg/20 px-3 py-1 text-xs">{s}</span>
+      ))}
+      {p.categories.map((c) => (
+        <span key={`c-${c}`} className="rounded-full bg-accent/10 px-3 py-1 text-xs font-medium text-accent">
+          {c}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+function LinksBlock({ p }: { p: PublicProfile }) {
+  return (
+    <div className="mt-6">
+      <p className="text-xs font-medium uppercase tracking-kicker text-subtle">Links</p>
+      <ul className="mt-2 space-y-1 text-sm">
+        {p.portfolioLinks.map((l) => (
+          <li key={l}>
+            <a href={l} rel="nofollow ugc" className="underline underline-offset-2">{safeHost(l)}</a>
+          </li>
+        ))}
+        {p.githubUrl ? <li><a href={p.githubUrl} rel="nofollow ugc" className="underline underline-offset-2">{safeHost(p.githubUrl)}</a></li> : null}
+        {p.linkedinUrl ? <li><a href={p.linkedinUrl} rel="nofollow ugc" className="underline underline-offset-2">{safeHost(p.linkedinUrl)}</a></li> : null}
+        {p.websiteUrl ? <li><a href={p.websiteUrl} rel="nofollow ugc" className="underline underline-offset-2">{safeHost(p.websiteUrl)}</a></li> : null}
+      </ul>
+    </div>
+  );
+}
+
+function ReputationBlock({ reputation }: { reputation: NonNullable<Awaited<ReturnType<typeof loadProfile>>["reputation"]> }) {
+  return (
+    <div className="mt-8 rounded-md border border-fg/15 bg-surface p-5" data-testid="reputation">
+      <h2 className="text-xs font-medium uppercase tracking-kicker text-subtle">Verified outcomes</h2>
+      {reputation.experience === 0 ? (
+        <p className="mt-2 text-sm text-muted">
+          No verified marketplace outcomes yet. This profile will fill in
+          with real wins, completions, and reviews.
+        </p>
+      ) : (
+        <>
+          <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {[
+              ["Experience", reputation.experience],
+              ["Reliability", `${Math.round(reputation.reliability * 100)}%`],
+              ["Quality", reputation.quality ? reputation.quality.toFixed(1) : "n/a"],
+              ["Reviews", reputation.reviewsReceived],
+            ].map(([label, value]) => (
+              <div key={String(label)}>
+                <p className="text-xs uppercase tracking-kicker text-subtle">{String(label)}</p>
+                <p className="mt-1 font-display-site text-lg tracking-tight">{String(value)}</p>
+              </div>
+            ))}
+          </div>
+          <p className="mt-3 text-xs text-muted">
+            {reputation.bountyWins} bounty win{reputation.bountyWins === 1 ? "" : "s"} ·{" "}
+            {reputation.projectCompletions} project completion{reputation.projectCompletions === 1 ? "" : "s"} ·{" "}
+            {reputation.captainedCompletions} captained unit{reputation.captainedCompletions === 1 ? "" : "s"}
+          </p>
+        </>
+      )}
+    </div>
   );
 }
 

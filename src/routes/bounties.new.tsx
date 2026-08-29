@@ -20,7 +20,6 @@ import {
   BOUNTY_STEPS,
   CULTURE_STEPS,
   CATEGORIES_FOUNDER,
-  CATEGORIES_CULTURE,
   type BountyDraft,
   type StepErrors,
 } from "@/components/create/bounty-steps";
@@ -76,42 +75,60 @@ const EMPTY_DRAFT: BountyDraft = {
   usageNotes: "",
 };
 
-function validateStep(step: number, d: BountyDraft, isCulture: boolean, steps: readonly string[]): StepErrors {
-  const e: StepErrors = {};
-  const idx = isCulture ? ["commissioning", "brief", "done", "participation", "reward", "review"] : ["what", "done", "participation", "reward", "review"];
-  const name = idx[step];
-  if (name === "commissioning" || name === "what") {
+/** Per-step client checks (UX only; the server remains authoritative). */
+const STEP_CHECKS: Record<string, (d: BountyDraft) => StepErrors> = {
+  what: (d): StepErrors => {
+    const e: StepErrors = {};
     if (d.title.trim().length < 8) e.title = "At least 8 characters.";
-    if (name === "commissioning" && d.formats.length === 0) e.formats = "Pick at least one format.";
-  }
-  if (name === "what" && (d.category.trim().length < 2)) e.category = "Pick or type a category.";
-  if ((name === "commissioning" && false) || name === "brief" || name === "what") {
+    if (d.category.trim().length < 2) e.category = "Pick or type a category.";
     if (d.description.trim().length < 20) e.description = "At least 20 characters.";
-  }
-  if (name === "participation") {
+    return e;
+  },
+  commissioning: (d): StepErrors => {
+    const e: StepErrors = {};
+    if (d.title.trim().length < 8) e.title = "At least 8 characters.";
+    if (d.formats.length === 0) e.formats = "Pick at least one format.";
+    return e;
+  },
+  brief: (d): StepErrors =>
+    d.description.trim().length < 20 ? { description: "At least 20 characters." } : {},
+  done: () => ({}),
+  participation: (d): StepErrors => {
+    const e: StepErrors = {};
     const cap = Number(d.participantCap);
     if (!Number.isInteger(cap) || cap < 1 || cap > 200) e.participantCap = "Between 1 and 200.";
     if (!d.submissionDeadline) e.submissionDeadline = "Required.";
     else if (Number.isNaN(new Date(d.submissionDeadline).getTime())) e.submissionDeadline = "Invalid date.";
     if (d.applicationDeadline && Number.isNaN(new Date(d.applicationDeadline).getTime())) e.applicationDeadline = "Invalid date.";
-  }
-  if (name === "reward") {
+    return e;
+  },
+  reward: (d): StepErrors => {
     const minor = Math.round(Number(d.rewardRupees) * 100);
-    if (!Number.isFinite(minor) || minor < 100_000) e.reward = "Minimum 1,000 rupees.";
-    else {
-      const n = (v: string) => Math.round(Number(v || "0") * 100);
-      if (d.rewardStructure === "PODIUM") {
-        const sum = n(d.podiumFirst) + n(d.podiumSecond) + n(d.podiumThird);
-        if (sum !== minor) e.allocations = "The podium split must equal the advertised reward.";
-      } else if (d.rewardStructure === "FINALIST_POOL") {
-        const finalists = Math.max(1, Number(d.poolFinalists) || 1);
-        const sum = n(d.poolWinner) + n(d.poolFinalist) * finalists;
-        if (sum !== minor) e.allocations = "The pool must equal the advertised reward.";
-      }
+    if (!Number.isFinite(minor) || minor < 100_000) return { reward: "Minimum 1,000 rupees." };
+    const n = (v: string) => Math.round(Number(v || "0") * 100);
+    if (d.rewardStructure === "PODIUM") {
+      const sum = n(d.podiumFirst) + n(d.podiumSecond) + n(d.podiumThird);
+      return sum !== minor ? { allocations: "The podium split must equal the advertised reward." } : {};
     }
-  }
-  void steps;
-  return e;
+    if (d.rewardStructure === "FINALIST_POOL") {
+      const finalists = Math.max(1, Number(d.poolFinalists) || 1);
+      const sum = n(d.poolWinner) + n(d.poolFinalist) * finalists;
+      return sum !== minor ? { allocations: "The pool must equal the advertised reward." } : {};
+    }
+    return {};
+  },
+  review: () => ({}),
+};
+
+const STEP_KEYS = {
+  culture: ["commissioning", "brief", "done", "participation", "reward", "review"],
+  founders: ["what", "done", "participation", "reward", "review"],
+} as const;
+
+function validateStep(step: number, d: BountyDraft, isCulture: boolean): StepErrors {
+  const idx = isCulture ? STEP_KEYS.culture : STEP_KEYS.founders;
+  const check = STEP_CHECKS[idx[step]];
+  return check ? check(d) : {};
 }
 
 function NewBountyPage() {
@@ -143,7 +160,7 @@ function NewBountyPage() {
   }, [draft.rewardRupees]);
 
   const next = () => {
-    const errs = validateStep(step, draft, isCulture, steps);
+    const errs = validateStep(step, draft, isCulture);
     setErrors(errs);
     if (Object.keys(errs).length === 0) setStep((s) => Math.min(s + 1, steps.length - 1));
   };
@@ -174,50 +191,12 @@ function NewBountyPage() {
   return (
     <ProductShell site={d.product} me={d.me}>
       <div className="canvas-wide pb-24">
-        <header className="border-b border-fg/10 py-6">
-          <p className="text-xs font-semibold uppercase tracking-kicker text-subtle">{isCulture ? "Sponsor · creative brief" : "Sponsor · bounty"}</p>
-          <h1 className="mt-1 font-display-site text-3xl tracking-tight">{isCulture ? "Post a creative brief" : "Post a bounty"}</h1>
-          <div className="mt-4 hidden md:block">
-            <StepIndicator steps={steps} current={step} />
-          </div>
-        </header>
-
-        {!d.emailVerified ? (
-          <InlineNotice className="mt-6" tone="warn" >
-            Money-facing actions need a verified email. Verification email delivery is not configured yet; an admin can verify manually. You can draft this now and fund it after verification.
-          </InlineNotice>
-        ) : null}
-        {error ? (
-          <div data-testid="create-error">
-            <InlineNotice className="mt-6" tone="down">
-              {error}
-            </InlineNotice>
-          </div>
-        ) : null}
+        <CreateHeader isCulture={isCulture} steps={steps} step={step} emailVerified={d.emailVerified} error={error} />
 
         <div className="mt-8 grid grid-cols-1 gap-10 lg:grid-cols-12">
           <div className="lg:col-span-8" data-testid="create-bounty-form">
             {stepBody}
-            <div className="mt-8 flex items-center justify-between gap-3 border-t border-fg/10 pt-5 md:hidden">
-              <Button variant="ghost" onClick={back} disabled={step === 0}>
-                Back
-              </Button>
-              {isReview ? null : (
-                <Button onClick={next} className="flex-1">
-                  Continue
-                </Button>
-              )}
-            </div>
-            <div className="mt-8 hidden items-center justify-between gap-3 md:flex">
-              <Button variant="ghost" onClick={back} disabled={step === 0}>
-                Back
-              </Button>
-              {isReview ? null : (
-                <Button onClick={next}>
-                  Continue
-                </Button>
-              )}
-            </div>
+            <StepActions step={step} isReview={isReview} onBack={back} onNext={next} />
           </div>
           <div className="lg:col-span-4">
             <SummaryPanel
@@ -235,11 +214,11 @@ function NewBountyPage() {
         {/* Mobile sticky bottom action */}
         <div className="fixed inset-x-0 bottom-0 z-10 border-t border-fg/10 bg-surface/95 p-3 backdrop-blur md:hidden">
           {isReview ? (
-            <Button className="w-full" loading={creating} onClick={doCreate}>
+            <Button className="w-full" loading={creating} onClick={doCreate} data-testid="create-draft">
               {creating ? "Creating…" : "Create draft"}
             </Button>
           ) : (
-            <Button className="w-full" onClick={next}>
+            <Button className="w-full" onClick={next} data-testid="continue-step">
               Continue
             </Button>
           )}
@@ -392,7 +371,7 @@ function SummaryPanel({
           {plan ? <div className="mt-3 border-t border-fg/10 pt-3" data-testid="money-plan-summary"><PlanRows plan={plan} /></div> : null}
         </div>
       </div>
-      {isReview ? <Button className="w-full" loading={creating} onClick={onCreate}>{creating ? "Creating…" : "Create draft"}</Button> : null}
+      {isReview ? <Button className="w-full" loading={creating} onClick={onCreate} data-testid="create-draft">{creating ? "Creating…" : "Create draft"}</Button> : null}
       {!isReview ? (
         <p className="px-1 text-xs leading-relaxed text-subtle">
           Server-validated on save. You can go back and change any step.
@@ -401,3 +380,76 @@ function SummaryPanel({
     </aside>
   );
 }
+
+/** Back/Continue action bars (desktop row + mobile row share one component). */
+function StepActions({
+  step,
+  isReview,
+  onBack,
+  onNext,
+}: {
+  step: number;
+  isReview: boolean;
+  onBack: () => void;
+  onNext: () => void;
+}) {
+  const buttons = (mobile: boolean) => (
+    <>
+      <Button variant="ghost" onClick={onBack} disabled={step === 0}>
+        Back
+      </Button>
+      {isReview ? null : (
+        <Button onClick={onNext} className={mobile ? "flex-1" : undefined} data-testid="continue-step">
+          Continue
+        </Button>
+      )}
+    </>
+  );
+  return (
+    <>
+      <div className="mt-8 flex items-center justify-between gap-3 border-t border-fg/10 pt-5 md:hidden">{buttons(true)}</div>
+      <div className="mt-8 hidden items-center justify-between gap-3 md:flex">{buttons(false)}</div>
+    </>
+  );
+}
+
+/** Create-page header: kicker, title, step indicator, notices. */
+function CreateHeader({
+  isCulture,
+  steps,
+  step,
+  emailVerified,
+  error,
+}: {
+  isCulture: boolean;
+  steps: string[];
+  step: number;
+  emailVerified: boolean;
+  error: string | null;
+}) {
+  return (
+        <>
+        <header className="border-b border-fg/10 py-6">
+          <p className="text-xs font-semibold uppercase tracking-kicker text-subtle">{isCulture ? "Sponsor · creative brief" : "Sponsor · bounty"}</p>
+          <h1 className="mt-1 font-display-site text-3xl tracking-tight">{isCulture ? "Post a creative brief" : "Post a bounty"}</h1>
+          <div className="mt-4 hidden md:block">
+            <StepIndicator steps={steps} current={step} />
+          </div>
+        </header>
+
+        {!emailVerified ? (
+          <InlineNotice className="mt-6" tone="warn" >
+            Money-facing actions need a verified email. Verification email delivery is not configured yet; an admin can verify manually. You can draft this now and fund it after verification.
+          </InlineNotice>
+        ) : null}
+        {error ? (
+          <div data-testid="create-error">
+            <InlineNotice className="mt-6" tone="down">
+              {error}
+            </InlineNotice>
+          </div>
+        ) : null}
+        </>
+  );
+}
+

@@ -161,52 +161,7 @@ export function ProductShell({
       <header className="sticky top-0 z-10 border-b border-fg/10 bg-surface/95 backdrop-blur">
         <div className="canvas-wide flex h-14 items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-2 sm:gap-3">
-            {/* Network switcher (RC3, S-8): the four products, one model. */}
-            <div ref={switchRef} className="relative shrink-0">
-              <button
-                type="button"
-                aria-expanded={switchOpen}
-                aria-haspopup="menu"
-                onClick={() => setSwitchOpen((v) => !v)}
-                className="flex h-9 items-center gap-1 rounded-sm px-1.5 text-xs font-medium text-subtle transition-colors duration-150 hover:text-fg"
-              >
-                <List className="size-3.5" aria-hidden="true" />
-                <span className="hidden sm:inline">Bid Network</span>
-                <ChevronDown
-                  className={cn("size-3.5 transition-transform duration-150", switchOpen && "rotate-180")}
-                  aria-hidden="true"
-                />
-              </button>
-              {switchOpen ? (
-                <div
-                  role="menu"
-                  aria-label="Bid Network products"
-                  className="absolute left-0 top-full z-20 mt-1.5 w-72 rounded-md border border-fg/15 bg-surface p-1 shadow-lg"
-                >
-                  {PRODUCT_KEYS.map((key) => (
-                    <a
-                      key={key}
-                      role="menuitem"
-                      href={`${linkOrigin(key)}/`}
-                      onClick={() => setSwitchOpen(false)}
-                      className={cn(
-                        "flex items-start gap-2 rounded-sm px-2.5 py-2 text-sm transition-colors duration-150 hover:bg-raised/70",
-                        key === site ? "font-medium text-fg" : "text-muted",
-                      )}
-                    >
-                      <Circle
-                        className={cn("mt-1 size-1.5 shrink-0", key === site ? "fill-accent text-accent" : "fill-transparent")}
-                        aria-hidden="true"
-                      />
-                      <span className="min-w-0">
-                        <span className="block">{product(key).name}</span>
-                        <span className="block truncate text-xs text-subtle">{product(key).oneLine}</span>
-                      </span>
-                    </a>
-                  ))}
-                </div>
-              ) : null}
-            </div>
+            <NetworkSwitcher site={site} switchOpen={switchOpen} onToggle={() => setSwitchOpen((v) => !v)} onNavigate={() => setSwitchOpen(false)} switchRef={switchRef} />
 
             <a
               href={`${linkOrigin(site)}/`}
@@ -231,147 +186,266 @@ export function ProductShell({
           </div>
 
           <div className="flex items-center gap-1 sm:gap-2">
-            {me ? (
-              <>
-                <a
-                  href="/dashboard"
-                  className="hidden items-center gap-1.5 rounded-sm px-2 py-1 text-sm font-medium hover:bg-raised/60 sm:inline-flex"
-                >
-                  <span className="max-w-28 truncate">{me.name}</span>
-                  <span className="rounded bg-raised px-1.5 py-0.5 text-xs text-muted">Dashboard</span>
-                </a>
-                <button
-                  type="button"
-                  onClick={async () => {
-                    await signOut();
-                    window.location.assign("/");
-                  }}
-                  className="hidden rounded-sm px-2 py-1 text-sm text-muted transition-colors duration-150 hover:text-fg sm:block"
-                >
-                  Sign out
-                </button>
-              </>
-            ) : (
-              <a
-                href="/signin"
-                className="hidden rounded-sm px-2 py-1 text-sm font-medium text-muted transition-colors duration-150 hover:text-fg sm:block"
-              >
-                Sign in
-              </a>
-            )}
-            <a
-              href={cta.href}
-              className="inline-flex h-9 items-center rounded-sm bg-accent px-3.5 text-sm font-semibold text-accent-fg transition-colors duration-150 hover:bg-accent/90"
-              data-testid="primary-cta"
-            >
-              {cta.label}
-            </a>
-            <ModeToggle variant="icon" />
-            {/* mobile menu toggle */}
-            <button
-              type="button"
-              aria-expanded={menuOpen}
-              aria-label={menuOpen ? "Close menu" : "Open menu"}
-              onClick={() => setMenuOpen((v) => !v)}
-              className="inline-flex size-10 items-center justify-center rounded-sm border border-fg/20 md:hidden"
-            >
-              <span className="text-sm" aria-hidden="true">{menuOpen ? "✕" : "☰"}</span>
-            </button>
+            <AccountArea me={me} cta={cta} menuOpen={menuOpen} onToggleMenu={() => setMenuOpen((v) => !v)} />
           </div>
         </div>
 
-        {/* mobile nav */}
-        {menuOpen ? (
-          <div className="border-t border-fg/10 bg-surface px-4 py-3 md:hidden">
-            <nav aria-label="Mobile product" className="flex flex-col gap-0.5">
-              {nav.map((item) => (
-                <a
-                  key={item.href}
-                  href={item.href}
-                  aria-current={isNavActive(pathname, item.href) ? "page" : undefined}
-                  onClick={() => setMenuOpen(false)}
-                  className={cn(
-                    "rounded-sm px-2 py-2.5 text-sm",
-                    isNavActive(pathname, item.href) && "font-semibold text-accent",
-                  )}
-                >
-                  {item.label}
-                </a>
-              ))}
-              <div className="my-2 border-t border-fg/10" role="presentation" />
-              <p className="px-2 pb-1 text-xs font-semibold uppercase tracking-kicker text-subtle">The Bid Network</p>
-              {others.map((key) => (
-                <a
-                  key={key}
-                  href={`${linkOrigin(key)}/`}
-                  onClick={() => setMenuOpen(false)}
-                  className="rounded-sm px-2 py-2 text-sm text-muted"
-                >
-                  {product(key).name} <span className="text-xs text-subtle">· {product(key).oneLine}</span>
-                </a>
-              ))}
-              {me ? (
-                <>
-                  <a href="/dashboard" onClick={() => setMenuOpen(false)} className="rounded-sm px-2 py-2 text-sm">
-                    Dashboard{me.handle ? ` (@${me.handle})` : ""}
-                  </a>
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      setMenuOpen(false);
-                      await signOut();
-                      window.location.assign("/");
-                    }}
-                    className="rounded-sm px-2 py-2 text-left text-sm text-muted"
-                  >
-                    Sign out
-                  </button>
-                </>
-              ) : (
-                <a href="/signin" onClick={() => setMenuOpen(false)} className="rounded-sm px-2 py-2 text-sm">
-                  Sign in
-                </a>
-              )}
-              <a
-                href="/blog"
-                onClick={() => setMenuOpen(false)}
-                className="rounded-sm px-2 py-2 text-sm text-muted"
-              >
-                {cfg.name} blog
-              </a>
-            </nav>
-          </div>
-        ) : null}
+        <MobileNav
+          cfg={cfg}
+          nav={nav}
+          others={others}
+          me={me}
+          pathname={pathname}
+          menuOpen={menuOpen}
+          onClose={() => setMenuOpen(false)}
+        />
       </header>
 
       <main id="content" className="flex-1">{children}</main>
 
-      <footer className="mt-16 border-t border-fg/10 bg-surface">
-        <div className="canvas-wide flex flex-col gap-5 py-8">
-          <p className="text-sm text-muted">
-            {cfg.apex} · {cfg.kicker}
-          </p>
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
-            {others.map((key) => (
-              <a key={key} href={`${linkOrigin(key)}/`} className="text-muted hover:text-fg hover:underline hover:underline-offset-4">
-                {product(key).name}
-              </a>
-            ))}
-            <a href="/blog" className="text-muted hover:text-fg hover:underline hover:underline-offset-4">
-              {cfg.name} blog
-            </a>
-          </div>
-          <div className="border-t border-fg/10 pt-5">
-            <p className="text-sm text-muted">
-              Contact{" "}
-              <a href={`mailto:${cfg.contactEmail}`} className="hover:underline hover:underline-offset-4">
-                {cfg.contactEmail}
-              </a>
-            </p>
-            <LegalLinks className="mt-4" />
-          </div>
-        </div>
-      </footer>
+      <ShellFooter cfg={cfg} others={others} />
     </div>
+  );
+}
+
+/** Mobile navigation (RC3): primary product links, the network group, account
+ *  state, and the blog — secondary surfaces stay out of the primary slots. */
+function MobileNav({
+  cfg,
+  nav,
+  others,
+  me,
+  pathname,
+  menuOpen,
+  onClose,
+}: {
+  cfg: ReturnType<typeof product>;
+  nav: { label: string; href: string }[];
+  others: ProductKey[];
+  me: ShellMe | null | undefined;
+  pathname: string;
+  menuOpen: boolean;
+  onClose: () => void;
+}) {
+  if (!menuOpen) return null;
+  return (
+    <div className="border-t border-fg/10 bg-surface px-4 py-3 md:hidden">
+      <nav aria-label="Mobile product" className="flex flex-col gap-0.5">
+        {nav.map((item) => (
+          <a
+            key={item.href}
+            href={item.href}
+            aria-current={isNavActive(pathname, item.href) ? "page" : undefined}
+            onClick={onClose}
+            className={cn(
+              "rounded-sm px-2 py-2.5 text-sm",
+              isNavActive(pathname, item.href) && "font-semibold text-accent",
+            )}
+          >
+            {item.label}
+          </a>
+        ))}
+        <div className="my-2 border-t border-fg/10" role="presentation" />
+        <p className="px-2 pb-1 text-xs font-semibold uppercase tracking-kicker text-subtle">The Bid Network</p>
+        {others.map((key) => (
+          <a
+            key={key}
+            href={`${linkOrigin(key)}/`}
+            onClick={onClose}
+            className="rounded-sm px-2 py-2 text-sm text-muted"
+          >
+            {product(key).name} <span className="text-xs text-subtle">· {product(key).oneLine}</span>
+          </a>
+        ))}
+        {me ? (
+          <>
+            <a href="/dashboard" onClick={onClose} className="rounded-sm px-2 py-2 text-sm">
+              Dashboard{me.handle ? ` (@${me.handle})` : ""}
+            </a>
+            <button
+              type="button"
+              onClick={async () => {
+                onClose();
+                await signOut();
+                window.location.assign("/");
+              }}
+              className="rounded-sm px-2 py-2 text-left text-sm text-muted"
+            >
+              Sign out
+            </button>
+          </>
+        ) : (
+          <a href="/signin" onClick={onClose} className="rounded-sm px-2 py-2 text-sm">
+            Sign in
+          </a>
+        )}
+        <a
+          href="/blog"
+          onClick={onClose}
+          className="rounded-sm px-2 py-2 text-sm text-muted"
+        >
+          {cfg.name} blog
+        </a>
+      </nav>
+    </div>
+  );
+}
+
+/** The network footer: other products, blog, contact, legal. */
+function ShellFooter({ cfg, others }: { cfg: ReturnType<typeof product>; others: ProductKey[] }) {
+  return (
+        <footer className="mt-16 border-t border-fg/10 bg-surface">
+          <div className="canvas-wide flex flex-col gap-5 py-8">
+            <p className="text-sm text-muted">
+              {cfg.apex} · {cfg.kicker}
+            </p>
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
+              {others.map((key) => (
+                <a key={key} href={`${linkOrigin(key)}/`} className="text-muted hover:text-fg hover:underline hover:underline-offset-4">
+                  {product(key).name}
+                </a>
+              ))}
+              <a href="/blog" className="text-muted hover:text-fg hover:underline hover:underline-offset-4">
+                {cfg.name} blog
+              </a>
+            </div>
+            <div className="border-t border-fg/10 pt-5">
+              <p className="text-sm text-muted">
+                Contact{" "}
+                <a href={`mailto:${cfg.contactEmail}`} className="hover:underline hover:underline-offset-4">
+                  {cfg.contactEmail}
+                </a>
+              </p>
+              <LegalLinks className="mt-4" />
+            </div>
+          </div>
+        </footer>
+  );
+}
+
+/** Network switcher (RC3, S-8): the four products as one mental model. */
+function NetworkSwitcher({
+  site,
+  switchOpen,
+  onToggle,
+  onNavigate,
+  switchRef,
+}: {
+  site: ProductKey;
+  switchOpen: boolean;
+  onToggle: () => void;
+  onNavigate: () => void;
+  switchRef: React.RefObject<HTMLDivElement | null>;
+}) {
+  return (
+              <div ref={switchRef} className="relative shrink-0">
+                <button
+                  type="button"
+                  aria-expanded={switchOpen}
+                  aria-haspopup="menu"
+                  onClick={onToggle}
+                  className="flex h-9 items-center gap-1 rounded-sm px-1.5 text-xs font-medium text-subtle transition-colors duration-150 hover:text-fg"
+                >
+                  <List className="size-3.5" aria-hidden="true" />
+                  <span className="hidden sm:inline">Bid Network</span>
+                  <ChevronDown
+                    className={cn("size-3.5 transition-transform duration-150", switchOpen && "rotate-180")}
+                    aria-hidden="true"
+                  />
+                </button>
+                {switchOpen ? (
+                  <div
+                    role="menu"
+                    aria-label="Bid Network products"
+                    className="absolute left-0 top-full z-20 mt-1.5 w-72 rounded-md border border-fg/15 bg-surface p-1 shadow-lg"
+                  >
+                    {PRODUCT_KEYS.map((key) => (
+                      <a
+                        key={key}
+                        role="menuitem"
+                        href={`${linkOrigin(key)}/`}
+                        onClick={onNavigate}
+                        className={cn(
+                          "flex items-start gap-2 rounded-sm px-2.5 py-2 text-sm transition-colors duration-150 hover:bg-raised/70",
+                          key === site ? "font-medium text-fg" : "text-muted",
+                        )}
+                      >
+                        <Circle
+                          className={cn("mt-1 size-1.5 shrink-0", key === site ? "fill-accent text-accent" : "fill-transparent")}
+                          aria-hidden="true"
+                        />
+                        <span className="min-w-0">
+                          <span className="block">{product(key).name}</span>
+                          <span className="block truncate text-xs text-subtle">{product(key).oneLine}</span>
+                        </span>
+                      </a>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+  );
+}
+
+/** Account area: auth-aware identity, product CTA, theme + menu toggles. */
+function AccountArea({
+  me,
+  cta,
+  menuOpen,
+  onToggleMenu,
+}: {
+  me: ShellMe | null | undefined;
+  cta: { label: string; href: string };
+  menuOpen: boolean;
+  onToggleMenu: () => void;
+}) {
+  return (
+    <>
+                {me ? (
+                  <>
+                    <a
+                      href="/dashboard"
+                      className="hidden items-center gap-1.5 rounded-sm px-2 py-1 text-sm font-medium hover:bg-raised/60 sm:inline-flex"
+                    >
+                      <span className="max-w-28 truncate">{me.name}</span>
+                      <span className="rounded bg-raised px-1.5 py-0.5 text-xs text-muted">Dashboard</span>
+                    </a>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        await signOut();
+                        window.location.assign("/");
+                      }}
+                      className="hidden rounded-sm px-2 py-1 text-sm text-muted transition-colors duration-150 hover:text-fg sm:block"
+                    >
+                      Sign out
+                    </button>
+                  </>
+                ) : (
+                  <a
+                    href="/signin"
+                    className="hidden rounded-sm px-2 py-1 text-sm font-medium text-muted transition-colors duration-150 hover:text-fg sm:block"
+                  >
+                    Sign in
+                  </a>
+                )}
+                <a
+                  href={cta.href}
+                  className="inline-flex h-9 items-center rounded-sm bg-accent px-3.5 text-sm font-semibold text-accent-fg transition-colors duration-150 hover:bg-accent/90"
+                  data-testid="primary-cta"
+                >
+                  {cta.label}
+                </a>
+                <ModeToggle variant="icon" />
+                {/* mobile menu toggle */}
+                <button
+                  type="button"
+                  aria-expanded={menuOpen}
+                  aria-label={menuOpen ? "Close menu" : "Open menu"}
+                  onClick={onToggleMenu}
+                  className="inline-flex size-10 items-center justify-center rounded-sm border border-fg/20 md:hidden"
+                >
+                  <span className="text-sm" aria-hidden="true">{menuOpen ? "✕" : "☰"}</span>
+                </button>
+    </>
   );
 }

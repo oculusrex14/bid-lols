@@ -32,6 +32,24 @@ Production must be reproducible from GitHub. The release protocol:
 
 External follow-up (not in repo scope): install the Vercel GitHub App for the account (browser: github.com/settings/apps), then `vercel git connect https://github.com/oculusrex14/bid-lols.git` so pushes to `main` auto-deploy production from the SHA.
 
+### Independent CI gate (Phase 00.6, WS5; extended RC3)
+
+RC3 extends the gate to a second job and hardens it:
+
+- `gates`: lint -> typecheck -> unit/integration (hermetic PGLite) -> build
+  -> artifact sanity -> **complexity gate** (`node scripts/complexity-report.mjs
+  --gate`: production code only — cyclomatic <= 15, nesting <= 5, functions
+  <= 120 non-blank lines; thresholds are the "must refactor" line, measured
+  by scripts/complexity-report.mjs, not guessed) -> **runtime dependency
+  audit** (`npm audit --omit=dev --audit-level=high`).
+- `e2e`: Playwright chromium against a local dev server with the TEST-ONLY
+  fake provider (money machinery exercised end to end without real rails):
+  the funded marketplace journey (scripts/marketplace-e2e.mjs) and the
+  cross-product critical paths (tests/e2e/critical-paths.mjs).
+- `codeql` runs from its own workflow (codeql.yml, weekly + PRs).
+- GitHub Actions are pinned to immutable commit SHAs (versions noted in
+  comments); Dependabot (dependabot.yml) keeps npm + actions current weekly.
+
 ### Independent CI gate (Phase 00.6, WS5)
 
 `CI` (`.github/workflows/ci.yml`) runs on every `pull_request` and on pushes

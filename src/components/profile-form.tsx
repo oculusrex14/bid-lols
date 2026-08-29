@@ -22,6 +22,10 @@ function csv(v: string): string[] {
     .filter(Boolean);
 }
 
+/** RC3: hoisted for the extracted field-group components (same contract). */
+const label = "mb-1.5 block text-sm font-medium";
+const field = inputClasses;
+
 export function ProfileForm({ initial }: { initial: MyProfileView }) {
   const p = initial.profile;
   const [status, setStatus] = useState<
@@ -72,8 +76,6 @@ export function ProfileForm({ initial }: { initial: MyProfileView }) {
     }
   }
 
-  const label = "mb-1.5 block text-sm font-medium";
-  const field = inputClasses;
 
   return (
     <form onSubmit={onSubmit} noValidate data-testid="profile-form">
@@ -121,50 +123,7 @@ export function ProfileForm({ initial }: { initial: MyProfileView }) {
         </div>
       </div>
 
-      <div className="mt-4 grid gap-4 sm:grid-cols-2">
-        <div>
-          <label htmlFor="pf-gh" className={label}>GitHub URL</label>
-          <input id="pf-gh" name="githubUrl" type="url" placeholder="https://github.com/…" defaultValue={p.github_url ?? ""} className={field} />
-        </div>
-        <div>
-          <label htmlFor="pf-li" className={label}>LinkedIn URL</label>
-          <input id="pf-li" name="linkedinUrl" type="url" placeholder="https://www.linkedin.com/in/…" defaultValue={p.linkedin_url ?? ""} className={field} />
-        </div>
-        <div>
-          <label htmlFor="pf-web" className={label}>Website</label>
-          <input id="pf-web" name="websiteUrl" type="url" placeholder="https://…" defaultValue={p.website_url ?? ""} className={field} />
-        </div>
-        <div>
-          <label htmlFor="pf-avail" className={label}>Availability</label>
-          <select id="pf-avail" name="availability" defaultValue={p.availability ?? "available"} className={field}>
-            <option value="available">Available</option>
-            <option value="limited">Limited</option>
-            <option value="booked">Booked</option>
-          </select>
-        </div>
-      </div>
-
-      <div className="mt-6 rounded-md border border-fg/10 bg-raised/40 p-4">
-        <p className="text-xs font-medium uppercase tracking-kicker text-subtle">Sponsor / company (optional)</p>
-        <div className="mt-3 grid gap-4 sm:grid-cols-2">
-          <div>
-            <label htmlFor="pf-co" className={label}>Company name</label>
-            <input id="pf-co" name="companyName" maxLength={160} defaultValue={p.company_name ?? ""} className={field} />
-          </div>
-          <div>
-            <label htmlFor="pf-cow" className={label}>Company website</label>
-            <input id="pf-cow" name="companyWebsite" type="url" defaultValue={p.company_website ?? ""} className={field} />
-          </div>
-        </div>
-        <div className="mt-4">
-          <label htmlFor="pf-coa" className={label}>What does the company do?</label>
-          <textarea id="pf-coa" name="companyAbout" rows={2} maxLength={500} defaultValue={p.company_about ?? ""} className="w-full rounded-md border border-fg/20 bg-surface p-3 text-sm outline-none focus:border-fg/60" />
-        </div>
-        <label className="mt-3 flex items-center gap-2 text-sm text-muted">
-          <input type="checkbox" name="isSponsor" defaultChecked={p.is_sponsor} className="size-4 accent-[var(--fg)]" />
-          I fund work (show sponsor tools)
-        </label>
-      </div>
+      <PresenceFields p={p} />
 
       {status.state === "error" ? (
         <p role="alert" className="mt-3 text-sm font-medium text-danger">{status.message}</p>
@@ -213,4 +172,57 @@ export function ProfileFormLoader() {
     return <p role="alert" className="text-sm text-danger">{state.message}</p>;
   }
   return <ProfileForm initial={state.profile} />;
+}
+
+/** RC3: profile form is one <form>; field groups are components for reading,
+ * the submit still reads FormData by name, so ids/names are contract. */
+function PresenceFields({ p }: { p: MyProfileView["profile"] }) {
+  return (
+    <>
+      <div className="mt-4 grid gap-4 sm:grid-cols-2">
+        <div>
+          <label htmlFor="pf-gh" className={label}>GitHub URL</label>
+          <input id="pf-gh" name="githubUrl" type="url" placeholder="https://github.com/…" defaultValue={p.github_url ?? ""} className={field} />
+        </div>
+        <div>
+          <label htmlFor="pf-li" className={label}>LinkedIn URL</label>
+          <input id="pf-li" name="linkedinUrl" type="url" placeholder="https://www.linkedin.com/in/…" defaultValue={p.linkedin_url ?? ""} className={field} />
+        </div>
+        <div>
+          <label htmlFor="pf-web" className={label}>Website</label>
+          <input id="pf-web" name="websiteUrl" type="url" placeholder="https://…" defaultValue={p.website_url ?? ""} className={field} />
+        </div>
+        <div>
+          <label htmlFor="pf-avail" className={label}>Availability</label>
+          <select id="pf-avail" name="availability" defaultValue={p.availability ?? "available"} className={field}>
+            <option value="available">Available</option>
+            <option value="limited">Limited</option>
+            <option value="booked">Booked</option>
+          </select>
+        </div>
+      </div>
+
+      <div className="mt-6 rounded-md border border-fg/10 bg-raised/40 p-4">
+        <p className="text-xs font-medium uppercase tracking-kicker text-subtle">Sponsor / company (optional)</p>
+        <div className="mt-3 grid gap-4 sm:grid-cols-2">
+          <div>
+            <label htmlFor="pf-co" className={label}>Company name</label>
+            <input id="pf-co" name="companyName" maxLength={160} defaultValue={p.company_name ?? ""} className={field} />
+          </div>
+          <div>
+            <label htmlFor="pf-cow" className={label}>Company website</label>
+            <input id="pf-cow" name="companyWebsite" type="url" defaultValue={p.company_website ?? ""} className={field} />
+          </div>
+        </div>
+        <div className="mt-4">
+          <label htmlFor="pf-coa" className={label}>What does the company do?</label>
+          <textarea id="pf-coa" name="companyAbout" rows={2} maxLength={500} defaultValue={p.company_about ?? ""} className="w-full rounded-md border border-fg/20 bg-surface p-3 text-sm outline-none focus:border-fg/60" />
+        </div>
+        <label className="mt-3 flex items-center gap-2 text-sm text-muted">
+          <input type="checkbox" name="isSponsor" defaultChecked={p.is_sponsor} className="size-4 accent-[var(--fg)]" />
+          I fund work (show sponsor tools)
+        </label>
+      </div>
+    </>
+  );
 }

@@ -1,7 +1,7 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { ProductShell } from "@/components/product-shell";
 import { currentProductKey } from "@/lib/host";
-import { getMarketplaceShell } from "@/lib/shell-context";
+import { marketplaceShell } from "@/lib/shell-context";
 
 /**
  * /post — FoundersBid quick choice (RC3, S-7.3). "Post work" must not dump
@@ -21,7 +21,7 @@ export const Route = createFileRoute("/post")({
   loader: async () => {
     const productKey = await currentProductKey();
     if (productKey === "culturebid") throw redirect({ to: "/bounties/new" });
-    return getMarketplaceShell();
+    return marketplaceShell();
   },
   component: PostChooser,
 });
