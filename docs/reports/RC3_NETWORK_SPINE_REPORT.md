@@ -14,8 +14,22 @@
   action-note early-match on slow runners) — each reproducing locally first.
 - Preview: `dpl_EX2WMK9rUB6E8Mnd5rWD5CzD3JVT` from `0e28a02` (app-identical),
   verified (heads, switcher, robots, sitemap, IndexNow, security.txt).
-
-## Release
+- Production deployment: `dpl_8uUQ9dRq1ASTzFFCxNSRAvXzHoJV` (aliased to all
+  four domains), deployed 2026-08-29 ~07:03 UTC from a detached, clean
+  checkout of the final pushed SHA `c90f36e` (docs-only successor of app
+  SHA `85c2dc4`). An intermediate prod deploy `dpl_Dc4KtXabx3rngNPVsrGvhEFgyNCc`
+  served the same app code while the final docs commit was landing.
+- Funding: OFF (no MARKETPLACE_MONEY_LIVE on any target; no migrations in
+  RC3; nothing on the live sites takes payment).
+- Production verification: 4/4 domains 200 (bidthrone.lol, foundersbid.lol,
+  www.culturebid.lol, bidception.lol — apex culturebid.lol remains the
+  documented DNS blocker); per-product title + theme-color + canonical
+  (culturebid = www); auth-aware CTAs; funding-off copy live; wrong-host
+  301 (bidthrone/bounties -> foundersbid) and www->apex 301; sitemap,
+  robots, IndexNow key 200; security.txt live; CSP with per-request nonce +
+  full header baseline (HSTS is Vercel's); branded 404; zero 5xx in
+  production logs (the only "error" lines are intentional 404 probes and a
+  bot probe, both correctly rejected).
 
 ## Correctness fixes
 
