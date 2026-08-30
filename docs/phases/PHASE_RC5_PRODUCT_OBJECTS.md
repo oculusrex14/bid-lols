@@ -1,6 +1,6 @@
 # RC5 — PRODUCT OBJECT REDESIGN + RC4.1 TRUST CORRECTNESS HARDENING
 
-Status: IN PROGRESS. Supersedes the RC3 design-system restrictions where the
+Status: COMPLETE (2026-08-30; release docs/reports/RC5_PRODUCT_OBJECTS_REPORT.md). Supersedes the RC3 design-system restrictions where the
 two-layer law below says so (docs/03_DESIGN_SYSTEM.md is the living record;
 this phase file is the working spec).
 
