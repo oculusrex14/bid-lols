@@ -12,6 +12,7 @@ import { SectionHeader } from "@/components/ui/layout";
 import { PublicRecordCard } from "@/components/product-objects/public-record-card";
 import { GhostBoard } from "@/components/product-objects/ghost-board";
 import { MarketRatesPreview } from "@/components/product-objects/market-rates-preview";
+import type { SupportedCurrency } from "@/lib/money";
 
 /**
  * Bidthrone home (RC5 §23): the public record. Data-first: the sample
@@ -27,15 +28,24 @@ import { MarketRatesPreview } from "@/components/product-objects/market-rates-pr
  */
 type HomeBoards = Extract<HomePreview, { kind: "boards" }>["boards"];
 
-export function BidthroneHome({ me, preview }: { me?: ShellMe | null; preview: HomePreview }) {
+export function BidthroneHome({
+  me,
+  preview,
+  viewerCurrency,
+}: {
+  me?: ShellMe | null;
+  preview: HomePreview;
+  viewerCurrency: SupportedCurrency;
+}) {
   const boards = preview.kind === "boards" ? preview.boards : [];
   const marketRates = preview.kind === "boards" ? (preview.marketRates ?? []) : [];
+  const marketRateCurrency = preview.kind === "boards" ? (preview.marketRateCurrency ?? viewerCurrency) : viewerCurrency;
   const others = PRODUCT_KEYS.filter((key) => key !== "bidthrone");
 
   return (
     <>
       <ThroneHero me={me} />
-      <ThroneGrid boards={boards} marketRates={marketRates} />
+      <ThroneGrid boards={boards} marketRates={marketRates} marketRateCurrency={marketRateCurrency} />
       <BidIndexTeaser />
       <Principles />
       <NetworkSection others={others} />
@@ -104,9 +114,11 @@ function ThroneHero({ me }: { me?: ShellMe | null }) {
 function ThroneGrid({
   boards,
   marketRates,
+  marketRateCurrency,
 }: {
   boards: HomeBoards;
   marketRates: HomeMarketRate[];
+  marketRateCurrency: SupportedCurrency;
 }) {
   return (
     <section className="canvas-brand mt-14 sm:mt-16 grid gap-8 lg:grid-cols-[1.1fr_0.9fr]">
@@ -135,7 +147,7 @@ function ThroneGrid({
           }
         />
         <div className="mt-4" data-testid="home-market-rates">
-          <MarketRatesPreview rows={marketRates} />
+          <MarketRatesPreview rows={marketRates} currency={marketRateCurrency} />
         </div>
       </div>
     </section>

@@ -24,6 +24,7 @@ export function outcome(over: Partial<RoleOutcome> = {}): RoleOutcome {
     excludedFromEvidence: false,
     occurredDaysAgo: 30,
     amountMinor: 2_500_000,
+    currency: "INR",
     severity: "NORMAL" as SeverityCode as SeverityCode,
     complexity: 0.5,
     review: null,

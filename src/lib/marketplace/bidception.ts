@@ -64,7 +64,10 @@ export const publishParentWorkFn = createServerFn({ method: "POST" })
     z
       .object({
         parentWorkId: z.string().trim().min(4).max(64),
-        budgetRupees: z.number().int().min(1000),
+        // RC5.1 WS8: major units in the sponsor's chosen work currency; the
+        // floor is 1,000 major units in either currency (no invented FX).
+        budgetMajor: z.number().int().min(1000),
+        currency: z.enum(["INR", "USD"]),
       })
       .strict()
       .parse,
@@ -78,7 +81,8 @@ export const publishParentWorkFn = createServerFn({ method: "POST" })
         parentWorkId: data.parentWorkId,
         sponsorUserId: session.user.id,
         email: session.user.email,
-        budgetRupees: data.budgetRupees,
+        budgetMajor: data.budgetMajor,
+        currency: data.currency,
       });
     } catch (err) {
       const mapped = toErrorResponse(err);

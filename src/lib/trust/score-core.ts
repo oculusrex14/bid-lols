@@ -45,7 +45,16 @@ export interface ReviewFacts {
   fairness: number | null;
 }
 
-/** One primary evidence unit for one (user, role, work item) — §7. */
+/**
+ * One primary evidence unit for one (user, role, work item) — §7.
+ *
+ * RC5.1: every outcome carries the PERSISTED currency of its work item.
+ * BI-1.0 is INR-native (valueFactor reads INR paise; verified volume is
+ * INR-denominated). The gate lives in assignWeights()/evidenceStats():
+ * non-INR outcomes keep their FACTUAL evidence (reliability, experience,
+ * reviews, caps) but their economic amount is scored at the floor value
+ * factor — a USD cent is never read as an INR paise, and no FX exists.
+ */
 export interface RoleOutcome {
   workKey: string;
   counterpartyUserId: string | null;
@@ -54,6 +63,8 @@ export interface RoleOutcome {
   occurredDaysAgo: number;
   /** The role's actual economic exposure in minor units (§13). */
   amountMinor: number;
+  /** The work item's persisted currency (INR or USD; law concept A). */
+  currency: string;
   severity: SeverityCode;
   /** Complexity C ∈ [0,1] from structured work facts (§15). */
   complexity: number;
@@ -132,8 +143,14 @@ function assignWeights(outcomes: RoleOutcome[]): WeightedOutcome[] {
     const nth = (pairCount.get(pairKey) ?? 0) + 1;
     pairCount.set(pairKey, nth);
     const share = clamp(Number(o.weightShare ?? 1), 0, 1);
+    // RC5.1 WS11: BI-1.0 is INR-native. Only INR-denominated economic
+    // amounts enter valueFactor; anything else is scored at the floor
+    // (valueFactor(0) = 0.75, the documented no-missing-amount behavior).
+    // The outcome itself stays in evidence — the currency gate applies to
+    // the economic amount, never to the fact that the work completed.
+    const economicAmountMinor = o.currency === "INR" ? o.amountMinor : 0;
     const rawWeight = eventWeight({
-      amountMinor: o.amountMinor,
+      amountMinor: economicAmountMinor,
       complexity: clamp(o.complexity, 0, 1),
       ageDays: o.occurredDaysAgo,
       pairIndex: nth,
@@ -271,7 +288,14 @@ function evidenceStats(weighted: WeightedOutcome[]): {
     primaryOutcomes: counted.length,
     uniqueCounterparties: counterparties.size,
     spanDays: days.length >= 2 ? Math.max(...days) - Math.min(...days) : 0,
-    verifiedVolumeMinor: counted.reduce((a, x) => a + Math.max(0, x.outcome.amountMinor), 0),
+    // RC5.1 WS12: verified volume is strictly INR-denominated (option A).
+    // INR and USD minor units are never added together; no FX-normalized
+    // total exists without a formal model. The snapshot column
+    // verified_volume_currency therefore stays 'INR' by contract.
+    verifiedVolumeMinor: counted.reduce(
+      (a, x) => a + (x.outcome.currency === "INR" ? Math.max(0, x.outcome.amountMinor) : 0),
+      0,
+    ),
     majorDefaultDaysAgo: majors,
   };
 }

@@ -12,10 +12,13 @@ import { cn } from "@/lib/cn";
 export function ModeToggle({
   variant = "bar",
   fallbackMode = "light",
+  className,
 }: {
   variant?: "bar" | "inline" | "icon";
   /** RC5 §9: the product's default mode (Bidthrone dark, the rest light). */
   fallbackMode?: Mode;
+  /** Extra classes (e.g. responsive visibility for the icon variant). */
+  className?: string;
 }) {
   const [mode, setMode] = useState<Mode>(fallbackMode);
 
@@ -74,7 +77,10 @@ export function ModeToggle({
         onClick={() => pick(next)}
         aria-label={mode === "dark" ? "Switch to light mode" : "Switch to dark mode"}
         title={mode === "dark" ? "Light mode" : "Dark mode"}
-        className="inline-flex size-11 shrink-0 items-center justify-center rounded-sm text-[color:var(--header-fg-soft)] transition-colors duration-150 hover:bg-[color-mix(in_oklab,var(--header-fg)_10%,transparent)] hover:text-[color:var(--header-fg)]"
+        className={cn(
+          "inline-flex size-11 shrink-0 items-center justify-center rounded-sm text-[color:var(--header-fg-soft)] transition-colors duration-150 hover:bg-[color-mix(in_oklab,var(--header-fg)_10%,transparent)] hover:text-[color:var(--header-fg)]",
+          className,
+        )}
       >
         {mode === "dark" ? <Sun className="size-4" /> : <Moon className="size-4" />}
       </button>

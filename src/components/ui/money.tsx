@@ -1,5 +1,9 @@
 import type { ReactNode } from "react";
-import { formatMinor, formatMinorTrimmed } from "@/lib/money";
+import {
+  formatMinor,
+  formatMinorTrimmed,
+  toSupportedCurrency,
+} from "@/lib/money";
 import { cn } from "@/lib/cn";
 
 /**
@@ -8,6 +12,10 @@ import { cn } from "@/lib/cn";
  * every product is rendered through these components, so the advertised
  * reward, the platform fee and the sponsor total can never drift apart in
  * style (or in arithmetic — callers pass integer minors only).
+ *
+ * RC5.1 WS13: the currency is the record's OWN persisted currency. Unknown
+ * values fail visibly (toSupportedCurrency throws) — they are never silently
+ * assumed INR.
  */
 
 export function MoneyValue({
@@ -23,10 +31,12 @@ export function MoneyValue({
   size?: "sm" | "md" | "lg" | "xl";
   className?: string;
   title?: string;
-  /** RC5 §29: marketing/display mode. When paise are exactly zero the
-   *  ".00" is omitted (visual only; accounting stays precise). */
+  /** RC5 §29 / RC5.1 WS4: marketing/display mode. When minor units are
+   *  exactly zero the ".00" is omitted (visual only; accounting stays
+   *  precise). */
   trimZeroDecimals?: boolean;
 }) {
+  const cur = toSupportedCurrency(currency);
   return (
     <span
       className={cn(
@@ -39,7 +49,7 @@ export function MoneyValue({
       )}
       title={title}
     >
-      {trimZeroDecimals ? formatMinorTrimmed(minor, currency) : formatMinor(minor, currency)}
+      {trimZeroDecimals ? formatMinorTrimmed(minor, cur) : formatMinor(minor, cur)}
     </span>
   );
 }
@@ -64,6 +74,7 @@ export function MoneyBreakdown({
   fundingNote?: ReactNode;
   className?: string;
 }) {
+  void toSupportedCurrency(currency); // fail visibly on unknown currencies
   const rows: Array<{ label: string; value: number; emphasis?: boolean }> = [
     { label: "Reward", value: rewardMinor },
     { label: "Platform fee", value: feeMinor },

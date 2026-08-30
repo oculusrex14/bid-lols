@@ -1,4 +1,5 @@
 import { getSql } from "@/lib/db.server";
+import type { SupportedCurrency } from "@/lib/money";
 import { boardSpec, type BoardKey, type BoardSpec } from "./leaderboard-registry";
 
 /**
@@ -349,16 +350,21 @@ async function factsBoard(
 
 /**
  * Market Rates sample (RC4 §3/§56; renamed from "Bid Index"). Aggregates
- * REAL verified money amounts for a product+category and publishes ONLY
- * when the sample meets the threshold (10). A sample is a genuine
+ * REAL verified money amounts for a product+category+CURRENCY and publishes
+ * ONLY when the sample meets the threshold (10). A sample is a genuine
  * completed/settled outcome — created/unfunded or awarded-but-unsettled
  * work never counts. Never exposes individual deals; only anonymized
  * aggregates with the sample size disclosed.
+ *
+ * RC5.1 WS10: currency is part of the aggregate identity. Every query
+ * filters `currency = $requested`; a ₹50,000 and a $1,000 can never enter
+ * the same sorted amount array.
  */
 export type MarketRateSample = {
   /** null = network-wide sample. */
   product: string | null;
   category: string;
+  currency: SupportedCurrency;
   sampleSize: number;
   minMinor: number | null;
   medianMinor: number | null;
@@ -371,29 +377,31 @@ export const MARKET_RATE_MIN_SAMPLE = 10;
 /**
  * `product` null = network-wide aggregation (the Bidthrone surface, which
  * hosts no bounties of its own). A product key keeps the RC1 R9
- * product/category isolation for engine tests.
+ * product/category isolation for engine tests. `currency` is REQUIRED —
+ * there is no default, so a mixed-currency aggregate is impossible by
+ * construction.
  */
 export async function marketRateFor(
   product: string | null,
   category: string,
+  currency: SupportedCurrency,
   threshold = MARKET_RATE_MIN_SAMPLE,
 ): Promise<MarketRateSample> {
   const sql = await getSql();
   // verified = completed/settled outcomes only (RC1, R9): a merely-created or
   // unfunded opportunity is not a price point; awarded-but-unsettled work is
   // not yet a verified transaction either.
-  const params = product ? [product, category] : [category];
   const bounties = await sql.query<{ amount: number }>(
     product
-      ? "select reward_total_minor::bigint as amount from bounties where product = $1 and category = $2 and status in ('COMPLETED')"
-      : "select reward_total_minor::bigint as amount from bounties where category = $1 and status in ('COMPLETED')",
-    params,
+      ? "select reward_total_minor::bigint as amount from bounties where product = $1 and category = $2 and currency = $3 and status in ('COMPLETED')"
+      : "select reward_total_minor::bigint as amount from bounties where category = $1 and currency = $2 and status in ('COMPLETED')",
+    product ? [product, category, currency] : [category, currency],
   );
   const projects = await sql.query<{ amount: number }>(
     product
-      ? "select coalesce(selected_quoted_minor,0)::bigint as amount from projects where product = $1 and category = $2 and status in ('COMPLETED') and selected_quoted_minor is not null"
-      : "select coalesce(selected_quoted_minor,0)::bigint as amount from projects where category = $1 and status in ('COMPLETED') and selected_quoted_minor is not null",
-    params,
+      ? "select coalesce(selected_quoted_minor,0)::bigint as amount from projects where product = $1 and category = $2 and currency = $3 and status in ('COMPLETED') and selected_quoted_minor is not null"
+      : "select coalesce(selected_quoted_minor,0)::bigint as amount from projects where category = $1 and currency = $2 and status in ('COMPLETED') and selected_quoted_minor is not null",
+    product ? [product, category, currency] : [category, currency],
   );
   const amounts = [
     ...bounties.map((b) => Number(b.amount)),
@@ -404,7 +412,7 @@ export async function marketRateFor(
   const sampleSize = amounts.length;
   const sufficient = sampleSize >= threshold;
   if (!sufficient) {
-    return { product, category, sampleSize, minMinor: null, medianMinor: null, maxMinor: null, sufficient };
+    return { product, category, currency, sampleSize, minMinor: null, medianMinor: null, maxMinor: null, sufficient };
   }
   // Median: odd sample -> middle; even -> mean of the two middles, rounded to
   // the nearest minor unit (half-up). Documented in the phase spec.
@@ -419,6 +427,7 @@ export async function marketRateFor(
   return {
     product,
     category,
+    currency,
     sampleSize,
     minMinor: amounts[0],
     medianMinor,

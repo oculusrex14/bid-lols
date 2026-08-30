@@ -183,7 +183,7 @@ export type BountyDetail = {
     handle: string | null;
     display_name: string | null;
   }>;
-  awards: Array<{ place: number; amount_minor: number; handle: string | null; status: string }>;
+  awards: Array<{ place: number; amount_minor: number; currency: string; handle: string | null; status: string }>;
   viewer: {
     isSponsor: boolean;
     application: { id: string; status: string } | null;
@@ -241,8 +241,8 @@ export async function getBountyDetail(
      order by s.place asc nulls last, s.submitted_at desc`,
     [bountyId],
   );
-  const awards = await sql.query<{ place: number; amount_minor: number; handle: string | null; status: string }>(
-    `select a.place, a.amount_minor, a.status, pr.handle
+  const awards = await sql.query<{ place: number; amount_minor: number; currency: string; handle: string | null; status: string }>(
+    `select a.place, a.amount_minor, a.currency, a.status, pr.handle
      from bounty_awards a
      left join profiles pr on pr.user_id = a.user_id
      where a.bounty_id = $1 order by a.place`,

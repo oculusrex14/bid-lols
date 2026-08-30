@@ -35,6 +35,8 @@ interface EventDraft {
   workType: "BOUNTY" | "PROJECT" | "PARENT_WORK";
   workId: string;
   amountMinor: number;
+  /** RC5.1 WS11: the work item's persisted currency (factual provenance). */
+  currency: string;
   complexity: number;
   occurredAt: Date;
   meta: Record<string, unknown>;
@@ -75,6 +77,7 @@ async function draftsFromFacts(
             workType: src.type,
             workId: src.id,
             amountMinor: o.amountMinor,
+            currency: o.currency,
             complexity: o.complexity,
             occurredAt: new Date(asOf.getTime() - o.occurredDaysAgo * DAY_MS),
             meta: { timelinessY: o.timelinessY, stewardshipY: o.stewardshipY, childOutcomeY: o.childOutcomeY },
@@ -98,6 +101,7 @@ async function draftsFromFacts(
         workType: "PROJECT",
         workId: src.id,
         amountMinor: o.amountMinor,
+        currency: o.currency,
         complexity: o.complexity,
         occurredAt: new Date(asOf.getTime() - o.occurredDaysAgo * DAY_MS),
         meta: {},
@@ -120,6 +124,7 @@ async function draftsFromFacts(
         workType: a.workType,
         workId: a.workId,
         amountMinor: a.amountMinor,
+        currency: a.currency,
         complexity,
         occurredAt: new Date(asOf.getTime() - a.ageDays * DAY_MS),
         meta: { resolutionCode: a.resolutionCode, share: target.share },
@@ -191,7 +196,7 @@ export async function projectUserTrustEvents(
              (id, user_id, role, product, work_type, work_id, counterparty_user_id,
               event_kind, severity_code, amount_minor, currency, complexity_raw,
               complexity_version, source_type, source_id, occurred_at, meta)
-           values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'INR',$11,$12,$13,$14,$15,$16::jsonb)`,
+           values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17::jsonb)`,
           [
             makeId("tev_"),
             draft.userId,
@@ -203,6 +208,10 @@ export async function projectUserTrustEvents(
             draft.eventKind,
             draft.severityCode,
             draft.amountMinor,
+            // RC5.1 WS11: factual currency provenance from the work item —
+            // no longer a literal 'INR' (every existing work is INR, so this
+            // is behavior-identical for all historical events).
+            draft.currency,
             draft.complexity,
             COMPLEXITY_VERSION,
             draft.sourceType,

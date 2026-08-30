@@ -6,6 +6,7 @@
  * loader without PII or authority context.
  */
 import type { ProductKey } from "@/lib/host";
+import type { SupportedCurrency } from "@/lib/money";
 import { getSql } from "@/lib/db.server";
 import { HOME_PREVIEW_BOARDS, boardSpec } from "./leaderboard-registry";
 import { listOpenBounties, type BountyListItem } from "./queries.server";
@@ -21,9 +22,13 @@ import {
  * RC5 §5.7: the homepage Market Rates preview. Real values only, from the
  * SAME source as /market-rates (marketRateFor + MARKET_RATE_MIN_SAMPLE).
  * Category selection is a presentation choice; the numbers are not.
+ * RC5.1 WS10: the preview is partitioned by currency — it shows the
+ * viewer-default currency's verified outcomes and says so, never INR
+ * numbers labelled USD.
  */
 export type HomeMarketRate = {
   category: string;
+  currency: SupportedCurrency;
   sampleSize: number;
   sufficient: boolean;
   minMinor: number | null;
@@ -52,13 +57,18 @@ export type HomePreview =
         rows: LeaderboardRow[];
       }>;
       marketRates: HomeMarketRate[];
+      /** The currency the market rates preview is denominated in. */
+      marketRateCurrency: SupportedCurrency;
     };
 
 const PREVIEW_CATEGORIES = 3;
 /** Presentation-only fallback when the network has no categories at all. */
 const FALLBACK_CATEGORIES = ["development", "design", "content"];
 
-async function bidthroneMarketRates(sql: Awaited<ReturnType<typeof getSql>>): Promise<HomeMarketRate[]> {
+async function bidthroneMarketRates(
+  sql: Awaited<ReturnType<typeof getSql>>,
+  currency: SupportedCurrency,
+): Promise<HomeMarketRate[]> {
   const catRows = await sql.query<{ category: string }>(
     `select distinct category from (
        select category from bounties
@@ -67,13 +77,16 @@ async function bidthroneMarketRates(sql: Awaited<ReturnType<typeof getSql>>): Pr
      ) x order by category limit 40`,
   );
   const categories = catRows.length > 0 ? catRows.map((c) => c.category) : FALLBACK_CATEGORIES;
+  // RC5.1 WS10: the currency filters INSIDE the aggregate — one partition
+  // per requested currency, never a mixed array.
   const samples: MarketRateSample[] = await Promise.all(
-    categories.map((category) => marketRateFor(null, category, MARKET_RATE_MIN_SAMPLE)),
+    categories.map((category) => marketRateFor(null, category, currency, MARKET_RATE_MIN_SAMPLE)),
   );
   // The most-evidenced categories lead (real data order); ties stay stable.
   samples.sort((a, b) => b.sampleSize - a.sampleSize || a.category.localeCompare(b.category));
   return samples.slice(0, PREVIEW_CATEGORIES).map((s) => ({
     category: s.category,
+    currency: s.currency,
     sampleSize: s.sampleSize,
     sufficient: s.sufficient,
     minMinor: s.minMinor,
@@ -82,7 +95,7 @@ async function bidthroneMarketRates(sql: Awaited<ReturnType<typeof getSql>>): Pr
   }));
 }
 
-export async function homePreview(productKey: ProductKey): Promise<HomePreview> {
+export async function homePreview(productKey: ProductKey, viewerCurrency: SupportedCurrency): Promise<HomePreview> {
   switch (productKey) {
     case "foundersbid":
     case "culturebid": {
@@ -121,8 +134,9 @@ export async function homePreview(productKey: ProductKey): Promise<HomePreview> 
       }
       // RC5 §5.7: the preview consumes marketRateFor() — the same gated
       // aggregate /market-rates serves. No second, looser meaning.
-      const marketRates = await bidthroneMarketRates(sql);
-      return { kind: "boards", boards: out, marketRates };
+      // RC5.1 WS10: partitioned by the viewer's default currency.
+      const marketRates = await bidthroneMarketRates(sql, viewerCurrency);
+      return { kind: "boards", boards: out, marketRates, marketRateCurrency: viewerCurrency };
     }
   }
 }

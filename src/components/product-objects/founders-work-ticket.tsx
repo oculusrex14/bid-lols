@@ -53,7 +53,10 @@ export function FoundersWorkTicket({
       <div className="work-ticket-muted mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
         <span>{category}</span>
         <span>{duration}</span>
-        <MoneyValue minor={rewardMinor} currency={currency} size="md" className="work-ticket-accent" />
+        {/* RC5.1 WS4: the work ticket is a marketing/product-object surface —
+            zero minor units trim ("₹85,000" / "$1,000"), nonzero stay exact
+            ("₹85,000.50" / "$1,000.50"). */}
+        <MoneyValue minor={rewardMinor} currency={currency} size="md" className="work-ticket-accent" trimZeroDecimals />
         <span>
           {slotsTaken}/{slotsCap} slots
         </span>

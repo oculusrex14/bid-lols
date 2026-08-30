@@ -170,7 +170,7 @@ export async function publishBountyForFunding(opts: {
   returnUrl?: string;
 }): Promise<
   | { ok: true; mode: string; checkout: { paymentSessionId: string; providerOrderId: string; checkoutUrl?: string } }
-  | { ok: false; code: "funding_disabled" | "not_found" | "forbidden" | "invalid_state" | "provider_error"; message: string }
+  | { ok: false; code: "funding_disabled" | "not_found" | "forbidden" | "invalid_state" | "unsupported_currency" | "provider_error"; message: string }
 > {
   const sql = await getSql();
   const mode = moneyMode();
@@ -184,6 +184,14 @@ export async function publishBountyForFunding(opts: {
   }
   if (bounty.status !== "DRAFT") {
     return { ok: false, code: "invalid_state", message: `Bounty is ${bounty.status}, not DRAFT.` };
+  }
+  // RC5.1 WS9: the provider must actually collect THIS work item's currency
+  // BEFORE any state write. Cashfree is INR-only; a USD bounty is drafted
+  // fine but can never be funded through it — no fake conversion, ever.
+  if (mode !== "off") {
+    const { getPaymentProvider, unsupportedCollectionError } = await import("@/lib/payments/provider");
+    const bad = unsupportedCollectionError(getPaymentProvider(), bounty.currency);
+    if (bad) return { ok: false, ...bad };
   }
 
   const claim = await sql.query<{ id: string }>(

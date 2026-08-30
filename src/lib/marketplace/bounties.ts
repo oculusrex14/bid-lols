@@ -36,8 +36,13 @@ const createBountyInput = z
     skills: z.array(z.string().trim().min(1).max(40)).max(20).default([]),
     deliverables: z.string().trim().max(8000).default(""),
     acceptanceCriteria: z.string().trim().max(8000).default(""),
-    // ₹1,000 … ₹1,000,000,000 (1e9 rupees) in paise.
+    // 100,000 … 100,000,000,000 minor units: ₹1,000…₹1,000,000,000 INR or
+    // $1,000…$1,000,000,000 USD (RC5.1 WS8: the floor is in minor units,
+    // same number in either currency — no invented FX threshold).
     rewardTotalMinor: z.number().int().min(100_000).max(1_000_000_000_00),
+    // RC5.1 WS8: the sponsor's explicit currency choice; z.enum fails
+    // visibly on anything else (never silently assume INR).
+    currency: z.enum(["INR", "USD"]).default("INR"),
     rewardStructure: z.enum(REWARD_STRUCTURES),
     rewardAllocations: z
       .array(
@@ -100,7 +105,7 @@ export const createBountyFn = createServerFn({ method: "POST" })
           deliverables: data.deliverables,
           acceptanceCriteria: data.acceptanceCriteria,
           rewardTotalMinor: data.rewardTotalMinor,
-          currency: "INR",
+          currency: data.currency,
           rewardStructure: data.rewardStructure,
           rewardAllocations: data.rewardAllocations,
           applicationDeadline: data.applicationDeadline,

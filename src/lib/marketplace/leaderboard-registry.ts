@@ -124,7 +124,7 @@ export const BOARD_REGISTRY: readonly BoardSpec[] = [
     format: (m, o) =>
       `Reliability ${Math.round(m * 100)}% · ${o} verified outcome${o === 1 ? "" : "s"}`,
     explanation:
-      "Providers ranked by the BI-1.0 reliability pillar: the share of their verified provider outcomes that completed clean. This is a 0 to 100 percent evidence ratio, NOT a 300-900 Bid Index number. The pillar requires full provider score eligibility, so the board is empty until providers establish history.",
+      "Providers ranked by the BI-1.0 reliability estimate, a Bayesian estimate derived from weighted verified provider outcomes. It is shown as a percentage but is not the literal percentage of jobs completed clean. This is NOT a 300-900 Bid Index number. The board requires full provider score eligibility, so it is empty until providers establish history.",
   },
   {
     key: "rising",

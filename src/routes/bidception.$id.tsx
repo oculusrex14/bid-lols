@@ -20,11 +20,11 @@ import {
   eligibleCaptainsFn,
   type EligibleCaptain,
 } from "@/lib/marketplace/bidception";
-import { formatMinor } from "@/lib/money";
+import { formatMinor, toSupportedCurrency } from "@/lib/money";
 import { MoneyValue } from "@/components/ui/money";
 import { StatusBadge } from "@/components/ui/status";
 import { Button } from "@/components/ui/button";
-import { Field, Input, CheckRow } from "@/components/ui/field";
+import { Field, Input, Select, CheckRow } from "@/components/ui/field";
 import { StickyPanel } from "@/components/ui/market";
 import { InlineNotice } from "@/components/ui/states";
 import { BudgetBar, Metric } from "@/components/ui/data";
@@ -82,6 +82,8 @@ const loadDetail = createServerFn({ method: "GET" })
     return {
       product: await currentProductKey(),
       me: shellContext.me, funding: shellContext.funding,
+      // RC5.1 WS8: default currency for the funding form (viewer region).
+      viewerCurrency: shellContext.viewerCurrency,
       parent: row,
       children,
       allocated,
@@ -242,7 +244,7 @@ function BudgetPanel({ data, completeCount }: { data: DetailData; completeCount:
     <div className="rounded-md border border-fg/10 bg-surface/60 p-4" data-testid="budget-panel">
       <p className="text-xs font-semibold uppercase tracking-kicker text-subtle">Budget</p>
       <div className="mt-2 flex items-baseline justify-between gap-3">
-        <Metric label="Funded total" value={formatMinor(Number(funded), p.currency)} />
+        <Metric label="Funded total" value={formatMinor(Number(funded), toSupportedCurrency(p.currency))} />
       </div>
       <div className="mt-3" data-testid="budget-bar">
         <BudgetBar
@@ -257,7 +259,7 @@ function BudgetPanel({ data, completeCount }: { data: DetailData; completeCount:
       <dl className="mt-3 space-y-2 border-t border-fg/10 pt-3 text-sm">
         <div className="flex items-baseline justify-between gap-3">
           <dt className="text-xs uppercase tracking-kicker text-subtle">Available balance</dt>
-          <dd className="tabular font-semibold" data-testid="balance">{formatMinor(data.balance, p.currency)}</dd>
+          <dd className="tabular font-semibold" data-testid="balance">{formatMinor(data.balance, toSupportedCurrency(p.currency))}</dd>
         </div>
         <div className="flex items-baseline justify-between gap-3">
           <dt className="text-xs uppercase tracking-kicker text-subtle">Work units</dt>
@@ -295,7 +297,13 @@ function LifecycleActions({
         <p className="mt-1 text-xs text-muted">
           Set the total budget. The platform fee is charged on top. Funding is not enabled yet: the checkout will open once it is.
         </p>
-        <FundForm parentId={data.parent.id} emailVerified={data.emailVerified} busy={busy} onRun={onRun} />
+        <FundForm
+          parentId={data.parent.id}
+          emailVerified={data.emailVerified}
+          defaultCurrency={data.viewerCurrency}
+          busy={busy}
+          onRun={onRun}
+        />
       </div>
     ) : null;
   }
@@ -334,14 +342,18 @@ function LifecycleActions({
 function FundForm({
   parentId,
   emailVerified,
+  defaultCurrency,
   busy,
   onRun,
 }: {
   parentId: string;
   emailVerified: boolean;
+  /** RC5.1 WS8: the sponsor's currency choice (viewer default to start). */
+  defaultCurrency: "INR" | "USD";
   busy: boolean;
   onRun: (fn: () => Promise<{ ok: boolean; message?: string; checkoutUrl?: string }>, okNote: string) => Promise<void>;
 }) {
+  const [currency, setCurrency] = useState<"INR" | "USD">(defaultCurrency);
   return (
     <form
       className="mt-3"
@@ -350,8 +362,14 @@ function FundForm({
         const f = new FormData(e.currentTarget);
         await onRun(
           async () => {
+            // RC5.1 WS8: budget in MAJOR units of the chosen currency; no
+            // conversion happens when the currency changes.
             const r = await publishParentWorkFn({
-              data: { parentWorkId: parentId, budgetRupees: Number(f.get("budgetRupees")) },
+              data: {
+                parentWorkId: parentId,
+                budgetMajor: Number(f.get("budgetMajor")),
+                currency,
+              },
             });
             if (r.ok && "checkoutUrl" in r && r.checkoutUrl) {
               return { ok: true, checkoutUrl: r.checkoutUrl };
@@ -362,9 +380,22 @@ function FundForm({
         );
       }}
     >
-      <Field label="Total budget (rupees)" required id="bp-budget" hint="The pool the captain allocates from. The platform fee is charged on top.">
-        <Input id="bp-budget" name="budgetRupees" type="number" required min={1000} className="tabular" />
-      </Field>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field label={`Total budget (${currency})`} required id="bp-budget" hint={`The pool the captain allocates from, in ${currency}. Minimum 1,000 ${currency}. The platform fee is charged on top.`}>
+          <Input id="bp-budget" name="budgetMajor" type="number" required min={1000} className="tabular" />
+        </Field>
+        <Field label="Currency" required id="bp-currency" hint="Fixed once funding starts. No conversion is ever applied.">
+          <Select
+            id="bp-currency"
+            value={currency}
+            onChange={(e) => setCurrency(e.target.value as "INR" | "USD")}
+            data-testid="parent-currency"
+          >
+            <option value="INR">₹ Indian rupee (INR)</option>
+            <option value="USD">$ US dollar (USD)</option>
+          </Select>
+        </Field>
+      </div>
       <Button type="submit" className="mt-3 w-full" loading={busy} disabled={!emailVerified}>
         Fund & publish
       </Button>

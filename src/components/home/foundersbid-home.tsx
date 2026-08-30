@@ -11,8 +11,12 @@ import { SectionHeader } from "@/components/ui/layout";
 import { deadlinePhrase, absoluteDate } from "@/lib/reltime";
 import { FoundersWorkTicket } from "@/components/product-objects/founders-work-ticket";
 import { ExampleBadge } from "@/components/product-objects/example-badge";
-import { FOUNDERS_WORK_TICKET_EXAMPLE } from "@/lib/sample-content";
+import {
+  foundersWorkTicketExample,
+  foundersResearchTicketExample,
+} from "@/lib/sample-content";
 import { categoriesFor } from "@/lib/marketplace/categories";
+import type { SupportedCurrency } from "@/lib/money";
 
 /**
  * FoundersBid home (RC5 §20): the workshop paper. One operational spine
@@ -31,27 +35,27 @@ const CATEGORIES = categoriesFor("foundersbid");
 
 type HomeOpenItem = Extract<HomePreview, { kind: "bounties" }>["items"];
 
-/** A second sample ticket for the labelled "Sample work" section. */
-const SAMPLE_RESEARCH_TICKET = {
-  example: true as const,
-  title: "Teardown of three competitor pricing pages",
-  category: "Research",
-  duration: "2 weeks",
-  rewardMinor: 40_000_00,
-  currency: "INR",
-  slotsTaken: 0,
-  slotsCap: 3,
-  note: "Example work. Not a live bounty.",
-};
-
-export function FoundersbidHome({ me, preview }: { me?: ShellMe | null; preview: HomePreview }) {
+/**
+ * RC5.1 WS7: sample objects render in the VIEWER DEFAULT currency (India ->
+ * INR, everywhere else -> USD). Real objects always render in their own
+ * persisted currency; the viewer never touches that.
+ */
+export function FoundersbidHome({
+  me,
+  preview,
+  viewerCurrency,
+}: {
+  me?: ShellMe | null;
+  preview: HomePreview;
+  viewerCurrency: SupportedCurrency;
+}) {
   const openItems = preview.kind === "bounties" ? preview.items : [];
   void me;
   return (
     <>
-      <FoundersHero openItems={openItems} />
+      <FoundersHero openItems={openItems} viewerCurrency={viewerCurrency} />
       <OpenNowSection openItems={openItems} />
-      <SampleWorkSection />
+      <SampleWorkSection viewerCurrency={viewerCurrency} />
       <ModesChooser />
       <CategoriesSection />
       <WriteUpSection />
@@ -69,8 +73,15 @@ export function FoundersbidHome({ me, preview }: { me?: ShellMe | null; preview:
 }
 
 /** 1 — Hero: statement left, the work ticket right (sample or real). */
-function FoundersHero({ openItems }: { openItems: HomeOpenItem }) {
+function FoundersHero({
+  openItems,
+  viewerCurrency,
+}: {
+  openItems: HomeOpenItem;
+  viewerCurrency: SupportedCurrency;
+}) {
   const first = openItems[0];
+  const sample = foundersWorkTicketExample(viewerCurrency);
   return (
     <section className="founders-brand-layer canvas-brand grid grid-cols-1 gap-10 pt-14 sm:pt-20 lg:grid-cols-12">
       <div className="lg:col-span-7">
@@ -108,13 +119,13 @@ function FoundersHero({ openItems }: { openItems: HomeOpenItem }) {
         ) : (
           <FoundersWorkTicket
             sample
-            title={FOUNDERS_WORK_TICKET_EXAMPLE.title}
-            category={FOUNDERS_WORK_TICKET_EXAMPLE.category}
-            duration={FOUNDERS_WORK_TICKET_EXAMPLE.duration}
-            rewardMinor={FOUNDERS_WORK_TICKET_EXAMPLE.rewardMinor}
-            currency={FOUNDERS_WORK_TICKET_EXAMPLE.currency}
-            slotsTaken={FOUNDERS_WORK_TICKET_EXAMPLE.slotsTaken}
-            slotsCap={FOUNDERS_WORK_TICKET_EXAMPLE.slotsCap}
+            title={sample.title}
+            category={sample.category}
+            duration={sample.duration}
+            rewardMinor={sample.rewardMinor}
+            currency={sample.currency}
+            slotsTaken={sample.slotsTaken}
+            slotsCap={sample.slotsCap}
           />
         )}
         <p className="mt-3 text-xs text-subtle">
@@ -211,8 +222,9 @@ function JobCard({ item }: { item: HomeOpenItem[number] }) {
 }
 
 /** 3 — Sample work: separate from "Open now", every ticket labelled. */
-function SampleWorkSection() {
-  const e = FOUNDERS_WORK_TICKET_EXAMPLE;
+function SampleWorkSection({ viewerCurrency }: { viewerCurrency: SupportedCurrency }) {
+  const e = foundersWorkTicketExample(viewerCurrency);
+  const r = foundersResearchTicketExample(viewerCurrency);
   return (
     <section className="canvas-brand mt-14 sm:mt-16">
       <SectionHeader
@@ -233,14 +245,14 @@ function SampleWorkSection() {
         />
         <FoundersWorkTicket
           sample
-          title={SAMPLE_RESEARCH_TICKET.title}
-          category={SAMPLE_RESEARCH_TICKET.category}
-          duration={SAMPLE_RESEARCH_TICKET.duration}
-          rewardMinor={SAMPLE_RESEARCH_TICKET.rewardMinor}
-          currency={SAMPLE_RESEARCH_TICKET.currency}
-          slotsTaken={SAMPLE_RESEARCH_TICKET.slotsTaken}
-          slotsCap={SAMPLE_RESEARCH_TICKET.slotsCap}
-          note={SAMPLE_RESEARCH_TICKET.note}
+          title={r.title}
+          category={r.category}
+          duration={r.duration}
+          rewardMinor={r.rewardMinor}
+          currency={r.currency}
+          slotsTaken={r.slotsTaken}
+          slotsCap={r.slotsCap}
+          note={r.note}
         />
       </div>
     </section>

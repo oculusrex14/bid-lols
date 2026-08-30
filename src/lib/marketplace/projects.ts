@@ -16,14 +16,20 @@ import { moneyMode } from "@/lib/payments/provider";
  * authorization discipline as the bounty serverFns.
  */
 
+/**
+ * RC5.1 WS8: the sponsor picks the work currency (INR or USD) at creation;
+ * z.enum rejects anything else at the boundary. Major-unit budget fields
+ * (renamed from *Rupees: they are denomination-agnostic now).
+ */
 const createInput = z
   .object({
     title: z.string().trim().min(8).max(140),
     description: z.string().trim().min(20).max(30000),
     category: z.string().trim().min(2).max(40),
     skills: z.array(z.string().trim().min(1).max(40)).max(20).default([]),
-    budgetMinRupees: z.number().int().min(0).optional(),
-    budgetMaxRupees: z.number().int().min(0).optional(),
+    budgetMin: z.number().int().min(0).optional(),
+    budgetMax: z.number().int().min(0).optional(),
+    currency: z.enum(["INR", "USD"]).default("INR"),
     proposalDeadline: z.string().datetime().optional(),
     ipAndConfidentiality: z.string().trim().max(4000).default(""),
   })
@@ -46,8 +52,9 @@ export const createProjectFn = createServerFn({ method: "POST" })
           description: data.description,
           category: data.category,
           skills: data.skills,
-          budgetMinMinor: data.budgetMinRupees != null ? data.budgetMinRupees * 100 : undefined,
-          budgetMaxMinor: data.budgetMaxRupees != null ? data.budgetMaxRupees * 100 : undefined,
+          budgetMinMinor: data.budgetMin != null ? data.budgetMin * 100 : undefined,
+          budgetMaxMinor: data.budgetMax != null ? data.budgetMax * 100 : undefined,
+          currency: data.currency,
           proposalDeadline: data.proposalDeadline ?? null,
           ipAndConfidentiality: data.ipAndConfidentiality,
         });

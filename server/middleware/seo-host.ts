@@ -47,7 +47,7 @@ import {
   truncateWords,
   wwwRedirectFor,
 } from "../../scripts/host-seo-shared.mjs";
-import { formatMinor } from "@/lib/money";
+import { formatMinor, toSupportedCurrency } from "@/lib/money";
 
 interface SeoHostEvent {
   url: URL;
@@ -95,9 +95,11 @@ const INDEXABLE_GRAVEYARD = new Set(["LISTED", "UNDER_OFFER", "TRANSFERRED"]);
 const INDEXABLE_PARENT = new Set(["FUNDED", "ACTIVE", "COMPLETING", "COMPLETED"]);
 
 /** money.ts is pure (no imports) — safe to use here without the DB chain. */
-function inr(minor: number | null, currency: string): string | null {
+function money(minor: number | null, currency: string): string | null {
   if (minor == null) return null;
-  return formatMinor(Number(minor), currency || "INR");
+  // RC5.1 WS13: titles render the record's own persisted currency; an
+  // unknown code fails visibly instead of assuming INR.
+  return formatMinor(Number(minor), toSupportedCurrency(currency));
 }
 
 /**
@@ -188,7 +190,7 @@ async function bountyEntityMeta(productKey: string, p: string, id: string, sql: 
   const b = rows[0];
   if (!b) return null;
   const indexable = INDEXABLE_BOUNTY.has(b.status);
-  const reward = indexable && b.reward_total_minor != null ? inr(b.reward_total_minor, b.currency) : null;
+  const reward = indexable && b.reward_total_minor != null ? money(b.reward_total_minor, b.currency) : null;
   const brand = productKey === "culturebid" ? "CultureBid" : "FoundersBid";
   return buildEntityMeta(productKey, p, {
     title: `${truncateWords(b.title, 52)}${indexable ? "" : " (draft)"} · ${b.category}${reward ? ` · ${reward}` : ""} | ${brand}`,
@@ -225,7 +227,7 @@ async function graveyardEntityMeta(productKey: string, p: string, id: string, sq
   const g = rows[0];
   if (!g) return null;
   const indexable = INDEXABLE_GRAVEYARD.has(g.status);
-  const price = indexable && g.asking_price_minor != null ? inr(g.asking_price_minor, g.currency) : null;
+  const price = indexable && g.asking_price_minor != null ? money(g.asking_price_minor, g.currency) : null;
   return buildEntityMeta(productKey, p, {
     title: `${truncateWords(g.title, 52)} · ${price ?? "Open to offers"} | FoundersBid Graveyard`,
     description: truncateWords(g.description, 150) || "An abandoned project offered for transfer on FoundersBid.",
@@ -244,7 +246,7 @@ async function parentEntityMeta(productKey: string, p: string, id: string, sql: 
   const pw = rows[0];
   if (!pw) return null;
   const indexable = INDEXABLE_PARENT.has(pw.status);
-  const budget = indexable && pw.funded_budget_minor != null ? inr(pw.funded_budget_minor, pw.currency) : null;
+  const budget = indexable && pw.funded_budget_minor != null ? money(pw.funded_budget_minor, pw.currency) : null;
   return buildEntityMeta(productKey, p, {
     title: `${truncateWords(pw.title, 52)} · ${budget ?? "Team project"} | Bidception`,
     description: truncateWords(pw.objective, 150) || "One funded project, built as a team on Bidception.",

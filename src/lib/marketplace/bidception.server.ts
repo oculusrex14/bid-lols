@@ -66,7 +66,10 @@ export async function publishParentForFunding(opts: {
   sponsorUserId: string;
   email?: string;
   returnUrl?: string;
-  budgetRupees: number;
+  /** RC5.1 WS8: the funded budget in MAJOR units of `currency`. */
+  budgetMajor: number;
+  /** The work currency, chosen by the sponsor on the funding form. */
+  currency: "INR" | "USD";
 }): Promise<{ ok: true; checkoutUrl?: string; providerOrderId: string } | { ok: false; code: string; message: string }> {
   const sql = await getSql();
   const mode = moneyMode();
@@ -77,16 +80,20 @@ export async function publishParentForFunding(opts: {
       message: "Funding is not live yet, so this project stays a draft. Join the launch updates list to be notified when funding opens on Bidception.",
     };
   }
-  const budgetMinor = Math.round(opts.budgetRupees * 100);
+  const budgetMinor = Math.round(opts.budgetMajor * 100);
   const decomposition = fundingDecomposition(budgetMinor);
   const paymentId = makeId("pmt_");
   try {
-    const { getPaymentProvider } = await import("@/lib/payments/provider");
+    // RC5.1 WS9: the provider must actually collect this currency BEFORE any
+    // state write or provider call. Cashfree is INR-only; no fake conversion.
+    const { getPaymentProvider, unsupportedCollectionError } = await import("@/lib/payments/provider");
     const prov = getPaymentProvider();
+    const bad = unsupportedCollectionError(prov, opts.currency);
+    if (bad) return { ok: false, ...bad };
     const order = await prov.createOrder({
       localOrderId: paymentId,
       amountMinor: decomposition.sponsorSubtotal,
-      currency: "INR",
+      currency: opts.currency,
       email: opts.email,
       note: "Bidception parent work funding",
       returnUrl: opts.returnUrl,
@@ -95,11 +102,12 @@ export async function publishParentForFunding(opts: {
       `insert into payments
         (id, user_id, product, kind, amount_cents, currency, status, provider,
          provider_order_id, idempotency_key, meta)
-       values ($1,$2,'bidception','funding',$3,'INR','pending',$4,$5,$6,$7::jsonb)`,
+       values ($1,$2,'bidception','funding',$3,$4,'pending',$5,$6,$7,$8::jsonb)`,
       [
         paymentId,
         opts.sponsorUserId,
         decomposition.sponsorSubtotal,
+        opts.currency,
         prov.name,
         order.providerOrderId,
         `parent-funding:${opts.parentWorkId}`,
@@ -112,9 +120,9 @@ export async function publishParentForFunding(opts: {
     );
     const claimed = await sql.query<{ id: string }>(
       `update parent_works set status='AWAITING_FUNDING', funded_budget_minor=$2,
-         funding_payment_id=$3, updated_at=now()
-       where id=$1 and sponsor_user_id=$4 and status='DRAFT' returning id`,
-      [opts.parentWorkId, budgetMinor, paymentId, opts.sponsorUserId],
+         currency=$3, funding_payment_id=$4, updated_at=now()
+       where id=$1 and sponsor_user_id=$5 and status='DRAFT' returning id`,
+      [opts.parentWorkId, budgetMinor, opts.currency, paymentId, opts.sponsorUserId],
     );
     if (claimed.length !== 1) {
       return { ok: false, code: "invalid_state", message: "Parent work is not a draft." };
@@ -408,6 +416,7 @@ type AllocatableParent = {
   captain_compensation_minor: number;
   status: string;
   product: string;
+  currency: string;
 };
 
 async function loadAllocatableParent(
@@ -415,7 +424,7 @@ async function loadAllocatableParent(
   parentWorkId: string,
 ): Promise<AllocatableParent | null> {
   const rows = await tx.query<AllocatableParent>(
-    "select id, sponsor_user_id, captain_user_id, funded_budget_minor, captain_compensation_minor, status, product from parent_works where id = $1 and funded_budget_minor is not null for update",
+    "select id, sponsor_user_id, captain_user_id, funded_budget_minor, captain_compensation_minor, status, product, currency from parent_works where id = $1 and funded_budget_minor is not null for update",
     [parentWorkId],
   );
   return rows[0] ?? null;
@@ -474,7 +483,9 @@ async function materializeBountyChild(
       `Child unit of parent work ${opts.parentWorkId}: ${opts.title}. Deliverables, acceptance criteria and IP rules are managed on the parent work page and apply to this child unit.`,
       opts.bountySpec?.category ?? "development",
       opts.allocatedMinor,
-      "INR",
+      // RC5.1 WS8: child work is denominated in the PARENT's currency —
+      // the allocation came out of the parent's funded pool, one currency.
+      parent.currency,
       structure,
       JSON.stringify([{ place: 1, amount_minor: opts.allocatedMinor, label: opts.title }]),
       new Date(opts.bountySpec?.submissionDeadline ?? Date.now() + 14 * 86400_000),
@@ -498,7 +509,7 @@ async function materializeProjectChild(
     `insert into projects
       (id, product, sponsor_user_id, title, slug, description, category,
        budget_max_minor, currency, ip_and_confidentiality, status, parent_work_id, published_at)
-     values ($1,$2,$3,$4,$5,$6,$7,$8,'INR',$9,'OPEN_FOR_PROPOSALS',$10,now())`,
+     values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'OPEN_FOR_PROPOSALS',$11,now())`,
     [
       linkedId,
       parent.product,
@@ -508,6 +519,7 @@ async function materializeProjectChild(
       `Child unit of parent work ${opts.parentWorkId}: ${opts.title}. Budget is capped at the parent allocation; funding flows from the parent, so no separate sponsor charge is taken.`,
       opts.projectSpec?.category ?? "development",
       opts.allocatedMinor,
+      parent.currency,
       opts.projectSpec?.ipAndConfidentiality ?? "",
       opts.parentWorkId,
     ],

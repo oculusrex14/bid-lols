@@ -373,7 +373,10 @@ function OfferBox({ listingId, currency, onDone }: { listingId: string; currency
     >
       <p className="text-sm font-semibold">Make an offer</p>
       <div className="mt-3 space-y-3">
-        <Field label={`Your offer (₹${currency === "INR" ? "" : ` ${currency}`})`} required id="offer-amount">
+        {/* RC5.1 WS13: the offer is denominated in the LISTING's currency
+            (graveyard listings are INR in this release; the label never
+            invents a symbol or mixes code + symbol). */}
+        <Field label={`Your offer (${currency})`} required id="offer-amount">
           <Input id="offer-amount" name="amountRupees" type="number" required min={1} className="tabular" />
         </Field>
         <Field label="Terms or questions (optional)" id="offer-message">

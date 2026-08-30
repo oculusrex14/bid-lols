@@ -80,6 +80,10 @@ export function reportFingerprint(userId: string, roles: PreparedEvidence[]): st
         ex: o.excludedFromEvidence,
         d: o.occurredDaysAgo,
         a: o.amountMinor,
+        // RC5.1 WS11: currency is scoring-relevant (the INR-native gate) and
+        // must fingerprint: a cache built before the currency existed may
+        // not be reused once an outcome's denomination can matter.
+        cu: o.currency,
         s: o.severity,
         c: Math.round(o.complexity * 1e6) / 1e6,
         t: o.timelinessY,

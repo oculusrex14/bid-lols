@@ -26,7 +26,10 @@ export type BountyDraft = {
   qualificationMode: "SPONSOR_APPROVAL" | "APPLICATION_ONLY";
   applicationDeadline: string;
   submissionDeadline: string;
-  rewardRupees: string;
+  /** Major-unit reward in the draft's currency (form input stays textual). */
+  rewardMajor: string;
+  /** RC5.1 WS8: the sponsor's currency choice (INR or USD), persisted. */
+  currency: "INR" | "USD";
   rewardStructure: "WINNER_TAKES_ALL" | "PODIUM" | "FINALIST_POOL";
   podiumFirst: string;
   podiumSecond: string;
@@ -380,10 +383,11 @@ export function StepReward({
       ? num(d.podiumFirst) + num(d.podiumSecond) + num(d.podiumThird)
       : d.rewardStructure === "FINALIST_POOL"
         ? num(d.poolWinner) + num(d.poolFinalist) * Math.max(1, Number(d.poolFinalists) || 1)
-        : num(d.rewardRupees);
-  const rewardMinor = num(d.rewardRupees);
+        : num(d.rewardMajor);
+  const rewardMinor = num(d.rewardMajor);
   const mismatch =
     rewardMinor > 0 && (d.rewardStructure !== "WINNER_TAKES_ALL" && allocated !== rewardMinor);
+  const cur = d.currency;
 
   return (
     <FormSection
@@ -391,19 +395,34 @@ export function StepReward({
       description="The advertised reward is exactly what winners receive. The platform fee is charged to you on top, and the split is shown before you commit to anything."
     >
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Advertised reward (rupees)" required error={errors.reward} id="bn-reward" hint="Minimum 1,000 rupees. Winners receive exactly this amount.">
+        <Field label={`Advertised reward (${cur})`} required error={errors.reward} id="bn-reward" hint={`Minimum 1,000 ${cur}. Winners receive exactly this amount, in ${cur}.`}>
           <Input
             id="bn-reward"
-            name="rewardRupees"
+            name="rewardMajor"
             type="number"
             min={1000}
             step={1}
-            value={d.rewardRupees}
+            value={d.rewardMajor}
             invalid={Boolean(errors.reward)}
-            onChange={(e) => set("rewardRupees", e.target.value)}
+            onChange={(e) => set("rewardMajor", e.target.value)}
             data-testid="reward-input"
             className="tabular"
           />
+        </Field>
+        {/* RC5.1 WS8: the sponsor's currency choice. Changing it changes the
+            DENOMINATION, never the numbers — no FX, no conversion. The
+            currency is persisted with the draft and immutable after. */}
+        <Field label="Currency" required id="bn-currency" hint="Fixed when the draft is created. Changing currency does not convert the amount you typed.">
+          <Select
+            id="bn-currency"
+            name="currency"
+            value={cur}
+            onChange={(e) => set("currency", e.target.value as BountyDraft["currency"])}
+            data-testid="bounty-currency"
+          >
+            <option value="INR">₹ Indian rupee (INR)</option>
+            <option value="USD">$ US dollar (USD)</option>
+          </Select>
         </Field>
         <Field label="Reward structure" required id="bn-struct">
           <Select
@@ -421,18 +440,18 @@ export function StepReward({
 
       {d.rewardStructure === "PODIUM" ? (
         <div className="mt-4 grid gap-4 sm:grid-cols-3">
-          <Field label="1st place (₹)" id="bn-p1">
+          <Field label={`1st place (${cur})`} id="bn-p1">
             <Input id="bn-p1" name="podiumFirst" type="number" min={0} value={d.podiumFirst} onChange={(e) => set("podiumFirst", e.target.value)} className="tabular" />
           </Field>
-          <Field label="2nd place (₹)" id="bn-p2">
+          <Field label={`2nd place (${cur})`} id="bn-p2">
             <Input id="bn-p2" name="podiumSecond" type="number" min={0} value={d.podiumSecond} onChange={(e) => set("podiumSecond", e.target.value)} className="tabular" />
           </Field>
-          <Field label="3rd place (₹)" id="bn-p3">
+          <Field label={`3rd place (${cur})`} id="bn-p3">
             <Input id="bn-p3" name="podiumThird" type="number" min={0} value={d.podiumThird} onChange={(e) => set("podiumThird", e.target.value)} className="tabular" />
           </Field>
           {mismatch ? (
             <p className="text-xs font-medium text-danger sm:col-span-3">
-              The split must add up to the advertised reward. ({formatMinor(allocated)} of {formatMinor(rewardMinor)} allocated.)
+              The split must add up to the advertised reward. ({formatMinor(allocated, cur)} of {formatMinor(rewardMinor, cur)} allocated.)
             </p>
           ) : null}
         </div>
@@ -440,10 +459,10 @@ export function StepReward({
 
       {d.rewardStructure === "FINALIST_POOL" ? (
         <div className="mt-4 grid gap-4 sm:grid-cols-3">
-          <Field label="Winner premium (₹)" id="bn-pw">
+          <Field label={`Winner premium (${cur})`} id="bn-pw">
             <Input id="bn-pw" name="poolWinner" type="number" min={0} value={d.poolWinner} onChange={(e) => set("poolWinner", e.target.value)} className="tabular" />
           </Field>
-          <Field label="Per finalist (₹)" id="bn-pfr">
+          <Field label={`Per finalist (${cur})`} id="bn-pfr">
             <Input id="bn-pfr" name="poolFinalist" type="number" min={0} value={d.poolFinalist} onChange={(e) => set("poolFinalist", e.target.value)} className="tabular" />
           </Field>
           <Field label="Finalists" id="bn-pfn">
@@ -451,7 +470,7 @@ export function StepReward({
           </Field>
           {mismatch ? (
             <p className="text-xs font-medium text-danger sm:col-span-3">
-              The pool must add up to the advertised reward. ({formatMinor(allocated)} of {formatMinor(rewardMinor)} allocated.)
+              The pool must add up to the advertised reward. ({formatMinor(allocated, cur)} of {formatMinor(rewardMinor, cur)} allocated.)
             </p>
           ) : null}
         </div>
@@ -459,7 +478,7 @@ export function StepReward({
 
       {plan ? (
         <div className="mt-5 rounded-sm border border-up/30 bg-raised/40 p-4" data-testid="money-plan">
-          <PlanRows plan={plan} />
+          <PlanRows plan={plan} currency={cur} />
         </div>
       ) : null}
     </FormSection>
@@ -467,20 +486,27 @@ export function StepReward({
 }
 
 /** Reward / fee / total, the shared decomposition (never floats, never hidden). */
-export function PlanRows({ plan }: { plan: { rewardMinor: number; feeMinor: number; totalMinor: number } }) {
+export function PlanRows({
+  plan,
+  currency = "INR",
+}: {
+  plan: { rewardMinor: number; feeMinor: number; totalMinor: number };
+  /** RC5.1 WS8: the draft's currency for display (the plan math is currency-agnostic). */
+  currency?: "INR" | "USD";
+}) {
   return (
     <dl className="space-y-1.5 text-sm">
       <div className="flex items-baseline justify-between gap-4">
         <dt className="text-muted">You will pay</dt>
-        <dd className="tabular font-semibold">{formatMinor(plan.totalMinor)}</dd>
+        <dd className="tabular font-semibold">{formatMinor(plan.totalMinor, currency)}</dd>
       </div>
       <div className="flex items-baseline justify-between gap-4">
         <dt className="text-xs text-subtle">Advertised reward</dt>
-        <dd className="tabular text-sm">{formatMinor(plan.rewardMinor)}</dd>
+        <dd className="tabular text-sm">{formatMinor(plan.rewardMinor, currency)}</dd>
       </div>
       <div className="flex items-baseline justify-between gap-4">
         <dt className="text-xs text-subtle">Platform fee (charged to you, never deducted from the reward)</dt>
-        <dd className="tabular text-sm">{formatMinor(plan.feeMinor)}</dd>
+        <dd className="tabular text-sm">{formatMinor(plan.feeMinor, currency)}</dd>
       </div>
     </dl>
   );

@@ -14,7 +14,7 @@ import {
   selectProposalFn,
   fundProjectFn,
 } from "@/lib/marketplace/projects";
-import { formatMinor } from "@/lib/money";
+import { formatMinor, toSupportedCurrency } from "@/lib/money";
 import { statusLabel } from "@/lib/marketplace/status-labels";
 import { deadlinePhrase, absoluteDate } from "@/lib/reltime";
 import { StatusBadge } from "@/components/ui/status";
@@ -61,8 +61,8 @@ const loadDetail = createServerFn({ method: "GET" })
     const entityUrl = entityRedirectFor(String(project.product), product, `/projects/${data.id}`);
     if (entityUrl) throw redirect({ to: entityUrl });
     const proposals = session && project.sponsor_user_id === session.user.id
-      ? await sql.query<{ id: string; approach: string; quoted_minor: number; timeline_weeks: number | null; status: string; milestones_proposed: Array<{ title: string; amountMinor: number }>; handle: string | null; display_name: string | null }>(
-          `select pp.id, pp.approach, pp.quoted_minor, pp.timeline_weeks, pp.status,
+      ? await sql.query<{ id: string; approach: string; quoted_minor: number; currency: string; timeline_weeks: number | null; status: string; milestones_proposed: Array<{ title: string; amountMinor: number }>; handle: string | null; display_name: string | null }>(
+          `select pp.id, pp.approach, pp.quoted_minor, pp.currency, pp.timeline_weeks, pp.status,
                   pp.milestones_proposed, pr.handle, u.display_name
            from project_proposals pp
            join users u on u.id = pp.provider_user_id
@@ -220,7 +220,7 @@ function ProjectMain({
             {data.proposals.map((pr) => (
               <li key={pr.id} className="rounded-md border border-fg/10 bg-surface/60 p-4">
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
-                  <p className="tabular text-sm font-semibold">{formatMinor(Number(pr.quoted_minor))} · {pr.timeline_weeks ?? "?"} wk</p>
+                  <p className="tabular text-sm font-semibold">{formatMinor(Number(pr.quoted_minor), pr.currency as "INR" | "USD")} · {pr.timeline_weeks ?? "?"} wk</p>
                   <p className="text-xs text-subtle">
                     {pr.display_name ?? "provider"}
                     {pr.handle ? ` (@${pr.handle})` : ""} · {statusLabel(pr.status)}
@@ -271,7 +271,7 @@ function ProjectPanel({
       <div className="rounded-md border border-fg/10 bg-surface/60 p-4">
         <p className="text-xs uppercase tracking-kicker text-subtle">Budget</p>
         <p className="tabular mt-1 text-xl font-semibold text-accent">
-          {p.selected_quoted_minor != null ? formatMinor(Number(p.selected_quoted_minor), String(p.currency)) : "Set by the selected proposal"}
+          {p.selected_quoted_minor != null ? formatMinor(Number(p.selected_quoted_minor), toSupportedCurrency(String(p.currency))) : "Set by the selected proposal"}
         </p>
         <dl className="mt-4 space-y-2.5 text-sm">
           <div className="flex items-baseline justify-between gap-3">
@@ -311,7 +311,7 @@ function ProjectPanel({
           <div className="mt-4 border-t border-fg/10 pt-4" data-testid="sponsor-fund">
             <p className="text-xs text-subtle">
               {data.milestones[0]
-                ? `Quoted ${formatMinor(Number(p.selected_quoted_minor))} across ${data.milestones.length} milestones.`
+                ? `Quoted ${formatMinor(Number(p.selected_quoted_minor), String(p.currency) as "INR" | "USD")} across ${data.milestones.length} milestones.`
                 : "Funding starts the checkout."}
             </p>
             <Button
@@ -358,7 +358,7 @@ function ProjectPanel({
                   <span className="text-subtle">#{m.seq}</span> {m.title}
                 </span>
                 <span className="shrink-0">
-                  <span className="tabular mr-2 font-medium">{formatMinor(Number(m.amount_minor), m.currency)}</span>
+                  <span className="tabular mr-2 font-medium">{formatMinor(Number(m.amount_minor), toSupportedCurrency(m.currency))}</span>
                   <StatusBadge status={m.status} />
                 </span>
               </li>

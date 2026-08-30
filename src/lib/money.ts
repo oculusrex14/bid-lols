@@ -95,40 +95,93 @@ export function sumAllocations(parts: number[]): number {
   return parts.reduce((a, b) => a + b, 0);
 }
 
+/* ---------------------------------------------------------------------------
+ * RC5.1 WS5: the explicit ISO-currency registry. The ONLY place currency
+ * presentation rules live; components never branch on currency themselves.
+ * Two supported WORK currencies: INR (India) and USD (everywhere else).
+ * No FX anywhere in this release — a USD amount is never read as INR paise
+ * and vice versa (see the BI-1.0 gate in src/lib/trust/score-core.ts).
+ * ------------------------------------------------------------------------- */
+
+export type SupportedCurrency = "INR" | "USD";
+
+export const SUPPORTED_CURRENCIES: readonly SupportedCurrency[] = ["INR", "USD"];
+
+export interface CurrencyConfig {
+  code: SupportedCurrency;
+  locale: string;
+  minorDigits: number;
+  symbol: string;
+}
+
+export const CURRENCY_CONFIG: Record<SupportedCurrency, CurrencyConfig> = {
+  INR: { code: "INR", locale: "en-IN", minorDigits: 2, symbol: "₹" },
+  USD: { code: "USD", locale: "en-US", minorDigits: 2, symbol: "$" },
+};
+
+/**
+ * Coerce a stored currency code to the supported registry. Fails VISIBLY on
+ * anything unknown — a record's currency is provenance, and silently
+ * assuming INR for a corrupted/foreign value is exactly the contamination
+ * this release exists to prevent.
+ */
+export function toSupportedCurrency(code: string): SupportedCurrency {
+  const c = (code ?? "").toUpperCase() as SupportedCurrency;
+  if (c === "INR" || c === "USD") return c;
+  throw new Error(`toSupportedCurrency: unsupported currency code "${code}"`);
+}
+
+export function currencySymbol(currency: SupportedCurrency): string {
+  return CURRENCY_CONFIG[currency].symbol;
+}
+
 /** INR-first formatter; explicit currency code required (FR: currency-explicit). */
-export function formatMinor(minor: number, currency: string = "INR"): string {
+export function formatMinor(minor: number, currency: SupportedCurrency = "INR"): string {
   if (!Number.isInteger(minor)) throw new Error(`formatMinor: not an integer: ${minor}`);
-  // ISO-4217 minor-unit exponent: INR/USD/EUR have TWO (paise/cents); JPY/KRW
-  // have zero. Getting this wrong misstates money by 100x — caught live in
-  // Phase 01 browser verification (a ₹10,000 reward rendered as ₹10,00,000).
-  const zeroDecimals = new Set(["JPY", "KRW"]);
-  const decimals = zeroDecimals.has(currency) ? 0 : 2;
-  const value = minor / 10 ** decimals;
-  const formatted = value.toLocaleString("en-IN", {
-    minimumFractionDigits: decimals,
-    maximumFractionDigits: decimals,
-  });
-  return `${currency === "INR" ? "₹" : `${currency} `}${formatted}`;
+  if (!(currency in CURRENCY_CONFIG)) {
+    throw new Error(`formatMinor: unsupported currency "${currency}"`);
+  }
+  const cfg = CURRENCY_CONFIG[currency];
+  const value = minor / 10 ** cfg.minorDigits;
+  return new Intl.NumberFormat(cfg.locale, {
+    style: "currency",
+    currency: cfg.code,
+    minimumFractionDigits: cfg.minorDigits,
+    maximumFractionDigits: cfg.minorDigits,
+  }).format(value);
 }
 
 /**
- * Display-only variant of formatMinor (RC5 §29): when paise are exactly
- * zero the marketing surfaces prefer "₹1,00,000" over "₹1,00,000.00".
- * Nonzero paise stay visible ("₹1,00,000.50") — money is never rounded
- * away, and accounting/detail surfaces keep using formatMinor().
+ * Display-only variant of formatMinor (RC5 §29 / RC5.1 WS4): when minor units
+ * are exactly zero the marketing surfaces prefer "₹1,00,000" / "$1,000" over
+ * "₹1,00,000.00" / "$1,000.00". Nonzero paise/cents stay visible
+ * ("₹1,00,000.50", "$1,000.50") — money is never rounded away, and
+ * accounting/detail surfaces keep using formatMinor().
  */
-export function formatMinorTrimmed(minor: number, currency: string = "INR"): string {
-  const trimmed = currency === "INR" && minor % 100 === 0;
-  if (trimmed) {
-    const whole = Math.floor(minor / 100);
-    return "₹" + whole.toLocaleString("en-IN");
+export function formatMinorTrimmed(minor: number, currency: SupportedCurrency = "INR"): string {
+  if (!(currency in CURRENCY_CONFIG)) {
+    throw new Error(`formatMinorTrimmed: unsupported currency "${currency}"`);
+  }
+  const cfg = CURRENCY_CONFIG[currency];
+  if (minor % 10 ** cfg.minorDigits === 0) {
+    const whole = minor / 10 ** cfg.minorDigits;
+    return `${cfg.symbol}${whole.toLocaleString(cfg.locale, { maximumFractionDigits: 0 })}`;
   }
   return formatMinor(minor, currency);
 }
 
-/** Valid ISO-4217-ish currency codes accepted at boundaries (launch: INR only). */
-export const ACCEPTED_CURRENCIES = new Set(["INR"]);
+/** Whole (major) units for form previews: symbol + locale grouping, 0 decimals. */
+export function formatMajor(value: number, currency: SupportedCurrency = "INR"): string {
+  if (!(currency in CURRENCY_CONFIG)) {
+    throw new Error(`formatMajor: unsupported currency "${currency}"`);
+  }
+  const cfg = CURRENCY_CONFIG[currency];
+  return `${cfg.symbol}${Number(value).toLocaleString(cfg.locale, { maximumFractionDigits: 0 })}`;
+}
+
+/** Work currencies accepted at authoritative boundaries (RC5.1: INR + USD). */
+export const ACCEPTED_CURRENCIES = new Set<SupportedCurrency>(SUPPORTED_CURRENCIES);
 
 export function isAcceptedCurrency(code: string): boolean {
-  return ACCEPTED_CURRENCIES.has(code.toUpperCase());
+  return ACCEPTED_CURRENCIES.has(code.toUpperCase() as SupportedCurrency);
 }

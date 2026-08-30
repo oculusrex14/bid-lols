@@ -56,6 +56,8 @@ export type CreateProjectInput = {
   skills?: string[];
   budgetMinMinor?: number;
   budgetMaxMinor?: number;
+  /** RC5.1 WS8: the work currency, chosen by the sponsor at creation. */
+  currency?: string;
   proposalDeadline?: string | null;
   ipAndConfidentiality?: string;
 };
@@ -67,8 +69,8 @@ export async function createProject(input: CreateProjectInput): Promise<{ id: st
   await sql.query(
     `insert into projects
       (id, product, sponsor_user_id, title, slug, description, category, skills,
-       budget_min_minor, budget_max_minor, ip_and_confidentiality)
-     values ($1,$2,$3,$4,$5,$6,$7,$8::jsonb,$9,$10,$11)`,
+       budget_min_minor, budget_max_minor, currency, ip_and_confidentiality)
+     values ($1,$2,$3,$4,$5,$6,$7,$8::jsonb,$9,$10,$11,$12)`,
     [
       id,
       input.product,
@@ -80,6 +82,7 @@ export async function createProject(input: CreateProjectInput): Promise<{ id: st
       JSON.stringify(input.skills ?? []),
       input.budgetMinMinor ?? null,
       input.budgetMaxMinor ?? null,
+      input.currency ?? "INR",
       input.ipAndConfidentiality ?? "",
     ],
   );
@@ -123,8 +126,8 @@ export async function submitProposal(
   const sql = await getSql();
   return sql.transaction(async (tx): Promise<{ ok: true; proposalId: string } | { ok: false; code: string; message: string }> => {
     const project = (
-      await tx.query<{ id: string; sponsor_user_id: string; status: string; title: string; proposal_deadline: string | null }>(
-        "select id, sponsor_user_id, status, title, proposal_deadline from projects where id = $1 for update",
+      await tx.query<{ id: string; sponsor_user_id: string; status: string; title: string; proposal_deadline: string | null; currency: string }>(
+        "select id, sponsor_user_id, status, title, proposal_deadline, currency from projects where id = $1 for update",
         [input.projectId],
       )
     )[0];
@@ -162,7 +165,10 @@ export async function submitProposal(
         input.experience ?? "",
         JSON.stringify(input.evidenceLinks ?? []),
         input.quotedMinor,
-        "INR",
+        // RC5.1 WS8: a quote is denominated in the PROJECT's currency — the
+        // sponsor posted the range in that currency, the provider answers in
+        // the same one. No conversion, ever.
+        project.currency,
         input.timelineWeeks ?? null,
         JSON.stringify(input.milestonesProposed ?? []),
         input.notes ?? "",
@@ -559,6 +565,14 @@ export async function fundProject(opts: {
   }
   if (project.status !== "PROPOSAL_SELECTED" || project.selected_quoted_minor == null) {
     return { ok: false, code: "invalid_state", message: `Project is ${project.status}; select a provider first.` };
+  }
+  // RC5.1 WS9: the provider must actually collect THIS project's currency
+  // BEFORE any state write. Cashfree is INR-only; no fake conversion.
+  if (moneyMode() !== "off") {
+    const { getPaymentProvider, unsupportedCollectionError } =
+      await import("@/lib/payments/provider");
+    const bad = unsupportedCollectionError(getPaymentProvider(), project.currency);
+    if (bad) return { ok: false, ...bad };
   }
   const decomposition = fundingDecomposition(Number(project.selected_quoted_minor));
   const paymentId = makeId("pmt_");

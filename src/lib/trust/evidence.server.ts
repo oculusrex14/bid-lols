@@ -149,6 +149,8 @@ export interface Adjudication {
   severity: NonNullable<RoleOutcome["severity"]>;
   /** Affected economic amount (disputed amount, falling back to the work amount). */
   amountMinor: number;
+  /** The work item's persisted currency (RC5.1; disputes.currency, NOT NULL default INR). */
+  currency: string;
   ageDays: number;
   /** Responsible parties; SHARED_FAULT splits half to each side (§20). */
   targets: Array<{ userId: string; role: Role; share: number }>;
@@ -174,6 +176,7 @@ interface DisputeRow {
   captain_user_id: string | null;
   parent_work_id: string | null;
   work_amount: number | null;
+  currency: string;
 }
 
 const NEUTRAL_RESOLUTIONS = new Set(["NO_FAULT", "PLATFORM_OR_PROVIDER_FAULT", "OTHER_NO_SCORE_EFFECT"]);
@@ -257,6 +260,7 @@ export async function workComplexity(sql: Sql, workType: string, workId: string)
 export async function disputeAdjudications(sql: Sql, userId: string, now: Date): Promise<Adjudication[]> {
   const rows = await sql.query<DisputeRow>(
     `select d.id, d.resolution_code, d.severity_code,
+            d.currency,
             d.disputed_amount_minor::bigint as disputed_amount_minor, d.finalized_at,
             d.work_type, d.work_id,
             b.sponsor_user_id as bounty_sponsor,
@@ -304,6 +308,7 @@ function shaped(
     resolutionCode: d.resolution_code,
     severity,
     amountMinor: Number(d.disputed_amount_minor ?? d.work_amount ?? 0),
+    currency: d.currency,
     ageDays: daysAgo(d.finalized_at, now),
     targets,
     providerId: d.bounty_provider ?? d.project_provider ?? null,
@@ -323,6 +328,7 @@ function adverseOutcome(a: Adjudication, userId: string, complexity: number): Ro
     excludedFromEvidence: false,
     occurredDaysAgo: a.ageDays,
     amountMinor: a.amountMinor,
+    currency: a.currency,
     severity: a.severity,
     complexity,
     review: null,
@@ -339,6 +345,7 @@ interface WorkFact {
   workKey: string;
   counterpartyUserId: string | null;
   amountMinor: number;
+  currency: string;
   occurredDaysAgo: number;
   complexity: number;
   timelinessY: number | null;
@@ -359,6 +366,7 @@ function cleanOutcomeFrom(
     excludedFromEvidence: excluded,
     occurredDaysAgo: f.occurredDaysAgo,
     amountMinor: f.amountMinor,
+    currency: f.currency,
     severity: "NORMAL",
     complexity: f.complexity,
     review: reviewFacts(
@@ -397,12 +405,14 @@ async function buildProviderOutcomes(
   const bounties = await sql.query<{
     work_key: string;
     amount_minor: number;
+    currency: string;
     completed_at: string;
     sponsor_user_id: string;
     skills_len: number;
     planned_days: number | null;
   }>(
     `select 'BOUNTY:' || b.id as work_key, ba.amount_minor::bigint as amount_minor,
+            b.currency,
             coalesce(b.completed_at, ba.awarded_at) as completed_at, b.sponsor_user_id,
             coalesce(jsonb_array_length(b.skills), 0)::int as skills_len,
             extract(epoch from (b.completed_at - coalesce(b.published_at, b.created_at))) / 86400.0 as planned_days
@@ -413,6 +423,7 @@ async function buildProviderOutcomes(
   const projects = await sql.query<{
     work_key: string;
     amount_minor: number | null;
+    currency: string;
     completed_at: string;
     sponsor_user_id: string;
     skills_len: number;
@@ -420,6 +431,7 @@ async function buildProviderOutcomes(
     planned_days: number | null;
   }>(
     `select 'PROJECT:' || p.id as work_key, p.selected_quoted_minor::bigint as amount_minor,
+            p.currency,
             p.completed_at, p.sponsor_user_id,
             coalesce(jsonb_array_length(p.skills), 0)::int as skills_len,
             (select count(*)::int from project_milestones m where m.project_id = p.id) as milestone_count,
@@ -439,6 +451,7 @@ async function buildProviderOutcomes(
           workKey: b.work_key,
           counterpartyUserId: b.sponsor_user_id,
           amountMinor: Number(b.amount_minor),
+          currency: b.currency,
           occurredDaysAgo: daysAgo(b.completed_at, now),
           complexity: bountyComplexity(b.skills_len, Math.max(1, Number(b.planned_days) || 0)),
           timelinessY: 1,
@@ -460,6 +473,7 @@ async function buildProviderOutcomes(
           workKey: p.work_key,
           counterpartyUserId: p.sponsor_user_id,
           amountMinor: Number(p.amount_minor ?? 0),
+          currency: p.currency,
           occurredDaysAgo: daysAgo(p.completed_at, now),
           complexity: projectComplexity(p.skills_len, p.milestone_count, Math.max(0, Number(p.planned_days) || 0)),
           timelinessY,
@@ -632,6 +646,7 @@ async function buildSponsorOutcomes(
   const bounties = await sql.query<{
     work_key: string;
     reward_total_minor: number;
+    currency: string;
     completed_at: string;
     awarded_at: string | null;
     submission_deadline: string | null;
@@ -640,6 +655,7 @@ async function buildSponsorOutcomes(
     winner_user_id: string;
   }>(
     `select 'BOUNTY:' || b.id as work_key, b.reward_total_minor::bigint as reward_total_minor,
+            b.currency,
             b.completed_at, b.awarded_at, b.submission_deadline,
             coalesce(jsonb_array_length(b.skills), 0)::int as skills_len,
             extract(epoch from (b.completed_at - coalesce(b.published_at, b.created_at))) / 86400.0 as planned_days,
@@ -651,10 +667,12 @@ async function buildSponsorOutcomes(
   const projects = await sql.query<{
     work_key: string;
     quoted: number | null;
+    currency: string;
     completed_at: string;
     provider_user_id: string;
   }>(
-    `select 'PROJECT:' || p.id as work_key, p.selected_quoted_minor::bigint as quoted, p.completed_at,
+    `select 'PROJECT:' || p.id as work_key, p.selected_quoted_minor::bigint as quoted,
+            p.currency, p.completed_at,
             pp.provider_user_id
      from projects p join project_proposals pp on pp.id = p.selected_proposal_id
      where p.sponsor_user_id = $1 and p.status = 'COMPLETED'`,
@@ -679,6 +697,7 @@ async function buildSponsorOutcomes(
           workKey: b.work_key,
           counterpartyUserId: b.winner_user_id,
           amountMinor: Number(b.reward_total_minor),
+          currency: b.currency,
           occurredDaysAgo: daysAgo(b.completed_at, now),
           // Sponsor exposure rides the same bounty structure (§15.1 facts).
           complexity: bountyComplexity(b.skills_len, Math.max(1, Number(b.planned_days) || 0)),
@@ -701,6 +720,7 @@ async function buildSponsorOutcomes(
           workKey: p.work_key,
           counterpartyUserId: p.provider_user_id,
           amountMinor: Number(p.quoted ?? 0),
+          currency: p.currency,
           occurredDaysAgo: daysAgo(p.completed_at, now),
           // The sponsor's exposure is the same work's economics; complexity
           // for the sponsor role tracks the work item, not the provider's task.
@@ -793,12 +813,14 @@ async function buildCaptainOutcomes(
   const parents = await sql.query<{
     work_key: string;
     compensation: number;
+    currency: string;
     completed_at: string;
     sponsor_user_id: string;
     selected_at: string | null;
     skills_len: number | null;
   }>(
     `select 'PARENT_WORK:' || pw.id as work_key, pw.captain_compensation_minor::bigint as compensation,
+            pw.currency,
             pw.completed_at, pw.sponsor_user_id, pw.captain_selected_at as selected_at,
             null::int as skills_len
      from parent_works pw
@@ -825,6 +847,7 @@ async function buildCaptainOutcomes(
       excludedFromEvidence: false,
       occurredDaysAgo: daysAgo(pw.completed_at, now),
       amountMinor: Number(pw.compensation),
+      currency: pw.currency,
       severity: "NORMAL",
       complexity: captainComplexity({
         distinctSkills: facts.skillsLen,
@@ -869,6 +892,7 @@ async function disputeAdverseOutcomes(
       excludedFromEvidence: false,
       occurredDaysAgo: a.ageDays,
       amountMinor: a.amountMinor,
+      currency: a.currency,
       severity: a.severity,
       complexity,
       review: null,
@@ -899,10 +923,11 @@ async function sponsorFundingLapses(
     cancelled_at: string | null;
     selected_at: string | null;
     quoted: number | null;
+    currency: string;
     provider_user_id: string;
   }>(
     `select p.id as work_id, p.cancelled_at, pp.updated_at as selected_at,
-            p.selected_quoted_minor as quoted, pp.provider_user_id
+            p.selected_quoted_minor as quoted, p.currency, pp.provider_user_id
      from projects p join project_proposals pp on pp.id = p.selected_proposal_id
      where p.sponsor_user_id = $1 and p.status = 'CANCELLED' and pp.status = 'SELECTED'`,
     [userId],
@@ -921,6 +946,7 @@ async function sponsorFundingLapses(
       excludedFromEvidence: false,
       occurredDaysAgo: daysAgo(r.cancelled_at, now),
       amountMinor: Math.max(0, Number(r.quoted ?? 0)),
+      currency: r.currency,
       severity: "ATTRIBUTABLE_CANCELLATION",
       complexity: await workComplexity(sql, "PROJECT", r.work_id),
       review: null,

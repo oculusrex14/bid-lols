@@ -5,7 +5,8 @@ import { currentProductKey } from "@/lib/host";
 import { ProductShell } from "@/components/product-shell";
 import { createProjectFn } from "@/lib/marketplace/projects";
 import { Button } from "@/components/ui/button";
-import { Field, Input, Textarea } from "@/components/ui/field";
+import { Field, Input, Textarea, Select } from "@/components/ui/field";
+import { formatMajor } from "@/lib/money";
 import { FormSection } from "@/components/ui/layout";
 import { StepIndicator } from "@/components/ui/market";
 import { InlineNotice } from "@/components/ui/states";
@@ -21,7 +22,13 @@ const loadCreate = createServerFn({ method: "GET" }).handler(async () => {
   const session = await getSession();
   if (!session) throw redirect({ to: "/signin" });
   const shellContext = await (await import("@/lib/shell-context")).getShellContext();
-    return { product: await currentProductKey(), me: shellContext.me, funding: shellContext.funding };
+    return {
+      product: await currentProductKey(),
+      me: shellContext.me,
+      funding: shellContext.funding,
+      // RC5.1 WS8: the form's default currency (viewer region).
+      viewerCurrency: shellContext.viewerCurrency,
+    };
 });
 
 export const Route = createFileRoute("/projects/new")({
@@ -36,6 +43,8 @@ type Draft = {
   skills: string;
   budgetMin: string;
   budgetMax: string;
+  /** RC5.1 WS8: the project's currency (major-unit budget fields). */
+  currency: "INR" | "USD";
   proposalDeadline: string;
   ipAndConfidentiality: string;
 };
@@ -51,6 +60,7 @@ function NewProjectPage() {
     skills: "",
     budgetMin: "",
     budgetMax: "",
+    currency: d.viewerCurrency,
     proposalDeadline: "",
     ipAndConfidentiality: "",
   });
@@ -93,8 +103,9 @@ function NewProjectPage() {
           description: draft.description,
           category: draft.category,
           skills: draft.skills.split(",").map((s) => s.trim()).filter(Boolean).slice(0, 20),
-          budgetMinRupees: draft.budgetMin ? Number(draft.budgetMin) : undefined,
-          budgetMaxRupees: draft.budgetMax ? Number(draft.budgetMax) : undefined,
+          budgetMin: draft.budgetMin ? Number(draft.budgetMin) : undefined,
+          budgetMax: draft.budgetMax ? Number(draft.budgetMax) : undefined,
+          currency: draft.currency,
           proposalDeadline: draft.proposalDeadline
             ? new Date(draft.proposalDeadline).toISOString()
             : undefined,
@@ -210,11 +221,25 @@ function ProjectRulesForm({
   return (
               <FormSection title="Budget & rules" description="The budget range guides proposals; the final amount is the quote you select.">
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <Field label="Budget from (₹, optional)" id="pr-bmin">
+                  <Field label={`Budget from (${draft.currency}, optional)`} id="pr-bmin">
                     <Input id="pr-bmin" value={draft.budgetMin} onChange={(e) => set("budgetMin", e.target.value)} type="number" min={0} className="tabular" />
                   </Field>
-                  <Field label="Budget to (₹, optional)" error={errors.budgetMax} id="pr-bmax">
+                  <Field label={`Budget to (${draft.currency}, optional)`} error={errors.budgetMax} id="pr-bmax">
                     <Input id="pr-bmax" value={draft.budgetMax} invalid={Boolean(errors.budgetMax)} onChange={(e) => set("budgetMax", e.target.value)} type="number" min={0} className="tabular" />
+                  </Field>
+                  {/* RC5.1 WS8: the project's currency. Changing it changes
+                      the denomination, never the numbers (no FX). */}
+                  <Field label="Currency" required id="pr-currency" hint="Fixed when the project is created.">
+                    <Select
+                      id="pr-currency"
+                      name="currency"
+                      value={draft.currency}
+                      onChange={(e) => set("currency", e.target.value as Draft["currency"])}
+                      data-testid="project-currency"
+                    >
+                      <option value="INR">₹ Indian rupee (INR)</option>
+                      <option value="USD">$ US dollar (USD)</option>
+                    </Select>
                   </Field>
                   <Field label="Proposal deadline (optional)" error={errors.proposalDeadline} id="pr-dl">
                     <Input id="pr-dl" value={draft.proposalDeadline} invalid={Boolean(errors.proposalDeadline)} onChange={(e) => set("proposalDeadline", e.target.value)} type="datetime-local" />
@@ -244,9 +269,9 @@ function ProjectSummary({ draft }: { draft: Draft }) {
                     <div className="flex justify-between gap-3">
                       <dt className="text-xs uppercase tracking-kicker text-subtle">Budget</dt>
                       <dd className="tabular">
-                        {draft.budgetMin ? `₹${Number(draft.budgetMin).toLocaleString("en-IN")}` : ""}
+                        {draft.budgetMin ? formatMajor(Number(draft.budgetMin), draft.currency) : ""}
                         {draft.budgetMin && draft.budgetMax ? " – " : ""}
-                        {draft.budgetMax ? `₹${Number(draft.budgetMax).toLocaleString("en-IN")}` : ""}
+                        {draft.budgetMax ? formatMajor(Number(draft.budgetMax), draft.currency) : ""}
                       </dd>
                     </div>
                   ) : null}

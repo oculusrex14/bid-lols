@@ -9,8 +9,9 @@ import { MoneyValue } from "@/components/ui/money";
 import { StatusBadge } from "@/components/ui/status";
 import { SectionHeader } from "@/components/ui/layout";
 import { BudgetTree } from "@/components/product-objects/budget-tree";
-import { BIDCEPTION_SAMPLE_TREE } from "@/lib/sample-content";
+import { bidceptionSampleTree } from "@/lib/sample-content";
 import { Users, HeartHandshake, Compass } from "lucide-react";
+import type { SupportedCurrency } from "@/lib/money";
 
 /**
  * Bidception home (RC5 §22): the systems console. The allocation tree is
@@ -26,7 +27,15 @@ type HomeParents = Extract<HomePreview, { kind: "parents" }>["items"];
 
 const TAKE_PART_HREF = `${linkOrigin("foundersbid")}/bounties`;
 
-export function BidceptionHome({ me, preview }: { me?: ShellMe | null; preview: HomePreview }) {
+export function BidceptionHome({
+  me,
+  preview,
+  viewerCurrency,
+}: {
+  me?: ShellMe | null;
+  preview: HomePreview;
+  viewerCurrency: SupportedCurrency;
+}) {
   const parents = preview.kind === "parents" ? preview.items : [];
   const top = parents[0];
   void me;
@@ -47,7 +56,7 @@ export function BidceptionHome({ me, preview }: { me?: ShellMe | null; preview: 
         </p>
       </section>
 
-      <RoleRailAndTree top={top} />
+      <RoleRailAndTree top={top} viewerCurrency={viewerCurrency} />
       <BidHowItWorks />
       <BidLiveProjects parents={parents} />
       <WriteUpSection />
@@ -68,7 +77,14 @@ export function BidceptionHome({ me, preview }: { me?: ShellMe | null; preview: 
 }
 
 /** The three doors + the tree, as one composition (RC5 §22.3/§22.9). */
-function RoleRailAndTree({ top }: { top: HomeParents[number] | undefined }) {
+function RoleRailAndTree({
+  top,
+  viewerCurrency,
+}: {
+  top: HomeParents[number] | undefined;
+  viewerCurrency: SupportedCurrency;
+}) {
+  const sampleTree = bidceptionSampleTree(viewerCurrency);
   return (
     <section className="canvas-brand mt-10 grid gap-6 lg:grid-cols-[220px_minmax(0,1fr)]">
       <nav aria-label="Choose your role" className="role-rail">
@@ -100,14 +116,15 @@ function RoleRailAndTree({ top }: { top: HomeParents[number] | undefined }) {
           <RealParentSummary top={top} />
           <p className="mt-2 text-xs text-subtle">
             The full allocation tree (captain, child work packages, reserve,
-            and how every rupee reconciles) lives in the project workspace.
+            and how the funded budget reconciles) lives in the project
+            workspace.
           </p>
         </div>
       ) : (
         <BudgetTree
           sample
-          values={BIDCEPTION_SAMPLE_TREE}
-          note={BIDCEPTION_SAMPLE_TREE.note}
+          values={sampleTree}
+          note={sampleTree.note}
           className="min-w-0"
         />
       )}

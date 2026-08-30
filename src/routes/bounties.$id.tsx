@@ -516,7 +516,7 @@ function AwardsList({ awards }: { awards: DetailData["detail"]["awards"] }) {
               #{a.place} {a.handle ? `@${a.handle}` : ""}
             </span>
             <span className="tabular shrink-0 font-medium">
-              {formatMinor(a.amount_minor)} · {statusLabel(a.status)}
+              {formatMinor(a.amount_minor, a.currency as "INR" | "USD")} · {statusLabel(a.status)}
             </span>
           </li>
         ))}

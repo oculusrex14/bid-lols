@@ -13,10 +13,11 @@ import {
   CultureBriefTile,
 } from "@/components/product-objects/culture-brief-card";
 import {
-  CULTURE_BRIEF_EXAMPLE,
-  CULTURE_SAMPLE_WALL,
+  cultureBriefExample,
+  cultureSampleWall,
 } from "@/lib/sample-content";
 import { artForCategory } from "@/components/product-objects/category-art";
+import type { SupportedCurrency } from "@/lib/money";
 import { Camera, Clapperboard, Mic, PenTool, Tag, Type, Users, Video, Wrench } from "lucide-react";
 
 /**
@@ -65,19 +66,27 @@ const FORMAT_LINKS: Array<{ label: string; icon: typeof Camera; href: string }> 
 
 type HomeOpenItem = Extract<HomePreview, { kind: "bounties" }>["items"];
 
-export function CulturebidHome({ me, preview }: { me?: ShellMe | null; preview: HomePreview }) {
+export function CulturebidHome({
+  me,
+  preview,
+  viewerCurrency,
+}: {
+  me?: ShellMe | null;
+  preview: HomePreview;
+  viewerCurrency: SupportedCurrency;
+}) {
   const openItems = preview.kind === "bounties" ? preview.items : [];
   void me;
   return (
     <>
-      <CultureHero openItems={openItems} />
+      <CultureHero openItems={openItems} viewerCurrency={viewerCurrency} />
       <FormatsSection />
       {openItems.length > 0 ? (
         <OpenBriefsSection openItems={openItems} />
       ) : (
         <>
           <EmptyBriefsStage />
-          <SampleBriefWall />
+          <SampleBriefWall viewerCurrency={viewerCurrency} />
         </>
       )}
       <CultureRules />
@@ -104,8 +113,15 @@ export function CulturebidHome({ me, preview }: { me?: ShellMe | null; preview: 
 }
 
 /** 1 — Hero: editorial statement left, brief poster right. */
-function CultureHero({ openItems }: { openItems: HomeOpenItem }) {
+function CultureHero({
+  openItems,
+  viewerCurrency,
+}: {
+  openItems: HomeOpenItem;
+  viewerCurrency: SupportedCurrency;
+}) {
   const first = openItems[0];
+  const sample = cultureBriefExample(viewerCurrency);
   return (
     <section className="canvas-brand grid grid-cols-1 gap-10 pt-14 sm:pt-20 lg:grid-cols-12">
       <div className="lg:col-span-7">
@@ -144,15 +160,15 @@ function CultureHero({ openItems }: { openItems: HomeOpenItem }) {
         ) : (
           <CultureBriefCard
             sample
-            title={CULTURE_BRIEF_EXAMPLE.title}
-            support={CULTURE_BRIEF_EXAMPLE.support}
-            rewardMinor={CULTURE_BRIEF_EXAMPLE.rewardMinor}
-            currency={CULTURE_BRIEF_EXAMPLE.currency}
-            slotsTaken={CULTURE_BRIEF_EXAMPLE.slotsTaken}
-            slotsCap={CULTURE_BRIEF_EXAMPLE.slotsCap}
-            licenseLine={CULTURE_BRIEF_EXAMPLE.licenseLine}
-            media={CULTURE_BRIEF_EXAMPLE.media}
-            note={CULTURE_BRIEF_EXAMPLE.note}
+            title={sample.title}
+            support={sample.support}
+            rewardMinor={sample.rewardMinor}
+            currency={sample.currency}
+            slotsTaken={sample.slotsTaken}
+            slotsCap={sample.slotsCap}
+            licenseLine={sample.licenseLine}
+            media={sample.media}
+            note={sample.note}
           />
         )}
         <p className="mt-3 text-xs text-subtle">
@@ -257,7 +273,8 @@ function EmptyBriefsStage() {
 }
 
 /** 4 — The labelled sample wall (only when live inventory is empty). */
-function SampleBriefWall() {
+function SampleBriefWall({ viewerCurrency }: { viewerCurrency: SupportedCurrency }) {
+  const wall = cultureSampleWall(viewerCurrency);
   return (
     <section className="canvas-brand py-10 sm:py-12" data-sample-wall="true">
       <SectionHeader
@@ -266,7 +283,7 @@ function SampleBriefWall() {
       />
       {/* RC5 §21.7: wide 4-up, <=900px 2-up, mobile 1-up. */}
       <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {CULTURE_SAMPLE_WALL.map((s) => (
+        {wall.map((s) => (
           <CultureBriefTile
             key={s.category}
             sample

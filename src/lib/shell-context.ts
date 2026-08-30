@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import type { ProductKey } from "@/lib/host";
+import type { SupportedCurrency } from "@/lib/money";
 
 /**
  * Shared page context for the auth-aware shell (RC1, R5). One serverFn gives
@@ -31,6 +32,13 @@ export type FundingMode = "off" | "sandbox" | "live";
 export type ShellContext = {
   me: ShellMe;
   funding: FundingMode;
+  /**
+   * RC5.1 WS6: the viewer's DEFAULT currency (India -> INR, elsewhere ->
+   * USD). UX defaulting only — it selects sample amounts, new-form defaults
+   * and which Market Rates partition shows first. It is never payment
+   * authority and never changes a persisted work item's currency.
+   */
+  viewerCurrency: SupportedCurrency;
 };
 
 async function fundingMode(): Promise<FundingMode> {
@@ -48,10 +56,20 @@ async function fundingMode(): Promise<FundingMode> {
 /** Plain async — callable from other serverFn handlers without RPC overhead. */
 export async function getShellContext(): Promise<ShellContext> {
   const funding = await fundingMode();
+  let viewerCurrency: SupportedCurrency = "USD";
+  try {
+    // viewer-currency.server.ts is server-only (.server convention); the
+    // dynamic import keeps the shell context client-graph-safe.
+    const { getViewerCurrency } = await import("@/lib/viewer-currency.server");
+    viewerCurrency = await getViewerCurrency();
+  } catch {
+    // Fail safe to the global default (USD) — the override can never make a
+    // server failure into a wrong-currency display of real records.
+  }
   try {
     const { getSession } = await import("@/lib/authz");
     const session = await getSession();
-    if (!session) return { me: null, funding };
+    if (!session) return { me: null, funding, viewerCurrency };
     let handle: string | null = null;
     try {
       const { getOrCreateProfile } = await import("@/lib/profiles.server");
@@ -71,13 +89,14 @@ export async function getShellContext(): Promise<ShellContext> {
         role: session.user.role ?? "user",
       },
       funding,
+      viewerCurrency,
     };
   } catch (err) {
     // RC3, S-10.1: shell navigation may degrade to anonymous (no PII either
     // way), but the failure must be logged — silent nulls hid a whole class
     // of infrastructure faults in RC2 and earlier.
     console.error("[shell-context] shell context degraded to anonymous:", err);
-    return { me: null, funding };
+    return { me: null, funding, viewerCurrency };
   }
 }
 
@@ -91,13 +110,18 @@ export const shellContext = createServerFn({ method: "GET" }).handler(
  * Combined page shell context: active product (server-derived from Host) +
  * the auth-aware `me`. One serverFn so route loaders stay one-liners.
  */
-export type MarketplaceShell = { product: ProductKey; me: ShellMe; funding: FundingMode };
+export type MarketplaceShell = {
+  product: ProductKey;
+  me: ShellMe;
+  funding: FundingMode;
+  viewerCurrency: SupportedCurrency;
+};
 
 /** Plain async — callable from other serverFn handlers. */
 export async function getMarketplaceShell(): Promise<MarketplaceShell> {
   const { currentProductKey } = await import("@/lib/host");
-  const { me, funding } = await getShellContext();
-  return { product: await currentProductKey(), me, funding };
+  const { me, funding, viewerCurrency } = await getShellContext();
+  return { product: await currentProductKey(), me, funding, viewerCurrency };
 }
 
 /** The serverFn wrapper. */

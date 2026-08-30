@@ -7,6 +7,7 @@ import { getSql } from "@/lib/db.server";
 import { requireAdmin, getSession } from "@/lib/authz";
 import { insertAudit, recentAudit } from "@/lib/audit.server";
 import { transitionDispute, listOpenDisputes } from "@/lib/marketplace/disputes.server";
+import { formatMinor } from "@/lib/money";
 import {
   RESOLUTION_CODES,
   RESPONSIBILITIES,
@@ -263,7 +264,9 @@ function AdminPage() {
                 {d.payments.map((p) => (
                   <tr key={p.id} className="border-t border-fg/10">
                     <td className="p-2">{p.product}</td><td className="p-2">{p.kind}</td><td className="p-2">{p.status}</td>
-                    <td className="p-2">{(Number(p.amount_cents) / 100).toLocaleString("en-IN", { style: "currency", currency: p.currency })}</td>
+                    {/* RC5.1 WS13: ledger surfaces are EXACT (no trim) and
+                        rendered in the payment's own persisted currency. */}
+                    <td className="p-2">{formatMinor(Number(p.amount_cents), p.currency as "INR" | "USD")}</td>
                     <td className="p-2">{String(p.created_at).slice(0, 10)}</td>
                   </tr>
                 ))}

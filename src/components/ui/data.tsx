@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { cn } from "@/lib/cn";
-import { formatMinor } from "@/lib/money";
+import { formatMinor, toSupportedCurrency, type SupportedCurrency } from "@/lib/money";
 
 /**
  * Network Spine (RC3, S-20/S-28): data-intelligence primitives for Bidthrone
@@ -142,6 +142,9 @@ export function BudgetBar({
   testid?: string;
   unallocatedLabel?: string;
 }) {
+  // RC5.1 WS13: coerce once; an unknown stored currency fails visibly here
+  // instead of being silently assumed INR.
+  const cur = toSupportedCurrency(currency);
   const sum = segments.reduce((t, s) => t + s.minor, 0);
   const unallocated = Math.max(0, totalMinor - sum);
   const all: BudgetSegment[] =
@@ -150,7 +153,7 @@ export function BudgetBar({
       : segments;
   return (
     <div data-testid={testid}>
-      <div className="flex h-3 overflow-hidden rounded-full border border-fg/10" role="img" aria-label={budgetAria(totalMinor, all, currency)}>
+      <div className="flex h-3 overflow-hidden rounded-full border border-fg/10" role="img" aria-label={budgetAria(totalMinor, all, cur)}>
         {all.map((s) => (
           <div
             key={s.key}
@@ -166,7 +169,7 @@ export function BudgetBar({
               <span className={cn("size-2 shrink-0 rounded-full", s.fill)} aria-hidden="true" />
               {s.label}
             </span>
-            <span className="tabular shrink-0 font-medium">{formatBudget(s.minor, currency)}</span>
+            <span className="tabular shrink-0 font-medium">{formatBudget(s.minor, cur)}</span>
           </li>
         ))}
       </ul>
@@ -174,12 +177,12 @@ export function BudgetBar({
   );
 }
 
-function formatBudget(minor: number, currency: string): string {
+function formatBudget(minor: number, currency: SupportedCurrency): string {
   // Budget labels use the shared money formatter (integer minors only).
   return formatMinor(minor, currency);
 }
 
-function budgetAria(totalMinor: number, segments: BudgetSegment[], currency: string): string {
+function budgetAria(totalMinor: number, segments: BudgetSegment[], currency: SupportedCurrency): string {
   const parts = segments.map((s) => `${s.label} ${formatBudget(s.minor, currency)}`);
   return `Budget ${formatBudget(totalMinor, currency)}: ${parts.join(", ")}.`;
 }

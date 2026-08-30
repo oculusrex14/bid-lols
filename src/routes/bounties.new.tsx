@@ -4,7 +4,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { currentProductKey } from "@/lib/host";
 import { ProductShell } from "@/components/product-shell";
 import { createBountyFn, fundingPlanFn } from "@/lib/marketplace/bounties";
-import { formatMinor } from "@/lib/money";
+import { formatMajor, formatMinor } from "@/lib/money";
 import { Button } from "@/components/ui/button";
 import { StepIndicator } from "@/components/ui/market";
 import { InlineNotice } from "@/components/ui/states";
@@ -40,6 +40,9 @@ const loadCreate = createServerFn({ method: "GET" }).handler(async () => {
   return {
     product,
     me: shellContext.me, funding: shellContext.funding,
+    // RC5.1 WS8: the form's DEFAULT currency (viewer region); the sponsor
+    // can override it explicitly in the reward step.
+    viewerCurrency: shellContext.viewerCurrency,
     emailVerified: session.user.emailVerified,
   };
 });
@@ -61,7 +64,8 @@ const EMPTY_DRAFT: BountyDraft = {
   qualificationMode: "SPONSOR_APPROVAL",
   applicationDeadline: "",
   submissionDeadline: "",
-  rewardRupees: "",
+  rewardMajor: "",
+  currency: "INR",
   rewardStructure: "WINNER_TAKES_ALL",
   podiumFirst: "",
   podiumSecond: "",
@@ -104,8 +108,10 @@ const STEP_CHECKS: Record<string, (d: BountyDraft) => StepErrors> = {
     return e;
   },
   reward: (d): StepErrors => {
-    const minor = Math.round(Number(d.rewardRupees) * 100);
-    if (!Number.isFinite(minor) || minor < 100_000) return { reward: "Minimum 1,000 rupees." };
+    const minor = Math.round(Number(d.rewardMajor) * 100);
+    if (!Number.isFinite(minor) || minor < 100_000) {
+      return { reward: `Minimum 1,000 ${d.currency}.` };
+    }
     const n = (v: string) => Math.round(Number(v || "0") * 100);
     if (d.rewardStructure === "PODIUM") {
       const sum = n(d.podiumFirst) + n(d.podiumSecond) + n(d.podiumThird);
@@ -137,7 +143,9 @@ function NewBountyPage() {
   const isCulture = d.product === "culturebid";
   const steps: string[] = isCulture ? [...CULTURE_STEPS] : [...BOUNTY_STEPS];
   const [step, setStep] = useState(0);
-  const [draft, setDraft] = useState<BountyDraft>(EMPTY_DRAFT);
+  // RC5.1 WS8: the draft starts in the viewer's default currency; the
+  // sponsor's explicit choice (reward step) wins and is persisted.
+  const [draft, setDraft] = useState<BountyDraft>({ ...EMPTY_DRAFT, currency: d.viewerCurrency });
   const [errors, setErrors] = useState<StepErrors>({});
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -147,7 +155,7 @@ function NewBountyPage() {
 
   // Live money plan (debounced): server-computed, never client arithmetic.
   useEffect(() => {
-    const minor = Math.round(Number(draft.rewardRupees) * 100);
+    const minor = Math.round(Number(draft.rewardMajor) * 100);
     if (!Number.isFinite(minor) || minor <= 0) {
       setPlan(null);
       return;
@@ -158,7 +166,7 @@ function NewBountyPage() {
         .catch(() => setPlan(null));
     }, 400);
     return () => clearTimeout(t);
-  }, [draft.rewardRupees]);
+  }, [draft.rewardMajor]);
 
   const next = () => {
     const errs = validateStep(step, draft, isCulture);
@@ -250,7 +258,7 @@ function NewBountyPage() {
 }
 
 function buildCreateInput(d: BountyDraft) {
-  const minor = Math.round(Number(d.rewardRupees) * 100);
+  const minor = Math.round(Number(d.rewardMajor) * 100);
   let allocations: Array<{ place: number; amountMinor: number; label?: string }> = [{ place: 1, amountMinor: minor }];
   if (d.rewardStructure === "PODIUM") {
     const n = (v: string) => Math.round(Number(v || "0") * 100);
@@ -279,6 +287,9 @@ function buildCreateInput(d: BountyDraft) {
     deliverables: d.deliverables,
     acceptanceCriteria: d.acceptanceCriteria,
     rewardTotalMinor: minor,
+    // RC5.1 WS8: explicit currency choice; the server validator rejects
+    // anything outside INR/USD (never silently assumed).
+    currency: d.currency,
     rewardStructure: d.rewardStructure,
     rewardAllocations: allocations,
     applicationDeadline: d.applicationDeadline ? new Date(d.applicationDeadline).toISOString() : null,
@@ -322,12 +333,13 @@ function ReviewBlock({
         <ReviewLine label="Participant cap">{d.participantCap}</ReviewLine>
         <ReviewLine label="Qualification">{d.qualificationMode === "SPONSOR_APPROVAL" ? "Sponsor approves each applicant" : "Application only"}</ReviewLine>
         <ReviewLine label="Submissions due">{new Date(d.submissionDeadline).toUTCString().slice(0, 22)}</ReviewLine>
-        <ReviewLine label="Advertised reward">{plan ? formatMinor(plan.rewardMinor) : "not set"}</ReviewLine>
+        <ReviewLine label="Currency">{d.currency}</ReviewLine>
+        <ReviewLine label="Advertised reward">{plan ? formatMinor(plan.rewardMinor, d.currency) : "not set"}</ReviewLine>
         <ReviewLine label="Structure">{d.rewardStructure.replaceAll("_", " ")}</ReviewLine>
       </div>
       {plan ? (
         <div className="mt-5 rounded-sm border border-up/30 bg-raised/40 p-4" data-testid="money-plan">
-          <PlanRows plan={plan} />
+          <PlanRows plan={plan} currency={d.currency} />
         </div>
       ) : null}
       <p className="mt-4 text-xs text-subtle" data-testid="funding-off-note">
@@ -368,8 +380,8 @@ function SummaryPanel({
         <div className="mt-3 border-t border-fg/10 pt-3">
           <ReviewLine label="Step">{`${step + 1} of ${steps.length} · ${steps[step]}`}</ReviewLine>
           {draft.category ? <ReviewLine label="Category">{isCulture ? draft.formats.join(", ") || draft.category : draft.category}</ReviewLine> : null}
-          {draft.rewardRupees ? <ReviewLine label="Reward">{`₹${Number(draft.rewardRupees).toLocaleString("en-IN")}`}</ReviewLine> : null}
-          {plan ? <div className="mt-3 border-t border-fg/10 pt-3" data-testid="money-plan-summary"><PlanRows plan={plan} /></div> : null}
+          {draft.rewardMajor ? <ReviewLine label="Reward">{formatMajor(Number(draft.rewardMajor), draft.currency)}</ReviewLine> : null}
+          {plan ? <div className="mt-3 border-t border-fg/10 pt-3" data-testid="money-plan-summary"><PlanRows plan={plan} currency={draft.currency} /></div> : null}
         </div>
       </div>
       {isReview ? <Button className="w-full" loading={creating} onClick={onCreate} data-testid="create-draft">{creating ? "Creating…" : "Create draft"}</Button> : null}

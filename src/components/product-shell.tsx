@@ -292,7 +292,8 @@ function ShellHeader({
         <div className="flex items-center justify-end gap-1 sm:gap-2">
           {showFundingChip ? <FundingChip /> : null}
           <AccountLinks me={me} />
-          <ModeToggle variant="icon" fallbackMode={DEFAULT_THEME_MODE[site] ?? "light"} />
+          {/* RC5.1 WS2: desktop-only; below md, appearance lives ONLY in the one mobile menu. */}
+          <ModeToggle variant="icon" fallbackMode={DEFAULT_THEME_MODE[site] ?? "light"} className="hidden md:inline-flex" />
           <ButtonLink
             href={cta.href}
             className="h-9 px-3 sm:h-10 sm:px-3.5"

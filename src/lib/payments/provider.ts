@@ -15,7 +15,41 @@ export type ProviderCapabilities = {
   collect: boolean;
   refund: boolean;
   payout: boolean;
+  /**
+   * RC5.1 WS9: the collection currencies this provider ACTUALLY supports.
+   * Callers answer "does this provider support this work currency?" from
+   * here before any order creation — never by trying and catching.
+   */
+  currencies: readonly string[];
 };
+
+/**
+ * RC5.1 WS9: can this provider collect in the given work currency?
+ * The authoritative pre-check for every funding path: an unsupported
+ * currency must fail BEFORE any provider call or ledger write.
+ */
+export function providerSupportsCollection(provider: PaymentProvider, currency: string): boolean {
+  return provider.capabilities.currencies.includes(currency);
+}
+
+export const UNSUPPORTED_CURRENCY_MESSAGE =
+  "This payment provider cannot collect in that currency, so this work item cannot be funded through it. The provider only supports the currencies it declares; no conversion is attempted.";
+
+/**
+ * RC5.1 WS9: the shared funding preflight. Every funding entry point calls
+ * this BEFORE any state write or provider order; null = the provider
+ * collects this currency and the flow may proceed.
+ */
+export function unsupportedCollectionError(
+  provider: PaymentProvider,
+  currency: string,
+): { code: "unsupported_currency"; message: string } | null {
+  if (providerSupportsCollection(provider, currency)) return null;
+  return {
+    code: "unsupported_currency",
+    message: `${provider.name} collects ${provider.capabilities.currencies.join(" / ")} only; the work item is denominated in ${currency}. ${UNSUPPORTED_CURRENCY_MESSAGE}`,
+  };
+}
 
 export type CreateOrderInput = {
   /** Our immutable ledger id — sent as the provider order id. */
@@ -137,11 +171,19 @@ export class CashfreeProvider implements PaymentProvider {
     // Honest capability report: neither rail is implemented/verified yet.
     refund: false,
     payout: false,
+    // RC5.1 WS9: Cashfree collects INR only. USD work items can be drafted
+    // but can never be funded through this provider (no fake conversion).
+    currencies: ["INR"],
   };
 
   async createOrder(input: CreateOrderInput): Promise<ProviderOrder> {
     if (input.currency !== "INR") {
-      throw new Error(`Cashfree provider supports INR only (got ${input.currency})`);
+      // Belt: funding paths pre-check via providerSupportsCollection(); this
+      // guard is the suspenders so no caller can ever reach the gateway with
+      // a currency Cashfree does not collect.
+      throw new Error(
+        `Cashfree supports collection in INR only (got ${input.currency}); ${UNSUPPORTED_CURRENCY_MESSAGE}`,
+      );
     }
     const inrRupees = toCashfreeOrderAmount(input.amountMinor);
     const customerId = `usr_${input.localOrderId.replace(/[^a-zA-Z0-9_-]/g, "").slice(-40)}`;
@@ -351,6 +393,9 @@ class FakeProvider implements PaymentProvider {
     collect: true,
     refund: true,
     payout: true,
+    // RC5.1 WS9: the test provider can exercise both work currencies
+    // (multi-currency ledger behavior) without money.
+    currencies: ["INR", "USD"],
   };
   readonly paidOrders = new Set<string>();
 

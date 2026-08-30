@@ -72,11 +72,22 @@ export const boardFn = createServerFn({ method: "GET" })
     },
   );
 
-/** Market Rates (aggregate pricing; renamed from "Bid Index" in RC4 §3). */
+/**
+ * Market Rates (aggregate pricing; renamed from "Bid Index" in RC4 §3).
+ * RC5.1 WS10: the currency is part of the aggregate identity — callers must
+ * say which currency's verified outcomes they want; unknown values fail the
+ * validator instead of assuming INR.
+ */
 export const marketRateFn = createServerFn({ method: "GET" })
-  .validator((input: { product: string; category: string }) =>
-    z.object({ product: z.string().max(20), category: z.string().max(40) }).parse(input),
+  .validator((input: { product: string; category: string; currency: string }) =>
+    z
+      .object({
+        product: z.string().max(20),
+        category: z.string().max(40),
+        currency: z.enum(["INR", "USD"]),
+      })
+      .parse(input),
   )
   .handler(async ({ data }) => {
-    return marketRateFor(data.product, data.category);
+    return marketRateFor(data.product, data.category, data.currency);
   });

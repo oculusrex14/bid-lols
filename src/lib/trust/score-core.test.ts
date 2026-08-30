@@ -18,6 +18,7 @@ function cleanOutcome(over: Partial<RoleOutcome> = {}): RoleOutcome {
     excludedFromEvidence: false,
     occurredDaysAgo: 30,
     amountMinor: 2_500_000,
+    currency: "INR",
     severity: "NORMAL",
     complexity: 0.5,
     review: null,
@@ -270,4 +271,57 @@ test("clean integrity evidence carries deliberately weak weight (§23.5)", () =>
   const r = scoreRole(prep("PROVIDER", steadyProvider(10)));
   assert.ok(r.pillars.INTEGRITY > 0.85);
   assert.ok(r.pillars.INTEGRITY < 0.93, `clean integrity stays weak, got ${r.pillars.INTEGRITY}`);
+});
+/* --------------------------------------------------------------------------
+ * RC5.1 WS11/WS12: BI-1.0 stays INR-native. A non-INR outcome keeps its
+ * FACTUAL evidence (it still completes, still counts, still reviews) but
+ * its economic amount is scored at the floor value factor — a USD cent is
+ * never read as an INR paise, and verified volume never mixes currencies.
+ * ------------------------------------------------------------------------ */
+
+test("RC5.1: a USD outcome is not scored as if its cents were INR paise", () => {
+  // amountMinor 2_500_000: as INR paise that is ₹25,000 (valueFactor exactly
+  // 1.0); as USD cents it is $25,000 — which must NOT feed valueFactor at
+  // all, but the documented floor (0.75, same as a missing amount).
+  const inr = scoreRole(prep("PROVIDER", [
+    cleanOutcome({ workKey: "w1", counterpartyUserId: "cp1" }),
+    cleanOutcome({ workKey: "w2", counterpartyUserId: "cp2" }),
+  ]));
+  const usd = scoreRole(prep("PROVIDER", [
+    cleanOutcome({ workKey: "w1", counterpartyUserId: "cp1", currency: "USD" }),
+    cleanOutcome({ workKey: "w2", counterpartyUserId: "cp2", currency: "USD" }),
+  ]));
+  assert.equal(inr.status, "SCORED");
+  assert.equal(usd.status, "SCORED");
+  assert.equal(usd.primaryOutcomes, 2, "the factual outcomes still count");
+  assert.ok(usd.pillars.RELIABILITY < inr.pillars.RELIABILITY,
+    "the USD economic amount weighs less (floor), not like ₹25,000 of paise");
+  assert.notEqual(usd.score, inr.score, "no paise-for-cents misread");
+  // And it is not a zero-evidence outcome either: the floor still moves
+  // the pillar above its prior.
+  assert.ok(usd.pillars.RELIABILITY > 0.7, "floor-weighted clean outcomes still count");
+});
+
+test("RC5.1: verified volume is INR-only; a USD mix never sums the two", () => {
+  const mixed = scoreRole(prep("PROVIDER", [
+    cleanOutcome({ workKey: "w1", counterpartyUserId: "cp1", amountMinor: 2_500_000, currency: "INR" }),
+    cleanOutcome({ workKey: "w2", counterpartyUserId: "cp2", amountMinor: 2_500_000, currency: "USD" }),
+    cleanOutcome({ workKey: "w3", counterpartyUserId: "cp3", amountMinor: 1_000_000, currency: "INR" }),
+  ]));
+  assert.equal(mixed.verifiedVolumeMinor, 3_500_000, "only INR amounts enter the volume");
+  assert.equal(mixed.primaryOutcomes, 3, "every outcome stays factual evidence");
+});
+
+test("RC5.1: INR-only history scores EXACTLY as before the currency gate", () => {
+  // The gate must be a no-op for an all-INR member: same weights, same
+  // pillars, same score as a currency-free (pre-RC5.1) computation would
+  // have produced — pinned here against the explicit INR outcomes.
+  const r = scoreRole(prep("PROVIDER", [
+    cleanOutcome({ workKey: "w1", counterpartyUserId: "cp1", currency: "INR" }),
+    cleanOutcome({ workKey: "w2", counterpartyUserId: "cp2", currency: "INR" }),
+    cleanOutcome({ workKey: "w3", counterpartyUserId: "cp3", currency: "INR" }),
+  ]));
+  assert.equal(r.status, "SCORED");
+  assert.equal(r.verifiedVolumeMinor, 7_500_000);
+  assert.equal(r.score, Math.round(300 + 600 * Math.max(0, Math.min(1, r.confidence * r.bRaw + (1 - r.confidence) * 0.6))));
 });

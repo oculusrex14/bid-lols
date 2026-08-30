@@ -4,7 +4,7 @@ import { currentProductKey, product, seoOrigin, type ProductKey } from "@/lib/ho
 import { ProductShell } from "@/components/product-shell";
 import { getSql } from "@/lib/db.server";
 import { listOpenProjects } from "@/lib/marketplace/queries.server";
-import { formatMinor } from "@/lib/money";
+import { formatMinor, toSupportedCurrency } from "@/lib/money";
 import { statusLabel } from "@/lib/marketplace/status-labels";
 import { deadlinePhrase } from "@/lib/reltime";
 import { JsonLd } from "@/components/seo";
@@ -35,9 +35,9 @@ export const Route = createFileRoute("/projects/")({
 
 function budgetText(p: Awaited<ReturnType<typeof loadProjects>>["items"][number]): string {
   if (p.budget_min_minor && p.budget_max_minor) {
-    return `${formatMinor(Number(p.budget_min_minor), String(p.currency))} – ${formatMinor(Number(p.budget_max_minor), String(p.currency))}`;
+    return `${formatMinor(Number(p.budget_min_minor), toSupportedCurrency(String(p.currency)))} – ${formatMinor(Number(p.budget_max_minor), toSupportedCurrency(String(p.currency)))}`;
   }
-  if (p.budget_min_minor) return `from ${formatMinor(Number(p.budget_min_minor), String(p.currency))}`;
+  if (p.budget_min_minor) return `from ${formatMinor(Number(p.budget_min_minor), toSupportedCurrency(String(p.currency)))}`;
   return "Open brief";
 }
 
