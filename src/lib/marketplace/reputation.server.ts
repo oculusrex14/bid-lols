@@ -1,4 +1,5 @@
 import { getSql } from "@/lib/db.server";
+import { boardSpec, type BoardKey, type BoardSpec } from "./leaderboard-registry";
 
 /**
  * Bidthrone FACTUAL read model (Phase 04, FR-2/FR-3/FR-4). RC4 §10/§55: the
@@ -129,21 +130,12 @@ export type LeaderboardRow = {
   skills: string[];
 };
 
-export const BOARD_NAMES = [
-  "most_experience", // verified completion count
-  "most_wins", // place-1 bounty/creative awards
-  "most_complete", // completed projects
-  "top_captains", // captained completions
-  "top_sponsors", // sponsor-side verified completed work
-  "most_quality", // mean review quality (min 3 reviews)
-  "rising", // verified completions in the trailing 90 days
-  // RC4 §54: score boards. Empty stays empty — stricter eligibility than
-  // display (score-eligible, confidence>=0.45, n_eff>=5, >=3 counterparties).
-  "highest_bid_index",
-  "top_providers_bid_index",
-  "top_sponsors_bid_index",
-  "top_captains_bid_index",
-] as const;
+/**
+ * RC5 §5.5: the board identity (names, titles, families, metrics, floors)
+ * lives in ONE typed registry (leaderboard-registry.ts). This module only
+ * dispatches; there is no second board array here.
+ */
+export type { BoardKey };
 
 /** Minimum verified outcomes before a member may appear on ANY board. */
 export const LEADERBOARD_MIN_SAMPLE = 1;
@@ -247,76 +239,65 @@ async function loadFacts(): Promise<UserFacts[]> {
 }
 
 /**
- * Compute a leaderboard. EVERY board ranks by its own dedicated metric — the
- * name on the page is the sort in the query. Boards are network-wide by
- * design (documented); there is no misleading product parameter. Returns an
- * empty array when nobody meets the sample floor — the UI renders the honest
- * "new network" state. NEVER seeds or fabricates rows.
+ * Compute a leaderboard. EVERY board ranks by its own dedicated metric,
+ * dispatched through the single registry (RC5 §5.5). Boards are network-wide
+ * by design (documented); there is no misleading product parameter. Returns
+ * an empty array when nobody meets the sample floor — the UI renders the
+ * honest "new network" state. NEVER seeds or fabricates rows.
  */
 export async function leaderboard(
-  board: string,
+  board: BoardKey,
   limit = 10,
   minSample = LEADERBOARD_MIN_SAMPLE,
 ): Promise<LeaderboardRow[]> {
-  // RC4 §55: the old implementation ranked most_reliable by a bulk-loaded
-  // `reliability: 0` — every row tied at zero. The board now reads real
-  // BI-1.0 provider evidence from the snapshot service (never a zero).
-  if (board === "most_reliable") {
-    const { bidIndexLeaderboard } = await import("@/lib/trust/score.server");
-    const rows = await bidIndexLeaderboard("PROVIDER", limit);
-    return rows.map((r) => ({
-      userId: r.userId,
-      handle: r.handle,
-      displayName: r.displayName,
-      metric: r.score,
-      experience: r.primaryOutcomes,
-      skills: [],
-    }));
-  }
-  if (board === "highest_bid_index") {
-    // "Highest Bid Index" ranks the Overall blend; single-role members land
-    // on their role score by construction (§36).
-    const { bidIndexLeaderboardOverall } = await import("@/lib/trust/score.server");
-    const rows = await bidIndexLeaderboardOverall(limit);
-    return rows.map((r) => ({
-      userId: r.userId,
-      handle: r.handle,
-      displayName: r.displayName,
-      metric: r.score,
-      experience: r.primaryOutcomes,
-      skills: [],
-    }));
-  }
-  if (
-    board === "top_providers_bid_index" ||
-    board === "top_sponsors_bid_index" ||
-    board === "top_captains_bid_index"
-  ) {
-    const role =
-      board === "top_providers_bid_index"
-        ? "PROVIDER"
-        : board === "top_sponsors_bid_index"
-          ? "SPONSOR"
-          : "CAPTAIN";
-    const { bidIndexLeaderboard } = await import("@/lib/trust/score.server");
-    const rows = await bidIndexLeaderboard(role, limit);
-    return rows.map((r) => ({
-      userId: r.userId,
-      handle: r.handle,
-      displayName: r.displayName,
-      metric: r.score,
-      experience: r.primaryOutcomes,
-      skills: [],
-    }));
-  }
+  const spec = boardSpec(board);
+  if (!spec) throw new Error(`unknown leaderboard board: ${board}`);
+  if (spec.family === "bidindex") return bidIndexBoard(spec, limit);
+  if (spec.family === "reliability") return reliabilityBoard(spec, limit);
+  return factsBoard(spec, limit, minSample);
+}
+
+/** RC5 §5.6: Most Reliable ranks the BI-1.0 provider RELIABILITY PILLAR
+ * (0..1), with the score-board evidence floor. Never the 300-900 number. */
+async function reliabilityBoard(spec: BoardSpec, limit: number): Promise<LeaderboardRow[]> {
+  void spec; // identity lives in the registry; the pillar + floor are fixed
+  const { reliabilityLeaderboard } = await import("@/lib/trust/score.server");
+  const rows = await reliabilityLeaderboard(limit);
+  return rows.map((r) => factRow(r.userId, r.handle, r.displayName, r.reliability, r.primaryOutcomes));
+}
+
+/** The personal 300-900 Bid Index boards (role or overall). */
+async function bidIndexBoard(spec: BoardSpec, limit: number): Promise<LeaderboardRow[]> {
+  const { bidIndexLeaderboard, bidIndexLeaderboardOverall } = await import("@/lib/trust/score.server");
+  const rows =
+    spec.role === "OVERALL"
+      ? await bidIndexLeaderboardOverall(limit)
+      : await bidIndexLeaderboard(spec.role as "PROVIDER" | "SPONSOR" | "CAPTAIN", limit);
+  return rows.map((r) => factRow(r.userId, r.handle, r.displayName, r.score, r.primaryOutcomes));
+}
+
+function factRow(
+  userId: string,
+  handle: string | null,
+  displayName: string | null,
+  metric: number,
+  outcomes: number,
+): LeaderboardRow {
+  return { userId, handle, displayName, metric, experience: outcomes, skills: [] };
+}
+
+/** The factual counter boards, all from the one bulk loadFacts() pass. */
+async function factsBoard(
+  spec: BoardSpec,
+  limit: number,
+  minSample: number,
+): Promise<LeaderboardRow[]> {
   const facts = await loadFacts();
   const rows = facts
     .filter((f) => {
-      switch (board) {
+      switch (spec.key) {
         case "most_quality":
           return f.reviewsReceived >= QUALITY_MIN_REVIEWS;
-        case "most_reliable":
-          return f.experience >= 2;
         case "top_captains":
           return f.captained >= 1;
         case "top_sponsors":
@@ -328,7 +309,7 @@ export async function leaderboard(
     .map((f) => {
       // the metric each board is named for
       let metric = f.experience;
-      switch (board) {
+      switch (spec.key) {
         case "most_wins":
           metric = f.wins;
           break;

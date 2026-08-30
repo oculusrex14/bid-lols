@@ -94,5 +94,21 @@ Bid Index trust infrastructure (BI-1.0):
 - `project_milestones` += `active_at` (authoritative activation stamp);
   `project_milestone_extensions` (append-only, approved pre-breach forward
   moves; the latest approved extension is the effective due date).
-DOCS
-echo appended
+
+## RC4.1 (RC5 Gate 1): snapshot equivalence + database append-only (migration 0019, strictly additive)
+
+- `trust_score_snapshots` += `span_days` (integer, >= 0; 0 when fewer than
+  two counted outcomes). With 0018's fields this now persists EVERY
+  RoleScoreResult field except two derivations: `bRaw` is reconstructed
+  from the stored `pillars` through the model-versioned `roleBase()`
+  (deterministic; proven by test) and `uncappedScore` through the
+  model-versioned `roleScore(bRaw, confidence)` when a cap applied.
+  Cold and warm `trustReportFor()` are materially equivalent (RC5 5.1).
+- `trust_events` append-only is now enforced at the DATABASE level:
+  `trust_events_reject_mutation()` + the `trust_events_append_only`
+  BEFORE UPDATE OR DELETE row trigger (PostgreSQL and PGLite both ship
+  PL/pgSQL row triggers; verified on PGLite in CI). The application layer
+  also carries no UPDATE/DELETE path (the projector inserts only).
+  Corrections remain REVERSAL rows. The single documented escape hatch is
+  the RC4 41 reproducibility test, which disables the trigger explicitly
+  for that one check and re-enables it.

@@ -7,8 +7,29 @@
  */
 import type { ProductKey } from "@/lib/host";
 import { getSql } from "@/lib/db.server";
+import { HOME_PREVIEW_BOARDS, boardSpec } from "./leaderboard-registry";
 import { listOpenBounties, type BountyListItem } from "./queries.server";
-import { leaderboard, type LeaderboardRow } from "./reputation.server";
+import {
+  MARKET_RATE_MIN_SAMPLE,
+  leaderboard,
+  marketRateFor,
+  type LeaderboardRow,
+  type MarketRateSample,
+} from "./reputation.server";
+
+/**
+ * RC5 §5.7: the homepage Market Rates preview. Real values only, from the
+ * SAME source as /market-rates (marketRateFor + MARKET_RATE_MIN_SAMPLE).
+ * Category selection is a presentation choice; the numbers are not.
+ */
+export type HomeMarketRate = {
+  category: string;
+  sampleSize: number;
+  sufficient: boolean;
+  minMinor: number | null;
+  medianMinor: number | null;
+  maxMinor: number | null;
+};
 
 export type HomePreview =
   | { kind: "bounties"; items: BountyListItem[] }
@@ -30,8 +51,36 @@ export type HomePreview =
         name: string;
         rows: LeaderboardRow[];
       }>;
-      bidIndexReady: boolean;
+      marketRates: HomeMarketRate[];
     };
+
+const PREVIEW_CATEGORIES = 3;
+/** Presentation-only fallback when the network has no categories at all. */
+const FALLBACK_CATEGORIES = ["development", "design", "content"];
+
+async function bidthroneMarketRates(sql: Awaited<ReturnType<typeof getSql>>): Promise<HomeMarketRate[]> {
+  const catRows = await sql.query<{ category: string }>(
+    `select distinct category from (
+       select category from bounties
+       union
+       select category from projects
+     ) x order by category limit 40`,
+  );
+  const categories = catRows.length > 0 ? catRows.map((c) => c.category) : FALLBACK_CATEGORIES;
+  const samples: MarketRateSample[] = await Promise.all(
+    categories.map((category) => marketRateFor(null, category, MARKET_RATE_MIN_SAMPLE)),
+  );
+  // The most-evidenced categories lead (real data order); ties stay stable.
+  samples.sort((a, b) => b.sampleSize - a.sampleSize || a.category.localeCompare(b.category));
+  return samples.slice(0, PREVIEW_CATEGORIES).map((s) => ({
+    category: s.category,
+    sampleSize: s.sampleSize,
+    sufficient: s.sufficient,
+    minMinor: s.minMinor,
+    medianMinor: s.medianMinor,
+    maxMinor: s.maxMinor,
+  }));
+}
 
 export async function homePreview(productKey: ProductKey): Promise<HomePreview> {
   switch (productKey) {
@@ -65,26 +114,15 @@ export async function homePreview(productKey: ProductKey): Promise<HomePreview> 
     }
     case "bidthrone":
     default: {
-      const boards = [
-        { key: "most_wins", name: "Top builders" },
-        { key: "top_captains", name: "Top captains" },
-        { key: "rising", name: "Rising" },
-      ];
-      const out = [];
-      for (const b of boards) {
-        out.push({ ...b, rows: await leaderboard(b.key, 3) });
-      }
-      // RC4: this flag now drives the MARKET RATES section (the aggregate
-      // pricing product; RC4 §3/§56 renamed it away from "Bid Index").
       const sql = await getSql();
-      const idx = await sql.query<{ n: number }>(
-        `select count(*)::int as n from (
-           select category from bounties
-           where status in ('COMPLETED','SETTLING') and reward_total_minor is not null
-           group by category having count(*) >= 10
-         ) t`,
-      );
-      return { kind: "boards", boards: out, bidIndexReady: (idx[0]?.n ?? 0) > 0 };
+      const out = [];
+      for (const key of HOME_PREVIEW_BOARDS) {
+        out.push({ key, name: boardSpec(key)?.title ?? key, rows: await leaderboard(key, 3) });
+      }
+      // RC5 §5.7: the preview consumes marketRateFor() — the same gated
+      // aggregate /market-rates serves. No second, looser meaning.
+      const marketRates = await bidthroneMarketRates(sql);
+      return { kind: "boards", boards: out, marketRates };
     }
   }
 }

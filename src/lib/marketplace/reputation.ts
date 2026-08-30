@@ -19,21 +19,16 @@ import { toErrorResponse } from "@/lib/authz";
  * Bid Index trust score.
  */
 
-const BOARD_NAMES = [
-  "most_experience",
-  "most_wins",
-  "most_complete",
-  "top_captains",
-  "top_sponsors",
-  "most_quality",
-  "most_reliable",
-  "rising",
-  // RC4 §54: score boards (stricter eligibility; empty stays empty)
-  "highest_bid_index",
-  "top_providers_bid_index",
-  "top_sponsors_bid_index",
-  "top_captains_bid_index",
-] as const;
+// RC5 §5.5: board identity comes from the single registry — no local list.
+import { BOARD_KEYS } from "./leaderboard-registry";
+export {
+  BOARD_REGISTRY,
+  boardSpec,
+  type BoardKey,
+  type BoardSpec,
+  type BoardFamily,
+} from "./leaderboard-registry";
+export { BOARD_KEYS };
 
 export const myReputationFn = createServerFn({ method: "GET" })
   .validator((input: { userId: string }) =>
@@ -56,7 +51,7 @@ export const myReputationFn = createServerFn({ method: "GET" })
 export const boardFn = createServerFn({ method: "GET" })
   .validator((input: { board: string; limit?: number }) =>
     z
-      .object({ board: z.enum(BOARD_NAMES), limit: z.number().int().min(1).max(25).default(10) })
+      .object({ board: z.enum(BOARD_KEYS), limit: z.number().int().min(1).max(25).default(10) })
       .parse(input),
   )
   .handler(
@@ -85,5 +80,3 @@ export const marketRateFn = createServerFn({ method: "GET" })
   .handler(async ({ data }) => {
     return marketRateFor(data.product, data.category);
   });
-
-export { BOARD_NAMES };

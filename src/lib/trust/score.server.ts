@@ -7,8 +7,15 @@
  * reversal, model version).
  */
 import { getSql, type Sql } from "@/lib/db.server";
-import { MODEL_VERSION, scoreBand } from "./model-v1";
-import { networkOverall, scoreRole, type OverallResult, type PreparedEvidence, type RoleScoreResult, type ScoreStatus } from "./score-core";
+import { MODEL_VERSION, roleBase, roleScore, scoreBand } from "./model-v1";
+import {
+  networkOverall,
+  scoreRole,
+  type OverallResult,
+  type PreparedEvidence,
+  type RoleScoreResult,
+  type ScoreStatus,
+} from "./score-core";
 import { collectTrustFacts } from "./evidence.server";
 import { createHash } from "node:crypto";
 
@@ -47,12 +54,23 @@ function sortValue(v: unknown): unknown {
   return v;
 }
 
-function hashReport(userId: string, roles: PreparedEvidence[]): string {
-  // Fingerprint = outcome identity + all scoring-relevant facts. Hidden
-  // (blind) review STARS never enter: only revealed-ness and the reviewer's
-  // own evidence count (§26/§27).
+/**
+ * RC5 §5.2: the snapshot fingerprint = model version + outcome identity +
+ * every scoring-relevant non-outcome fact (restriction state, reinstatement
+ * age). Hidden (blind) review STARS never enter: only revealed-ness and the
+ * reviewer's own evidence count (§26/§27). Exported so tests can prove that
+ * restriction/reinstatement facts actually invalidate the cache.
+ */
+export function reportFingerprint(userId: string, roles: PreparedEvidence[]): string {
+  // Fingerprint = outcome identity + all scoring-relevant facts.
   const summary = roles.map((r) => ({
     role: r.role,
+    // RC5 §5.2: every scoring-relevant non-outcome fact fingerprints too.
+    // Without these, a cached 780 would survive the account becoming
+    // formally restricted (or a severe event being reinstated), because
+    // the outcomes alone did not change.
+    restricted: r.currentlyRestricted,
+    reinstated: r.severeEventReinstatedDaysAgo,
     outcomes: r.outcomes
       .slice()
       .sort((a, b) => a.workKey.localeCompare(b.workKey))
@@ -89,6 +107,10 @@ interface SnapshotRow {
   pillars: Record<string, number> | null;
   primary_outcomes: number | null;
   unique_counterparties: number | null;
+  effective_sample_size: number | null;
+  verified_volume_minor: number | null;
+  span_days: number | null;
+  caps: Record<string, number> | null;
   as_of: string;
 }
 
@@ -104,7 +126,7 @@ export async function trustReportFor(userId: string, asOf = new Date()): Promise
     ...r,
     currentlyRestricted: facts.banned || r.currentlyRestricted,
   }));
-  const inputHash = hashReport(userId, prepared);
+  const inputHash = reportFingerprint(userId, prepared);
   const results: RoleScoreResult[] = [];
   const snapshots = await readSnapshots(sql, userId);
   let fromSnapshot = true;
@@ -136,7 +158,8 @@ export async function trustReportFor(userId: string, asOf = new Date()): Promise
 async function readSnapshots(sql: Sql, userId: string): Promise<Map<string, SnapshotRow>> {
   const rows = await sql.query<SnapshotRow>(
     `select role, model_version, score, status, confidence, input_hash, pillars,
-            primary_outcomes, unique_counterparties, as_of
+            primary_outcomes, unique_counterparties, effective_sample_size,
+            verified_volume_minor, span_days, caps, as_of
      from trust_score_snapshots where user_id = $1 and model_version = $2`,
     [userId, MODEL_VERSION],
   );
@@ -145,24 +168,45 @@ async function readSnapshots(sql: Sql, userId: string): Promise<Map<string, Snap
   return map;
 }
 
+/**
+ * RC5 §5.1: rebuild the COMPLETE RoleScoreResult from a valid snapshot.
+ * Cold/warm equivalence: every field the downstream logic can read must
+ * match the fresh scoreRole() output for the same fingerprinted facts.
+ *  - bRaw: roleBase() over the stored pillars is deterministic and
+ *    model-versioned — the same pillars the cold path computed;
+ *  - uncappedScore: the stored score when no cap applied; otherwise the
+ *    model-versioned roleScore(bRaw, confidence) (the cap only MINs the
+ *    published number, never the underlying value);
+ *  - everything else is a persisted column (0018/0019).
+ */
 function snapshotToResult(row: SnapshotRow, role: RoleScoreResult["role"]): RoleScoreResult {
+  const pillars = row.pillars ?? {};
+  const confidence = row.confidence == null ? 0 : Number(row.confidence);
+  const bRaw = roleBase(pillars, role);
+  const scored = row.status === "SCORED" && row.score != null;
+  const cap = row.caps?.cap ?? null;
+  const uncappedScore = scored
+    ? cap == null
+      ? Number(row.score)
+      : roleScore(bRaw, confidence)
+    : null;
   return {
     role,
     modelVersion: row.model_version,
     status: row.status as ScoreStatus,
     score: row.score == null ? null : Number(row.score),
-    band: row.score == null ? "NR" : scoreBand(Number(row.score)),
-    confidence: row.confidence == null ? 0 : Number(row.confidence),
-    confidenceLabel: labelFromConfidence(row.confidence == null ? 0 : Number(row.confidence)),
-    bRaw: 0,
-    pillars: row.pillars ?? {},
+    band: scored ? scoreBand(Number(row.score)) : "NR",
+    confidence,
+    confidenceLabel: labelFromConfidence(confidence),
+    bRaw,
+    pillars,
     primaryOutcomes: Number(row.primary_outcomes ?? 0),
     uniqueCounterparties: Number(row.unique_counterparties ?? 0),
-    effectiveSampleSize: 0,
-    spanDays: 0,
-    verifiedVolumeMinor: 0,
-    capApplied: null,
-    uncappedScore: null,
+    effectiveSampleSize: Number(row.effective_sample_size ?? 0),
+    spanDays: Number(row.span_days ?? 0),
+    verifiedVolumeMinor: Number(row.verified_volume_minor ?? 0),
+    capApplied: cap,
+    uncappedScore,
   };
 }
 
@@ -184,8 +228,9 @@ async function writeSnapshot(
     `insert into trust_score_snapshots
        (id, user_id, role, model_version, score, status, confidence,
         effective_sample_size, unique_counterparties, primary_outcomes,
-        verified_volume_minor, verified_volume_currency, pillars, caps, input_hash, as_of)
-     values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'INR',$12::jsonb,$13::jsonb,$14,$15)
+        verified_volume_minor, verified_volume_currency, pillars, caps,
+        input_hash, as_of, span_days)
+     values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'INR',$12::jsonb,$13::jsonb,$14,$15,$16)
      on conflict (user_id, role, model_version) do update set
        score = excluded.score, status = excluded.status, confidence = excluded.confidence,
        effective_sample_size = excluded.effective_sample_size,
@@ -193,9 +238,14 @@ async function writeSnapshot(
        primary_outcomes = excluded.primary_outcomes,
        verified_volume_minor = excluded.verified_volume_minor,
        pillars = excluded.pillars, caps = excluded.caps,
-       input_hash = excluded.input_hash, as_of = excluded.as_of`,
+       input_hash = excluded.input_hash, as_of = excluded.as_of,
+       span_days = excluded.span_days`,
     [
-      `tss_${userId.slice(0, 12)}_${role}_${MODEL_VERSION}`.replace(/[^A-Za-z0-9_.:-]/g, ""),
+      // RC5: the id must be unique per (user, role, model). A fixed prefix
+      // slice of the user id collided across users sharing a 12-char prefix
+      // (latent P0: the second member's snapshot write 500'd). A short hash
+      // of the full id is deterministic and collision-free in practice.
+      `tss_${createHash("sha256").update(userId).digest("hex").slice(0, 16)}_${role}_${MODEL_VERSION}`.replace(/[^A-Za-z0-9_.:-]/g, ""),
       userId,
       role,
       MODEL_VERSION,
@@ -210,6 +260,7 @@ async function writeSnapshot(
       JSON.stringify(result.capApplied == null ? {} : { cap: result.capApplied }),
       inputHash,
       asOf.toISOString(),
+      result.spanDays,
     ],
   );
 }
@@ -218,29 +269,106 @@ async function writeSnapshot(
  * §35: TRUE marginal score effect of each finalized adverse event for a
  * role — the score with the event minus the score without it, computed by
  * the real model (never an invented point table).
+ *
+ * RC5 §5.4: a counterfactual that is NOT numerically comparable (removing
+ * the event drops the role to NR or RESTRICTED) carries impactPoints: null
+ * plus its status. 0 points would claim "comparable, and the difference is
+ * zero", which is semantically false when no comparable number exists.
  */
+export interface MarginalImpact {
+  workKey: string;
+  severity: string;
+  /** null = the counterfactual has no comparable number (NR/RESTRICTED). */
+  impactPoints: number | null;
+  counterfactualStatus: "SCORED" | "NR" | "RESTRICTED";
+}
+
 export async function marginalImpactsForRole(
   userId: string,
   role: PreparedEvidence["role"],
-): Promise<Array<{ workKey: string; severity: string; impactPoints: number }>> {
+): Promise<MarginalImpact[]> {
   const facts = await collectTrustFacts(userId);
   const prep = role === "PROVIDER" ? facts.provider : role === "SPONSOR" ? facts.sponsor : facts.captain;
   const base = scoreRole({ ...prep, currentlyRestricted: facts.banned || prep.currentlyRestricted });
   if (base.status !== "SCORED" || base.score == null) return [];
-  const out: Array<{ workKey: string; severity: string; impactPoints: number }> = [];
+  const out: MarginalImpact[] = [];
   for (const outcome of prep.outcomes) {
     if (outcome.severity === "NORMAL") continue;
     const without = scoreRole(
       { ...prep, outcomes: prep.outcomes.filter((o) => o.workKey !== outcome.workKey) },
-      );
-    const withoutScore = without.status === "SCORED" && without.score != null ? without.score : null;
+    );
     out.push({
       workKey: outcome.workKey,
       severity: outcome.severity,
-      impactPoints: withoutScore == null ? 0 : base.score - withoutScore,
+      impactPoints:
+        without.status === "SCORED" && without.score != null
+          ? base.score - without.score
+          : null,
+      counterfactualStatus: without.status,
     });
   }
   return out;
+}
+
+/**
+ * RC5 §5.6: Most Reliable ranks the BI-1.0 PROVIDER RELIABILITY PILLAR
+ * (0..1) — NOT the 300–900 overall provider score. Eligibility stays
+ * meaningful: the provider role must be score-eligible, with effective
+ * sample size >= 5 and >= 3 unrelated counterparties (the same floor the
+ * score boards use; §54). Candidates come from the snapshot index and are
+ * re-verified through the full scoring path, exactly like the score boards
+ * (§73: public rankings never serve stale numbers).
+ */
+export interface ReliabilityLeaderRow {
+  userId: string;
+  handle: string | null;
+  displayName: string | null;
+  /** The RELIABILITY pillar value, 0..1 (displayed as a percentage). */
+  reliability: number;
+  primaryOutcomes: number;
+}
+
+export async function reliabilityLeaderboard(
+  limit = 10,
+): Promise<ReliabilityLeaderRow[]> {
+  const sql = await getSql();
+  const candidates = await sql.query<{
+    user_id: string;
+    handle: string | null;
+    display_name: string | null;
+    reliability: number;
+  }>(
+    `select s.user_id, pr.handle, u.display_name,
+            (s.pillars ->> 'RELIABILITY')::float8 as reliability
+     from trust_score_snapshots s
+     join users u on u.id = s.user_id and u.banned = false
+     left join profiles pr on pr.user_id = s.user_id
+     where s.role = 'PROVIDER' and s.model_version = $1
+       and s.status = 'SCORED'
+     order by reliability desc, s.user_id
+     limit $2`,
+    [MODEL_VERSION, limit * 4],
+  );
+  const rows: ReliabilityLeaderRow[] = [];
+  for (const c of candidates.slice(0, limit * 2)) {
+    const report = await trustReportFor(c.user_id, new Date());
+    const r = report.roles.find((x) => x.role === "PROVIDER");
+    if (!r || r.status !== "SCORED" || r.score == null) continue;
+    if (r.effectiveSampleSize < 5) continue;
+    if (r.uniqueCounterparties < 3) continue;
+    if (r.pillars["RELIABILITY"] == null) continue;
+    rows.push({
+      userId: c.user_id,
+      handle: c.handle,
+      displayName: c.display_name,
+      reliability: r.pillars["RELIABILITY"],
+      primaryOutcomes: r.primaryOutcomes,
+    });
+    if (rows.length >= limit) break;
+  }
+  return rows.sort(
+    (a, b) => b.reliability - a.reliability || a.handle?.localeCompare(b.handle ?? "") || 0,
+  );
 }
 
 /**
@@ -324,7 +452,6 @@ export interface PublicTrustBlock {
 
 export async function publicTrustFor(userId: string, asOf = new Date()): Promise<PublicTrustBlock> {
   const report = await trustReportFor(userId, asOf);
-  const scored = report.roles.filter((r) => r.status === "SCORED");
   return {
     modelVersion: report.modelVersion,
     overall: report.overall
@@ -351,7 +478,7 @@ export async function publicTrustFor(userId: string, asOf = new Date()): Promise
       primaryOutcomes: r.primaryOutcomes,
       uniqueCounterparties: r.uniqueCounterparties,
     })),
-    verifiedOutcomeCount: scored.reduce((a, r) => a + 0, 0) + report.roles.reduce((a, r) => a + r.primaryOutcomes, 0),
+    verifiedOutcomeCount: report.roles.reduce((a, r) => a + r.primaryOutcomes, 0),
   };
 }
 

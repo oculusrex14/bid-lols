@@ -318,11 +318,45 @@ test("§41/§62.22: reversing a trust event excludes it from scoring; snapshots 
   assert.equal(firstCount, 2, "setup: two projected outcomes");
   assert.equal(outcomeCountAfterReversal, 1, "the reversal drops the superseded outcome");
   // Deleting all trust events entirely still reproduces the same score
-  // (state + reversals → evidence), §41 reproducibility.
+  // (state + reversals → evidence), §41 reproducibility. Migration 0019
+  // enforces append-only at the DATABASE level (UPDATE/DELETE rejected by
+  // trigger); this documented check is the one place the escape hatch is
+  // exercised, so the invariant under test stays visible in the diff.
+  // Application and projector code have no disable path.
+  await q(pg, "alter table trust_events disable trigger user");
   await q(pg, "delete from trust_events");
+  await q(pg, "alter table trust_events enable trigger user");
   const third = await trustReportFor(P);
   const thirdCount = third.roles.find((r) => r.role === "PROVIDER")?.primaryOutcomes ?? 0;
   assert.equal(thirdCount, 2, "trust_events deleted → scores rebuild from state alone");
+});
+
+test("RC5 §5.8: trust_events is append-only at the database level", async () => {
+  const pg = await freshDb();
+  await completedBounty(pg, "m1", S, P, 30);
+  const { projectUserTrustEvents } = await import("../src/lib/trust/projector.server");
+  await projectUserTrustEvents(P, { apply: true });
+  const ev = await q(pg, `select id from trust_events where user_id = $1 limit 1`, [P]);
+  const id = String(ev[0]?.id);
+  assert.ok(id, "a projected event exists to mutate");
+  // INSERT still works (the projector and corrections use it).
+  await q(pg, `insert into trust_events (id, user_id, role, product, work_type, work_id,
+      event_kind, source_type, source_id, occurred_at, reverses_event_id, meta)
+    values ('tev_append_ok',$1,'PROVIDER','foundersbid','BOUNTY','m1','REVERSAL','reversal',$2,
+      now(), $2, '{}'::jsonb)`, [P, id]);
+  // UPDATE is rejected by the trigger, before any row is touched.
+  await assert.rejects(
+    () => q(pg, `update trust_events set meta = '{"x":1}'::jsonb where id = $1`, [id]),
+    /append-only/i,
+  );
+  // DELETE is rejected by the trigger too.
+  await assert.rejects(
+    () => q(pg, `delete from trust_events where id = $1`, [id]),
+    /append-only/i,
+  );
+  // The row is intact.
+  const after = await q(pg, `select count(*)::int as n from trust_events where id = $1`, [id]);
+  assert.equal(Number(after[0]?.n ?? 0), 1, "the rejected mutation changed nothing");
 });
 
 test("§41: snapshots invalidate automatically when the underlying outcome set changes", async () => {

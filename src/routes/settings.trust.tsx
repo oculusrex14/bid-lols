@@ -30,11 +30,18 @@ type TrustReportView = {
   modelVersion: string;
   overall: { status: string; score: number | null; band: string; capApplied: number | null } | null;
   roles: Array<RoleReport>;
-  impacts: Array<{ role: string; workKey: string; severity: string; impactPoints: number }>;
+  impacts: Array<{
+    role: string;
+    workKey: string;
+    severity: string;
+    /** null = no comparable counterfactual (NR/RESTRICTED), never 0. */
+    impactPoints: number | null;
+    counterfactualStatus: "SCORED" | "NR" | "RESTRICTED";
+  }>;
 };
 
 const loadReport = createServerFn({ method: "GET" }).handler(async () => {
-  const { me } = await (await import("@/lib/shell-context")).getShellContext();
+  const { me, funding } = await (await import("@/lib/shell-context")).getShellContext();
   const session = await (await import("@/lib/authz")).getSession();
   if (!session || !me) {
     throw redirect({ href: "/signin" });
@@ -46,7 +53,7 @@ const loadReport = createServerFn({ method: "GET" }).handler(async () => {
     const list = await marginalImpactsForRole(session.user.id, r.role).catch(() => []);
     for (const item of list) impacts.push({ role: r.role, ...item });
   }
-  return { me: report ? me : me, roles: report.roles, overall: report.overall, modelVersion: report.modelVersion, impacts, product: await currentProductKey() };
+  return { me: report ? me : me, funding, roles: report.roles, overall: report.overall, modelVersion: report.modelVersion, impacts, product: await currentProductKey() };
 });
 
 export const Route = createFileRoute("/settings/trust")({
@@ -59,7 +66,7 @@ function TrustSettingsPage() {
   const overall = d.overall;
   const scored = d.roles.filter((r) => r.status === "SCORED");
   return (
-    <ProductShell site={d.product as ProductKey} me={d.me}>
+    <ProductShell site={d.product as ProductKey} me={d.me} funding={d.funding}>
       <div className="canvas-app pb-16">
         <PageHeader
           kicker="Private report"
@@ -126,14 +133,20 @@ function TrustSettingsPage() {
             ) : (
               <ul className="mt-2 space-y-1.5 text-sm" data-testid="trust-impacts">
                 {d.impacts.map((i) => (
-                  <li key={`${i.role}:${i.workKey}`} className="flex items-center justify-between gap-3">
+                  <li key={`${i.role}:${i.workKey}`} className="flex flex-wrap items-center justify-between gap-x-3 gap-y-0.5">
                     <span className="text-muted">
                       {severityLabel(i.severity)} on <span className="font-mono text-xs">{shortWork(i.workKey)}</span>
                     </span>
-                    <span className="tabular shrink-0 font-medium text-danger">
-                      {i.impactPoints > 0 ? "+" : ""}
-                      {i.impactPoints}
-                    </span>
+                    {i.impactPoints == null ? (
+                      <span className="text-xs text-subtle">
+                        Without this event, there is not enough history for a comparable score.
+                      </span>
+                    ) : (
+                      <span className="tabular shrink-0 font-medium text-danger">
+                        {i.impactPoints > 0 ? "+" : ""}
+                        {i.impactPoints}
+                      </span>
+                    )}
                   </li>
                 ))}
               </ul>

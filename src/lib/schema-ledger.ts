@@ -38,6 +38,7 @@ export const REQUIRED_MIGRATIONS: readonly string[] = [
   "0016_bidception.sql",
   "0017_bidception_child_link.sql",
   "0018_trust_bid_index.sql",
+  "0019_trust_snapshot_equivalence.sql",
 ];
 
 /** Names in REQUIRED_MIGRATIONS absent from `applied`, in apply order. */

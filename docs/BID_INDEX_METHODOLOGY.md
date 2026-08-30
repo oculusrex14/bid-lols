@@ -134,10 +134,14 @@ geography, device or IP data.
 
 ## Marginal impact instead of point tables
 
-The private report shows an adversarial event's true effect: the score with
+The private report shows an adverse event's true effect: the score with
 the event minus the score without it, computed by this model. That single
 number automatically includes value, complexity, damping, confidence, and
-caps.
+caps. When removing the event would drop the role below eligibility (NR)
+or into RESTRICTED, there is NO comparable number: the report says
+"not enough history for a comparable score" instead of printing 0. Zero
+points means "comparable, and the difference is zero"; it never means
+"incomparable".
 
 ## Corrections and appeals
 
@@ -159,3 +163,38 @@ made until temporal validation succeeds.
 Identity verification may add at most a small assurance weight in a future,
 separately reviewed model. Payment for verification earns zero points,
 today and ever.
+## RC4.1 correctness addendum (shipped with RC5)
+
+Snapshot equivalence. A cached score read must be materially identical to a
+fresh compute for the same authoritative facts, model version, and as-of.
+The snapshot now persists every RoleScoreResult field (0018 fields plus
+`span_days` from 0019); `bRaw` is rebuilt from the stored pillars through
+the model-versioned `roleBase()` and `uncappedScore` through
+`roleScore(bRaw, confidence)` when a cap applied. Overall score, band, and
+cap are therefore identical cold and warm (regression-tested).
+
+Fingerprint. The snapshot input hash includes the model version, every
+outcome's identity and scoring-relevant fields, reveal-gated review facts,
+AND the role-level restriction/reinstatement facts. A cached number can
+never survive an account becoming formally restricted (the read becomes
+RESTRICTED, not the stale score), and a reinstatement changes the hash so
+the recovery-cap schedule recomputes.
+
+Leaderboard cache. Score boards re-verify every candidate through the full
+scoring path on each read; a warm snapshot can no longer zero out the
+evidence statistics that the board gates on (confidence, effective sample
+size, unrelated counterparties).
+
+Most Reliable. The "Most Reliable" board ranks the BI-1.0 PROVIDER
+RELIABILITY PILLAR (0 to 1, displayed as a percentage with the verified
+outcome count), never the 300-900 provider score. Eligibility: provider
+role score-eligible, effective sample size >= 5, >= 3 unrelated
+counterparties. It is a board in the single leaderboard registry; the
+registry is the one source of board identity (names, floors, formatters).
+
+Append-only enforcement. `trust_events` is append-only at TWO levels: the
+application layer has no UPDATE/DELETE path, and migration 0019 adds a
+database BEFORE UPDATE OR DELETE trigger that rejects both with a named
+exception (verified on PostgreSQL tooling and PGLite; the reproducibility
+test that deletes all events uses the one documented disable/re-enable
+escape, which application code does not have).

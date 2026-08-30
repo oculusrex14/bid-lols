@@ -41,8 +41,13 @@ affect scores.
 
 - No admin can set a score, weight, or severity directly; corrections go
   through REVERSAL trust events, then rebuild.
-- `trust_events` is append-only; never UPDATE/DELETE (except by an audited
-  correction service; manual DELETE is a postmortem-level violation).
+- `trust_events` is append-only at TWO levels (RC5 / RC4.1): the
+  application layer has no UPDATE/DELETE path, and migration 0019 adds a
+  database BEFORE UPDATE OR DELETE trigger that rejects both with a named
+  exception. Corrections go through REVERSAL rows. The only documented
+  disable is the reproducibility test (RC4 §41), which disables the
+  trigger explicitly for one check and re-enables it; a manual DELETE in
+  production is a postmortem-level violation.
 - SUSPECTED trust_risk_flags never lower a score by themselves.
 - TRUST_VERIFICATION_LIVE stays 0; there is no checkout; verification
   payment would earn zero Bid Index effect even when introduced.
