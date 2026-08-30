@@ -105,7 +105,12 @@ authorization are NOT weakened by the product-object exception.
 - Mobile: product mark + wordmark, compact primary CTA, and **ONE** menu
   button (44px target). The menu owns product nav, the Bid Network group,
   account, appearance, blog, and the funding status. No second menu icon,
-  no second top-level appearance button.
+  no second top-level appearance button. **RC5.1:** the standalone
+  light/dark icon toggle is desktop-only (`hidden` below `md`); below `md`
+  the appearance control exists exactly once, inside the menu
+  (`ModeToggle variant="inline"`). The header row is therefore
+  `[mark + wordmark] … [funding chip (md+)] [account (md+)] [CTA] [menu]`
+  on mobile — the CTA stays visible.
 - The shared Bid Network mark + dropdown keeps four sibling products with
   the current product clearly marked; every cross-domain URL uses
   `linkOrigin()` (CultureBid stays on the working www origin until its
@@ -198,14 +203,28 @@ authorization are NOT weakened by the product-object exception.
   completeness bar means sample completeness only — never trust,
   ranking, or price.
 
-## Money display (RC5 §29)
+## Money display (RC5 §29; RC5.1 currency foundation)
 
 - Core arithmetic: `src/lib/money.ts`, integer minor units only.
-- `MoneyValue` / `formatMinor`: precise accounting (always 2 decimals for
-  INR). `formatMinorTrimmed` / `trimZeroDecimals`: marketing display that
-  drops ".00" ONLY when paise are exactly zero (₹1,00,000 not
-  ₹1,00,000.00); nonzero paise stay visible (₹1,00,000.50). Never round
-  away real money.
+- **Currency registry (RC5.1 WS5):** `SupportedCurrency = "INR" | "USD"`
+  with locale (en-IN / en-US), minor digits (2 / 2) and symbol (₹ / $) in
+  `CURRENCY_CONFIG`. Grouping follows the record's OWN currency: Indian
+  digit groups for INR (₹1,00,000.00), US groups for USD ($100,000.00).
+  No "USD 1,00,000.00" style code+grouping hybrids; unknown codes fail
+  visibly (`toSupportedCurrency` throws) and are never assumed INR.
+- `MoneyValue` / `formatMinor`: precise accounting (always 2 decimals in
+  either currency). `formatMinorTrimmed` / `trimZeroDecimals`: marketing
+  display that drops ".00" ONLY when minor units are exactly zero
+  (₹1,00,000 not ₹1,00,000.00; $1,000 not $1,000.00); nonzero paise/cents
+  stay visible (₹1,00,000.50, $1,000.50). Never round away real money.
+- Marketing/product-object surfaces (work ticket, brief cards, allocation
+  tree, market-rates preview, job cards) trim; detail/accounting/ledger
+  surfaces (bounty detail, milestones, admin payments, funding plans) keep
+  the exact form.
+- **Work currency vs viewer currency (RC5.1):** a real record always
+  renders in its persisted `currency` column, independent of who views it;
+  SAMPLE objects render in the viewer-default currency (IN in India, USD
+  elsewhere) and keep their visible EXAMPLE/SAMPLE labels.
 
 ## Spine primitives (single source for control skin)
 

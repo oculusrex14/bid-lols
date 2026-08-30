@@ -187,10 +187,31 @@ size, unrelated counterparties).
 
 Most Reliable. The "Most Reliable" board ranks the BI-1.0 PROVIDER
 RELIABILITY PILLAR (0 to 1, displayed as a percentage with the verified
-outcome count), never the 300-900 provider score. Eligibility: provider
-role score-eligible, effective sample size >= 5, >= 3 unrelated
-counterparties. It is a board in the single leaderboard registry; the
-registry is the one source of board identity (names, floors, formatters).
+outcome count), never the 300-900 provider score. The pillar value is a
+Bayesian posterior estimate, not a literal completion ratio: it starts from
+the model prior (mu 0.70, kappa 4) and is updated with the weighted
+observations from verified provider outcomes. Each outcome's weight carries
+the economic-value factor, the complexity factor, recency,
+repeat-counterparty damping, and severity weighting, so two members with
+the same raw clean/failed ratio can legitimately rank differently. The
+percentage therefore describes the model's ESTIMATE of reliability, never
+"the share of jobs that completed clean". Eligibility: provider role
+score-eligible, effective sample size >= 5, >= 3 unrelated counterparties.
+It is a board in the single leaderboard registry; the registry is the one
+source of board identity (names, floors, formatters).
+
+Currency scope (RC5.1). BI-1.0 is INR-native: `valueFactor` interprets its
+input as INR paise, and the verified-volume statistics are
+INR-denominated. Only INR-denominated economic amounts enter the
+economic-value weighting; a non-INR outcome (for example a future USD
+completion) keeps its factual completion evidence (it still counts for
+reliability, experience, reviews and caps) but its economic amount is
+scored at the floor value factor (0.75, the documented
+no-missing-amount behavior). A USD cent is never read as an INR paise, and
+verified volume never mixes currencies. Cross-currency economic
+normalization requires a new model version / explicit normalization
+specification before non-INR economic value can affect the Bid Index. No FX
+rate is applied anywhere in the model.
 
 Append-only enforcement. `trust_events` is append-only at TWO levels: the
 application layer has no UPDATE/DELETE path, and migration 0019 adds a

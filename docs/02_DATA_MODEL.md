@@ -112,3 +112,51 @@ Bid Index trust infrastructure (BI-1.0):
   Corrections remain REVERSAL rows. The single documented escape hatch is
   the RC4 41 reproducibility test, which disables the trigger explicitly
   for that one check and re-enables it.
+
+## RC5.1: currency foundation — NO new migration
+
+Every currency column RC5.1 needs already exists (0013: `bounties`,
+`bounty_awards`, `projects`, `project_proposals`, `project_milestones`;
+0014: `money_events`, `payout_obligations`, `disputes`; 0015:
+`graveyard_listings`; 0016: `parent_works`, `child_works`; 0018:
+`trust_events.currency` + `normalized_base_amount_minor`/`base_currency`
+reserved for a future normalization spec; `verification_cases.currency`):
+`char(3) not null default 'INR'` on the work items. RC5.1 changes no DDL.
+The contracts:
+
+- **Work currency is persisted and authoritative.** `bounties.currency` /
+  `projects.currency` / `parent_works.currency` are set by the sponsor's
+  explicit choice at creation (bounty/project) or funding (parent work) —
+  validated by `z.enum(["INR","USD"])` at the boundary, never inferred from
+  the viewer. Child works materialize in the PARENT's currency; proposals
+  quote in the PROJECT's currency; awards, milestones, disputes, money
+  events and payouts all carry the work's currency. Once a funded
+  obligation exists, no path mutates its currency.
+- **Viewer default currency is not data.** `viewer-currency.server.ts`
+  resolves IN->INR / else->USD from the trusted Vercel edge header
+  (`x-vercel-sc`) in deployed runtimes and from the dev-only
+  `DEFAULT_VIEWER_CURRENCY` override otherwise. It feeds sample objects,
+  new-form defaults and the Market Rates default partition. It is never
+  written to any table and never selects a payment currency.
+- **Market Rates are currency-partitioned aggregates.**
+  `marketRateFor(product, category, currency, threshold)` filters
+  `currency = $requested` in both the bounty and project legs; the
+  `MarketRateSample` carries its currency. A ₹50,000 outcome and a $1,000
+  outcome can no longer share a sorted array.
+- **BI-1.0 is INR-native (frozen model, explicit gate).** Evidence
+  outcomes now carry the work currency. Only `currency = 'INR'` amounts
+  enter `valueFactor` (INR paise, rupee thresholds); a non-INR outcome
+  keeps its factual completion evidence but its economic amount scores at
+  the floor factor 0.75. Verified volume sums INR amounts only, so
+  `trust_score_snapshots.verified_volume_minor` +
+  `verified_volume_currency` ('INR') describe an INR-only statistic by
+  contract — cross-currency normalization would require a new model
+  version using `normalized_base_amount_minor`/`base_currency`, which does
+  not exist yet. The snapshot fingerprint includes outcome currency.
+- **trust_events provenance.** The projector persists the TRUE amount and
+  the work item's TRUE currency (RC5.1 replaced the old literal `'INR'`
+  insert parameter). All existing events were INR work, so historical
+  rows are unchanged.
+- **Sample objects are currency-keyed constants** in
+  `src/lib/sample-content.ts` (INR set and USD set, reconciling sample
+  trees in both); they are never database rows.
