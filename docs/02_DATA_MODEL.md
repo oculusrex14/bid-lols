@@ -133,11 +133,13 @@ The contracts:
   events and payouts all carry the work's currency. Once a funded
   obligation exists, no path mutates its currency.
 - **Viewer default currency is not data.** `viewer-currency.server.ts`
-  resolves IN->INR / else->USD from the trusted Vercel edge header
-  (`x-vercel-sc`) in deployed runtimes and from the dev-only
-  `DEFAULT_VIEWER_CURRENCY` override otherwise. It feeds sample objects,
-  new-form defaults and the Market Rates default partition. It is never
-  written to any table and never selects a payment currency.
+  resolves IN->INR / else->USD from the trusted Vercel proxy header
+  (`x-vercel-ip-country` — the documented ISO country of the requester's
+  public IP; RC5.2 correction of RC5.1's first cut, which read
+  `x-vercel-sc`, the serving edge's country) in deployed runtimes and from
+  the dev-only `DEFAULT_VIEWER_CURRENCY` override otherwise. It feeds
+  sample objects, new-form defaults and the Market Rates default partition.
+  It is never written to any table and never selects a payment currency.
 - **Market Rates are currency-partitioned aggregates.**
   `marketRateFor(product, category, currency, threshold)` filters
   `currency = $requested` in both the bounty and project legs; the
