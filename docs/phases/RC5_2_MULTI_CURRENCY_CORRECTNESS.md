@@ -1,6 +1,6 @@
 # RC5.2 — Multi-Currency Correctness Patch
 
-Status: IN PROGRESS
+Status: COMPLETE (production release; see docs/reports/RC5_2_MULTI_CURRENCY_CORRECTNESS.md)
 
 Small corrective release on top of the RC5.1 runtime (`2de3489`). No
 redesign, no new phase, no funding, no BI-1.0 constant changes.
