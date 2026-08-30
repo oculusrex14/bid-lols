@@ -1,6 +1,6 @@
 # RC5.1 — Release Correctness + Mobile Cleanup + Currency Foundation
 
-Status: IN PROGRESS
+Status: COMPLETE (shipped; see docs/reports/RC5_1_RELEASE_AND_CURRENCY_REPORT.md)
 
 Small corrective release on top of the RC5 runtime (`c2423e5`). No redesign, no
 new marketplace phase, no real payments, no TRUST_VERIFICATION_LIVE, no BI-1.0
