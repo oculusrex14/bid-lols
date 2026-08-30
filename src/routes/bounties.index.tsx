@@ -377,7 +377,10 @@ function BountyFilters({
         onChange={(v) => onFilter({ sort: v === "newest" ? undefined : v })}
       />
       <label className="flex items-center gap-1.5 text-xs text-muted">
-        <span>Min reward (₹)</span>
+        {/* RC5.2: the filter compares RAW minor units across whatever
+            currencies the list holds (a browse filter, not a price quote) —
+            the label states that instead of inventing a currency symbol. */}
+        <span>Min reward (minor units)</span>
         <input
           type="number"
           min={0}

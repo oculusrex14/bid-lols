@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { formatMajor, minParentBudgetMajor } from "@/lib/money";
 import {
   createParentWork,
   publishParentForFunding,
@@ -64,12 +65,22 @@ export const publishParentWorkFn = createServerFn({ method: "POST" })
     z
       .object({
         parentWorkId: z.string().trim().min(4).max(64),
-        // RC5.1 WS8: major units in the sponsor's chosen work currency; the
-        // floor is 1,000 major units in either currency (no invented FX).
-        budgetMajor: z.number().int().min(1000),
+        // RC5.2: major units in the sponsor's chosen work currency; the
+        // floor comes from the single currency policy (1,000 major units in
+        // either currency — a team-project scale, not an FX conversion).
+        budgetMajor: z.number().int().min(1),
         currency: z.enum(["INR", "USD"]),
       })
       .strict()
+      .superRefine((v, ctx) => {
+        if (v.budgetMajor < minParentBudgetMajor(v.currency)) {
+          ctx.addIssue({
+            code: "custom",
+            path: ["budgetMajor"],
+            message: `A parent work budget must be at least ${formatMajor(minParentBudgetMajor(v.currency), v.currency)} in ${v.currency}.`,
+          });
+        }
+      })
       .parse,
   )
   .handler(async ({ data }) => {
@@ -162,7 +173,10 @@ export const setCaptainFeeFn = createServerFn({ method: "POST" })
     z
       .object({
         parentWorkId: z.string().trim().min(4).max(64),
-        feeRupees: z.number().int().min(0),
+        // RC5.2: MAJOR units of the PARENT's currency (the fee is reserved
+        // from the parent's funded pool) — the old "feeRupees" name assumed
+        // INR-only.
+        feeMajor: z.number().int().min(0),
       })
       .strict()
       .parse,
@@ -174,7 +188,7 @@ export const setCaptainFeeFn = createServerFn({ method: "POST" })
       return await setCaptainCompensation({
         parentWorkId: data.parentWorkId,
         actorUserId: session.user.id,
-        feeMinor: data.feeRupees * 100,
+        feeMinor: data.feeMajor * 100,
       });
     } catch (err) {
       const mapped = toErrorResponse(err);
@@ -189,7 +203,10 @@ export const allocateChildWorkFn = createServerFn({ method: "POST" })
       .object({
         parentWorkId: z.string().trim().min(4).max(64),
         title: z.string().trim().min(3).max(140),
-        allocatedRupees: z.number().int().min(1),
+        // RC5.2: MAJOR units of the PARENT's currency (the allocation comes
+        // out of the parent's funded pool) — the old "allocatedRupees" name
+        // assumed INR-only.
+        allocatedMajor: z.number().int().min(1),
         kind: z.enum(["BOUNTY", "PROJECT"]),
         dependsOnIds: z.array(z.string().trim().min(4).max(64)).max(20).default([]),
         bountySpec: z
@@ -223,7 +240,7 @@ export const allocateChildWorkFn = createServerFn({ method: "POST" })
         parentWorkId: data.parentWorkId,
         actorUserId: session.user.id,
         title: data.title,
-        allocatedMinor: data.allocatedRupees * 100,
+        allocatedMinor: data.allocatedMajor * 100,
         kind: data.kind,
         dependsOn: data.dependsOnIds,
         bountySpec: data.bountySpec,

@@ -15,6 +15,7 @@ import {
 import { requireUser, toErrorResponse, requireVerifiedEmail } from "@/lib/authz";
 import { assertHostCapability, assertBountyOnHost, assertBountyOfApplicationOnHost } from "@/lib/marketplace/capabilities.server";
 import { moneyMode } from "@/lib/payments/provider";
+import { bountyFloorCopy, meetsBountyRewardFloor } from "@/lib/money";
 import { REWARD_STRUCTURES } from "@/lib/marketplace/state";
 
 /**
@@ -36,10 +37,10 @@ const createBountyInput = z
     skills: z.array(z.string().trim().min(1).max(40)).max(20).default([]),
     deliverables: z.string().trim().max(8000).default(""),
     acceptanceCriteria: z.string().trim().max(8000).default(""),
-    // 100,000 … 100,000,000,000 minor units: ₹1,000…₹1,000,000,000 INR or
-    // $1,000…$1,000,000,000 USD (RC5.1 WS8: the floor is in minor units,
-    // same number in either currency — no invented FX threshold).
-    rewardTotalMinor: z.number().int().min(100_000).max(1_000_000_000_00),
+    // RC5.2: the floor is PER CURRENCY (the single authoritative policy in
+    // money.ts): ₹1,000 (100,000 paise) INR / $50 (5,000 cents) USD.
+    // Checked at object level together with the currency below.
+    rewardTotalMinor: z.number().int().min(1).max(1_000_000_000_00),
     // RC5.1 WS8: the sponsor's explicit currency choice; z.enum fails
     // visibly on anything else (never silently assume INR).
     currency: z.enum(["INR", "USD"]).default("INR"),
@@ -74,7 +75,20 @@ const createBountyInput = z
       .strict()
       .optional(),
   })
-  .strict();
+  .strict()
+  .superRefine((v, ctx) => {
+    // The launch floor is a product rule PER CURRENCY (not an FX
+    // conversion): INR ₹1,000, USD $50. One source: CURRENCY_MONEY_POLICY.
+    // Unknown currency already fails the enum above; this is the
+    // authoritative boundary check either way.
+    if (!meetsBountyRewardFloor(v.rewardTotalMinor, v.currency)) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["rewardTotalMinor"],
+        message: `The advertised reward must be at least ${bountyFloorCopy(v.currency)} for a ${v.currency} bounty.`,
+      });
+    }
+  });
 
 async function requestProductKey(): Promise<string> {
   const { serverProductKey } = await import("@/lib/host.server");

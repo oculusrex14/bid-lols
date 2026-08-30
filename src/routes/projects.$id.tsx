@@ -245,7 +245,7 @@ function ProjectMain({
         </section>
       ) : null}
 
-      {showPropose && !data.isSponsor ? <ProposalBox projectId={String(p.id)} onDone={onOpenPropose} /> : null}
+      {showPropose && !data.isSponsor ? <ProposalBox projectId={String(p.id)} currency={p.currency} onDone={onOpenPropose} /> : null}
     </>
   );
 }
@@ -370,7 +370,7 @@ function ProjectPanel({
   );
 }
 
-function ProposalBox({ projectId, onDone }: { projectId: string; onDone: (m: string) => void }) {
+function ProposalBox({ projectId, currency, onDone }: { projectId: string; currency: string; onDone: (m: string) => void }) {
   const [busy, setBusy] = useState(false);
   return (
     <form
@@ -392,7 +392,7 @@ function ProposalBox({ projectId, onDone }: { projectId: string; onDone: (m: str
             projectId,
             approach: String(f.get("approach")),
             experience: String(f.get("experience") ?? ""),
-            quotedMinor: Math.round(Number(f.get("quotedRupees")) * 100),
+            quotedMinor: Math.round(Number(f.get("quotedMajor")) * 100),
             timelineWeeks: f.get("timelineWeeks") ? Number(f.get("timelineWeeks")) : undefined,
             milestonesProposed: milestones,
             notes: String(f.get("notes") ?? ""),
@@ -408,8 +408,9 @@ function ProposalBox({ projectId, onDone }: { projectId: string; onDone: (m: str
           <Textarea id="pr-approach" name="approach" required minLength={20} maxLength={8000} rows={4} placeholder="How would you approach this?" />
         </Field>
         <div className="grid gap-3 sm:grid-cols-2">
-          <Field label="Quote (₹)" required id="pr-quote">
-            <Input id="pr-quote" name="quotedRupees" type="number" required min={1} className="tabular" />
+          {/* RC5.2: the quote is denominated in the PROJECT's currency. */}
+          <Field label={`Quote (${currency})`} required id="pr-quote">
+            <Input id="pr-quote" name="quotedMajor" type="number" required min={1} className="tabular" />
           </Field>
           <Field label="Timeline (weeks)" id="pr-timeline">
             <Input id="pr-timeline" name="timelineWeeks" type="number" min={1} max={52} className="tabular" />

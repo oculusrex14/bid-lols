@@ -4,7 +4,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { currentProductKey } from "@/lib/host";
 import { ProductShell } from "@/components/product-shell";
 import { createBountyFn, fundingPlanFn } from "@/lib/marketplace/bounties";
-import { formatMajor, formatMinor } from "@/lib/money";
+import { bountyFloorCopy, formatMajor, formatMinor, meetsBountyRewardFloor, minBountyRewardMajor } from "@/lib/money";
 import { Button } from "@/components/ui/button";
 import { StepIndicator } from "@/components/ui/market";
 import { InlineNotice } from "@/components/ui/states";
@@ -109,8 +109,10 @@ const STEP_CHECKS: Record<string, (d: BountyDraft) => StepErrors> = {
   },
   reward: (d): StepErrors => {
     const minor = Math.round(Number(d.rewardMajor) * 100);
-    if (!Number.isFinite(minor) || minor < 100_000) {
-      return { reward: `Minimum 1,000 ${d.currency}.` };
+    // RC5.2: the per-currency launch floor (₹1,000 / $50) comes from the
+    // single money policy; the server enforces the same rule authoritatively.
+    if (!Number.isFinite(minor) || minor <= 0 || !meetsBountyRewardFloor(minor, d.currency)) {
+      return { reward: `Minimum ${bountyFloorCopy(d.currency)}.` };
     }
     const n = (v: string) => Math.round(Number(v || "0") * 100);
     if (d.rewardStructure === "PODIUM") {

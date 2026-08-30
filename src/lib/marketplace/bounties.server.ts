@@ -13,6 +13,7 @@ import {
 import { settleFundingPayment, fundingDecomposition } from "@/lib/marketplace/ledger.server";
 import { notify } from "@/lib/marketplace/notifications.server";
 import { AuthzError } from "@/lib/authz";
+import { meetsBountyRewardFloor, bountyFloorCopy, toSupportedCurrency } from "@/lib/money";
 
 /**
  * Bounty engine (Phase 01, FR-4). All state transitions are claim-guarded
@@ -95,6 +96,20 @@ export type CreateBountyInput = {
 
 /** Create a bounty in DRAFT. Pure validation + one insert. */
 export async function createBounty(input: CreateBountyInput): Promise<{ id: string; slug: string }> {
+  // RC5.2: the per-currency launch floor (INR ₹1,000 / USD $50) is enforced
+  // at the authoritative write path itself — no caller (serverFn or
+  // internal) can bypass it by sending raw minor units directly. An unknown
+  // currency fails with a proper 422, never with a type error and never by
+  // assuming INR.
+  let cur: "INR" | "USD";
+  try {
+    cur = toSupportedCurrency(input.currency ?? "INR");
+  } catch {
+    throw new AuthzError(422, "invalid_currency", `Unsupported bounty currency "${input.currency}". Supported: INR, USD.`);
+  }
+  if (!meetsBountyRewardFloor(input.rewardTotalMinor, cur)) {
+    throw new AuthzError(422, "invalid_reward", `The advertised reward must be at least ${bountyFloorCopy(cur)} for a ${cur} bounty.`);
+  }
   const structure = input.rewardStructure as RewardStructure;
   const allocations = input.rewardAllocations.map((a) => ({
     place: a.place,

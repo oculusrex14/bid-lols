@@ -446,6 +446,32 @@ async function rc5Objects(browser) {
       /Funding not live/.test(chip ?? "") || chip === "",
       chip ?? "<absent>",
     );
+    // RC5.2 finding 12: the header rule holds on ALL FOUR brands at phone
+    // width (390 iPhone-class; the 360 Android-class is stricter, checked
+    // on foundersbid), and the icon reappears at the tablet breakpoint.
+    for (const host of ["bidthrone.lol", "foundersbid.lol", "www.culturebid.lol", "bidception.lol"]) {
+      await page.goto(url(host, "/"), { waitUntil: "networkidle" });
+      const icons = await page.$$eval(
+        'header button[aria-label^="Switch to"]',
+        (as) => as.filter((el) => el.getClientRects().length > 0).length,
+      );
+      ok(`390px ${host}: no standalone appearance icon in the header`, icons === 0, String(icons));
+      const menus = await page.$$('[aria-label="Open menu"]');
+      ok(`390px ${host}: exactly one menu button`, menus.length === 1, String(menus.length));
+      const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+      ok(`390px ${host}: zero horizontal overflow`, overflow <= 1, `${overflow}px`);
+    }
+    await page.setViewportSize({ width: 360, height: 780 }); // Android-class
+    await page.goto(url("foundersbid.lol", "/"), { waitUntil: "networkidle" });
+    const androidOverflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+    ok("360px foundersbid: zero horizontal overflow", androidOverflow <= 1, `${androidOverflow}px`);
+    await page.setViewportSize({ width: 768, height: 1024 }); // tablet = md breakpoint
+    await page.goto(url("foundersbid.lol", "/"), { waitUntil: "networkidle" });
+    const tabletIcons = await page.$$eval(
+      'header button[aria-label^="Switch to"]',
+      (as) => as.filter((el) => el.getClientRects().length > 0).length,
+    );
+    ok("768px: the desktop appearance icon is visible again (md breakpoint)", tabletIcons === 1, String(tabletIcons));
     await context.close();
   }
   {
@@ -480,6 +506,20 @@ async function rc5Objects(browser) {
     await page.goto(url("bidception.lol", "/"), { waitUntil: "networkidle" });
     const tree = await page.$('[aria-label^="Example allocation"]');
     ok("bidception home shows the labelled sample allocation tree", tree !== null);
+    // RC5.2: no hard-coded INR examples on the (viewer-default-currency)
+    // surface. The captain example renders from the ACTIVE sample tree.
+    const homeText = await page.textContent("main");
+    ok(
+      "bidception home carries no stale INR-only example on a USD-default surface",
+      !/₹10,000 of a ₹1,00,000/.test(homeText ?? "") && !/Every rupee reconciles/.test(homeText ?? ""),
+      (homeText ?? "").slice(0, 120),
+    );
+    ok(
+      "the captain example renders in the active sample currency",
+      /\$120 of a \$1,200 project/.test(homeText ?? "") ||
+        /₹10,000 of a ₹1,00,000 project/.test(homeText ?? ""),
+      (homeText ?? "").slice(0, 120),
+    );
     await context.close();
   }
 }

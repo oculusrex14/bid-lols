@@ -325,3 +325,21 @@ test("RC5.1: INR-only history scores EXACTLY as before the currency gate", () =>
   assert.equal(r.verifiedVolumeMinor, 7_500_000);
   assert.equal(r.score, Math.round(300 + 600 * Math.max(0, Math.min(1, r.confidence * r.bRaw + (1 - r.confidence) * 0.6))));
 });
+
+test("RC5.2: a LARGE USD amount cannot contaminate the INR-native economics", () => {
+  // $10^10 in minor units (1e12 cents). If any path read a USD amount as
+  // INR paise, this single outcome would carry valueFactor ~1.66 (near the
+  // cap) and swing the member's score hard. The gate must keep it at the
+  // floor regardless of magnitude.
+  const hugeUsd = scoreRole(prep("PROVIDER", [
+    cleanOutcome({ workKey: "w1", counterpartyUserId: "cp1", currency: "USD", amountMinor: 1_000_000_000_000 }),
+    cleanOutcome({ workKey: "w2", counterpartyUserId: "cp2", currency: "USD", amountMinor: 1 }),
+  ]));
+  const floorUsd = scoreRole(prep("PROVIDER", [
+    cleanOutcome({ workKey: "w1", counterpartyUserId: "cp1", currency: "USD", amountMinor: 0 }),
+    cleanOutcome({ workKey: "w2", counterpartyUserId: "cp2", currency: "USD", amountMinor: 1 }),
+  ]));
+  assert.equal(hugeUsd.score, floorUsd.score, "magnitude of a USD amount never changes the score");
+  assert.equal(hugeUsd.verifiedVolumeMinor, 0, "USD volume (any size) stays out of the INR-native volume");
+  assert.equal(floorUsd.verifiedVolumeMinor, 0);
+});

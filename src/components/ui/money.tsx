@@ -8,10 +8,10 @@ import { cn } from "@/lib/cn";
 
 /**
  * Network Spine (RC3, S-30): the ONE money presentation primitive.
- * Integer minor units in, locale-grouped tabular figures out. Every rupee on
- * every product is rendered through these components, so the advertised
- * reward, the platform fee and the sponsor total can never drift apart in
- * style (or in arithmetic — callers pass integer minors only).
+ * Integer minor units in, locale-grouped tabular figures out. Every money
+ * figure on every product is rendered through these components, so the
+ * advertised reward, the platform fee and the sponsor total can never drift
+ * apart in style (or in arithmetic — callers pass integer minors only).
  *
  * RC5.1 WS13: the currency is the record's OWN persisted currency. Unknown
  * values fail visibly (toSupportedCurrency throws) — they are never silently

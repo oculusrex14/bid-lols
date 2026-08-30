@@ -3,7 +3,7 @@ import { Camera, Mic, PenTool, Tag, Type, Users, Video, Wrench } from "lucide-re
 import { FormSection } from "@/components/ui/layout";
 import { Field, Input, Textarea, Select, CheckRow } from "@/components/ui/field";
 import { cn } from "@/lib/cn";
-import { formatMinor } from "@/lib/money";
+import { bountyFloorCopy, formatMinor, minBountyRewardMajor } from "@/lib/money";
 
 /**
  * Bounty creation steps (RC3, S-25/S-26). The shared creation framework:
@@ -395,12 +395,12 @@ export function StepReward({
       description="The advertised reward is exactly what winners receive. The platform fee is charged to you on top, and the split is shown before you commit to anything."
     >
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label={`Advertised reward (${cur})`} required error={errors.reward} id="bn-reward" hint={`Minimum 1,000 ${cur}. Winners receive exactly this amount, in ${cur}.`}>
+        <Field label={`Advertised reward (${cur})`} required error={errors.reward} id="bn-reward" hint={`Minimum ${bountyFloorCopy(cur)}. Winners receive exactly this amount, in ${cur}.`}>
           <Input
             id="bn-reward"
             name="rewardMajor"
             type="number"
-            min={1000}
+            min={minBountyRewardMajor(cur)}
             step={1}
             value={d.rewardMajor}
             invalid={Boolean(errors.reward)}

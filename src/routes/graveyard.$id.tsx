@@ -363,7 +363,7 @@ function OfferBox({ listingId, currency, onDone }: { listingId: string; currency
         const r = await submitOfferFn({
           data: {
             listingId,
-            amountRupees: Number(f.get("amountRupees")),
+            amountMajor: Number(f.get("amountMajor")),
             message: String(f.get("message") ?? ""),
           },
         });
@@ -377,7 +377,7 @@ function OfferBox({ listingId, currency, onDone }: { listingId: string; currency
             (graveyard listings are INR in this release; the label never
             invents a symbol or mixes code + symbol). */}
         <Field label={`Your offer (${currency})`} required id="offer-amount">
-          <Input id="offer-amount" name="amountRupees" type="number" required min={1} className="tabular" />
+          <Input id="offer-amount" name="amountMajor" type="number" required min={1} className="tabular" />
         </Field>
         <Field label="Terms or questions (optional)" id="offer-message">
           <Textarea id="offer-message" name="message" rows={3} maxLength={2000} />

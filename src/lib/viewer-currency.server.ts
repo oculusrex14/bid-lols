@@ -1,5 +1,6 @@
 /**
- * RC5.1 WS6: the ONE server-side viewer-region / default-currency resolver.
+ * RC5.1 WS6 / RC5.2: the ONE server-side viewer-region / default-currency
+ * resolver.
  *
  * This is UX DEFAULTING ONLY (currency-law concept B): it chooses which
  * currency's samples to render, which currency a NEW form starts in, and
@@ -7,9 +8,20 @@
  * authority, and it NEVER determines the currency of an already-created work
  * item (that is persisted at creation/funding, law concept A).
  *
- * Policy (deployed): the trusted Vercel edge country header `x-vercel-sc`
- * (set by Vercel's edge, not client-controllable): IN -> INR, any other
- * value or missing -> USD. No AUD in this phase.
+ * Country source (RC5.2): the trusted Vercel proxy header
+ * `x-vercel-ip-country` — "A two-character ISO 3166-1 country code for the
+ * country associated with the location of the requester's public IP address"
+ * (vercel.com/docs/headers/request-headers; Vercel's own
+ * packages/functions/src/headers.ts COUNTRY_HEADER_NAME). It is calculated
+ * by the Vercel proxy from the original client IP, not settable by the
+ * page, and is the documented client-country header.
+ *
+ * (RC5.1's first cut read `x-vercel-sc` — the country of the EDGE that
+ * served the request — which is Vercel's server location, not the viewer's.
+ * That was wrong and is replaced here.)
+ *
+ * Policy (deployed): `IN` -> INR, any other value or missing -> USD. No AUD
+ * in this phase.
  *
  * Policy (non-deployed): an explicit `DEFAULT_VIEWER_CURRENCY=INR|USD`
  * override for local development and tests; otherwise USD. The override is
@@ -21,6 +33,9 @@
  */
 import type { SupportedCurrency } from "@/lib/money";
 
+/** The Vercel proxy's client-country request header (documented contract). */
+export const VERCEL_COUNTRY_HEADER = "x-vercel-ip-country";
+
 type HeaderSource = { get(name: string): string | null };
 
 export function isDeployedRuntime(env: NodeJS.ProcessEnv = process.env): boolean {
@@ -29,8 +44,9 @@ export function isDeployedRuntime(env: NodeJS.ProcessEnv = process.env): boolean
 
 /**
  * Pure resolver (exported for tests): given a header source and an env,
- * return the viewer default currency. Unknown/missing country => USD in
- * deployed runtimes; explicit override outside deployed runtimes.
+ * return the viewer default currency. IN -> INR; any other or missing
+ * country -> USD in deployed runtimes; explicit override outside deployed
+ * runtimes only.
  */
 export function viewerCurrencyFromHeaders(
   headers: HeaderSource,
@@ -41,8 +57,8 @@ export function viewerCurrencyFromHeaders(
     if (override === "INR" || override === "USD") return override;
     return "USD";
   }
-  const sc = (headers.get("x-vercel-sc") ?? "").trim().toUpperCase();
-  return sc === "IN" ? "INR" : "USD";
+  const country = (headers.get(VERCEL_COUNTRY_HEADER) ?? "").trim().toUpperCase();
+  return country === "IN" ? "INR" : "USD";
 }
 
 /**

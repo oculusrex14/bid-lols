@@ -185,3 +185,65 @@ export const ACCEPTED_CURRENCIES = new Set<SupportedCurrency>(SUPPORTED_CURRENCI
 export function isAcceptedCurrency(code: string): boolean {
   return ACCEPTED_CURRENCIES.has(code.toUpperCase() as SupportedCurrency);
 }
+
+/* ---------------------------------------------------------------------------
+ * RC5.2: the ONE authoritative product-money policy per currency.
+ *
+ * Every minimum/launch rule lives HERE and is composed with CURRENCY_CONFIG
+ * above (no duplicated scales or symbols). Server validation, client UX
+ * validation, form copy, and sample-validity tests all derive from this
+ * registry. These are product policy numbers per currency — NOT exchange
+ * rate conversions: the INR and USD floors are independent launch decisions.
+ * ------------------------------------------------------------------------- */
+
+export interface CurrencyMoneyPolicy {
+  /**
+   * Minimum advertised bounty reward (launch product rule).
+   *   INR: ₹1,000 = 100,000 paise
+   *   USD: $50    = 5,000 cents
+   * CultureBid's smaller creative commissions are why the USD floor is
+   * $50, not a rupee floor reinterpreted in cents.
+   */
+  minBountyRewardMinor: number;
+  /**
+   * Minimum funded total budget for a Bidception parent work (team
+   * projects are deliberately larger than single bounties; 1,000 major
+   * units in either currency — ₹1,000 / $1,000 — is the launch scale).
+   */
+  minParentBudgetMajor: number;
+}
+
+export const CURRENCY_MONEY_POLICY: Record<SupportedCurrency, CurrencyMoneyPolicy> = {
+  INR: { minBountyRewardMinor: 100_000, minParentBudgetMajor: 1_000 },
+  USD: { minBountyRewardMinor: 5_000, minParentBudgetMajor: 1_000 },
+};
+
+export function minBountyRewardMinor(currency: SupportedCurrency): number {
+  return CURRENCY_MONEY_POLICY[currency].minBountyRewardMinor;
+}
+
+/** Same floor in MAJOR units, derived from CURRENCY_CONFIG (never duplicated). */
+export function minBountyRewardMajor(currency: SupportedCurrency): number {
+  return CURRENCY_MONEY_POLICY[currency].minBountyRewardMinor / 10 ** CURRENCY_CONFIG[currency].minorDigits;
+}
+
+export function minParentBudgetMajor(currency: SupportedCurrency): number {
+  return CURRENCY_MONEY_POLICY[currency].minParentBudgetMajor;
+}
+
+/** Human-readable floor for form copy: "₹1,000" / "$50". */
+export function bountyFloorCopy(currency: SupportedCurrency): string {
+  return formatMajor(minBountyRewardMajor(currency), currency);
+}
+
+/**
+ * Authoritative check used at server boundaries: does this minor-unit
+ * reward satisfy the launch floor for its currency? Unknown currencies are
+ * rejected, never assumed INR.
+ */
+export function meetsBountyRewardFloor(minor: number, currency: string): boolean {
+  if (!Number.isInteger(minor) || minor <= 0) return false;
+  const c = (currency ?? "").toUpperCase() as SupportedCurrency;
+  if (c !== "INR" && c !== "USD") return false;
+  return minor >= CURRENCY_MONEY_POLICY[c].minBountyRewardMinor;
+}

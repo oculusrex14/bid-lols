@@ -8,7 +8,7 @@ import {
   foundersWorkTicketExample,
   bidceptionSampleTree,
 } from "../src/lib/sample-content";
-import { SUPPORTED_CURRENCIES } from "../src/lib/money";
+import { SUPPORTED_CURRENCIES, minBountyRewardMinor, minParentBudgetMajor } from "../src/lib/money";
 
 /**
  * RC5 §12/§37 + RC5.1 WS7: the example/sample contract, now with an
@@ -187,4 +187,31 @@ test("sample wall categories are the spec set in both currencies", () => {
 test("unknown sample currencies fail visibly (never assumed INR)", () => {
   assert.throws(() => foundersWorkTicketExample("EUR"), /unsupported sample currency/i);
   assert.throws(() => bidceptionSampleTree("AUD"), /unsupported sample currency/i);
+});
+
+/**
+ * RC5.2: every monetary sample that represents a postable bounty/brief must
+ * satisfy the ACTUAL per-currency product rules (the single policy in
+ * money.ts) — the product must never demonstrate work it cannot post.
+ */
+test("RC5.2: every bounty-shaped sample meets its currency's launch floor", () => {
+  for (const c of ["INR", "USD"] as const) {
+    const bountySamples = [
+      foundersWorkTicketExample(c),
+      foundersResearchTicketExample(c),
+      cultureBriefExample(c),
+      ...cultureSampleWall(c),
+    ];
+    for (const s of bountySamples) {
+      assert.ok(
+        s.rewardMinor >= minBountyRewardMinor(c),
+        `"${s.title}" sample (${c} ${s.rewardMinor}) is postable: >= the ${c} bounty floor ${minBountyRewardMinor(c)}`,
+      );
+    }
+  }
+  // The sample parent trees satisfy the team-project budget floor too.
+  for (const c of ["INR", "USD"] as const) {
+    const t = bidceptionSampleTree(c);
+    assert.ok(t.totalMinor / 100 >= minParentBudgetMajor(c), `${c} sample tree total >= the parent budget floor (major units)`);
+  }
 });

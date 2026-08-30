@@ -3,6 +3,7 @@ import { makeId } from "@/lib/ids";
 import { insertAudit } from "@/lib/audit.server";
 import { notify } from "@/lib/marketplace/notifications.server";
 import { moneyMode } from "@/lib/payments/provider";
+import { formatMajor, formatMinor, minBountyRewardMinor, minParentBudgetMajor, toSupportedCurrency } from "@/lib/money";
 import { fundingDecomposition } from "@/lib/marketplace/ledger.server";
 import { validateRewardAllocations } from "@/lib/marketplace/state";
 
@@ -81,6 +82,17 @@ export async function publishParentForFunding(opts: {
     };
   }
   const budgetMinor = Math.round(opts.budgetMajor * 100);
+  // RC5.2: the parent budget floor is a per-currency product rule from the
+  // single policy (1,000 major units in either currency), enforced at the
+  // authoritative engine even though the serverFn validator already checks
+  // it — no internal caller can bypass it.
+  if (opts.budgetMajor < minParentBudgetMajor(opts.currency)) {
+    return {
+      ok: false,
+      code: "invalid_budget",
+      message: `A parent work budget must be at least ${formatMajor(minParentBudgetMajor(opts.currency), opts.currency)} ${opts.currency}.`,
+    };
+  }
   const decomposition = fundingDecomposition(budgetMinor);
   const paymentId = makeId("pmt_");
   try {
@@ -391,7 +403,20 @@ export async function allocateChildWork(opts: AllocateChildInput): Promise<
       return {
         ok: false,
         code: "insufficient_balance",
-        message: `Allocation exceeds the available balance (₹${(balance / 100).toFixed(2)}).`,
+        // RC5.2: the balance is in the PARENT's currency — never a literal
+        // rupee symbol for a possibly-USD pool.
+        message: `Allocation exceeds the available balance (${formatMinor(balance, toSupportedCurrency(parent.currency))}).`,
+      };
+    }
+    // RC5.2: a child BOUNTY is a real bounty row and must satisfy the
+    // bounty's own launch floor in the parent's currency (a $40 child
+    // bounty would be a bounty the system says cannot be posted). Project
+    // children have no minimum.
+    if (opts.kind === "BOUNTY" && opts.allocatedMinor < minBountyRewardMinor(toSupportedCurrency(parent.currency))) {
+      return {
+        ok: false,
+        code: "below_bounty_floor",
+        message: `A child bounty must be at least ${formatMinor(minBountyRewardMinor(toSupportedCurrency(parent.currency)), toSupportedCurrency(parent.currency))} ${parent.currency} (the bounty launch floor).`,
       };
     }
     const id = makeId("cwk_");

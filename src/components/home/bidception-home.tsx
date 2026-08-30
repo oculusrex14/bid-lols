@@ -11,7 +11,7 @@ import { SectionHeader } from "@/components/ui/layout";
 import { BudgetTree } from "@/components/product-objects/budget-tree";
 import { bidceptionSampleTree } from "@/lib/sample-content";
 import { Users, HeartHandshake, Compass } from "lucide-react";
-import type { SupportedCurrency } from "@/lib/money";
+import { formatMinorTrimmed, type SupportedCurrency } from "@/lib/money";
 
 /**
  * Bidception home (RC5 §22): the systems console. The allocation tree is
@@ -57,7 +57,7 @@ export function BidceptionHome({
       </section>
 
       <RoleRailAndTree top={top} viewerCurrency={viewerCurrency} />
-      <BidHowItWorks />
+      <BidHowItWorks viewerCurrency={viewerCurrency} />
       <BidLiveProjects parents={parents} />
       <WriteUpSection />
       <JsonLd data={[websiteSchema("bidception")]} />
@@ -200,7 +200,11 @@ function Step({ n, title, children }: { n: number; title: string; children: Reac
   );
 }
 
-function BidHowItWorks() {
+function BidHowItWorks({ viewerCurrency }: { viewerCurrency: SupportedCurrency }) {
+  // RC5.2: the captain-fee example is rendered from the ACTIVE sample tree's
+  // own currency and amounts — never a hard-coded INR example on a
+  // USD-localized surface.
+  const tree = bidceptionSampleTree(viewerCurrency);
   return (
     <section className="canvas-brand mt-14 sm:mt-16">
       <ol className="mt-5 space-y-5">
@@ -211,7 +215,9 @@ function BidHowItWorks() {
         </Step>
         <Step n={2} title="Choose a captain">
           The sponsor picks a member for the coordination, and the captain
-          is paid for it from the budget (example: ₹10,000 of a ₹1,00,000
+          is paid for it from the budget (example:{" "}
+          <span className="tabular">{formatMinorTrimmed(tree.captainMinor, tree.currency)}</span> of a{" "}
+          <span className="tabular">{formatMinorTrimmed(tree.totalMinor, tree.currency)}</span>{" "}
           project).
         </Step>
         <Step n={3} title="Each part gets its own budget">

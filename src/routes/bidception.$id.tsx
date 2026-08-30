@@ -20,7 +20,7 @@ import {
   eligibleCaptainsFn,
   type EligibleCaptain,
 } from "@/lib/marketplace/bidception";
-import { formatMinor, toSupportedCurrency } from "@/lib/money";
+import { formatMajor, formatMinor, minParentBudgetMajor, toSupportedCurrency } from "@/lib/money";
 import { MoneyValue } from "@/components/ui/money";
 import { StatusBadge } from "@/components/ui/status";
 import { Button } from "@/components/ui/button";
@@ -197,7 +197,7 @@ function Workspace({ data }: { data: DetailData }) {
             ) : null}
             <ChildUnits data={data} canAct={canAct} busy={busy} onRun={run} />
             {canAct && status === "ACTIVE" ? (
-              <AllocateForm parentId={p.id} children={data.children} busy={busy} onRun={run} />
+              <AllocateForm parentId={p.id} children={data.children} currency={p.currency} busy={busy} onRun={run} />
             ) : null}
           </div>
 
@@ -381,8 +381,8 @@ function FundForm({
       }}
     >
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label={`Total budget (${currency})`} required id="bp-budget" hint={`The pool the captain allocates from, in ${currency}. Minimum 1,000 ${currency}. The platform fee is charged on top.`}>
-          <Input id="bp-budget" name="budgetMajor" type="number" required min={1000} className="tabular" />
+        <Field label={`Total budget (${currency})`} required id="bp-budget" hint={`The pool the captain allocates from, in ${currency}. Minimum ${formatMajor(minParentBudgetMajor(currency), currency)}. The platform fee is charged on top.`}>
+          <Input id="bp-budget" name="budgetMajor" type="number" required min={minParentBudgetMajor(currency)} className="tabular" />
         </Field>
         <Field label="Currency" required id="bp-currency" hint="Fixed once funding starts. No conversion is ever applied.">
           <Select
@@ -429,7 +429,7 @@ function CaptainPanel({
       {p.captain_user_id ? (
         <div className="mt-3">
           <CaptainIdentity name={p.captain_name ?? "member"} handle={p.captain_handle} userId={p.captain_user_id} />
-          <FeeForm parentId={p.id} currentFee={Number(p.captain_compensation_minor)} busy={busy} onRun={onRun} />
+          <FeeForm parentId={p.id} currentFee={Number(p.captain_compensation_minor)} currency={p.currency} busy={busy} onRun={onRun} />
         </div>
       ) : showPicker ? (
         <CaptainPicker parentId={p.id} busy={busy} onRun={onRun} />
@@ -460,11 +460,14 @@ function CaptainIdentity({ name, handle, userId }: { name: string; handle: strin
 function FeeForm({
   parentId,
   currentFee,
+  currency,
   busy,
   onRun,
 }: {
   parentId: string;
   currentFee: number;
+  /** The parent's persisted currency (RC5.2: the fee is reserved from it). */
+  currency: string;
   busy: boolean;
   onRun: (fn: () => Promise<{ ok: boolean; message?: string; code?: string }>, okNote: string) => Promise<void>;
 }) {
@@ -475,13 +478,13 @@ function FeeForm({
         e.preventDefault();
         const f = new FormData(e.currentTarget);
         await onRun(
-          () => setCaptainFeeFn({ data: { parentWorkId: parentId, feeRupees: Number(f.get("feeRupees")) } }),
+          () => setCaptainFeeFn({ data: { parentWorkId: parentId, feeMajor: Number(f.get("feeMajor")) } }),
           "Captain fee saved. It is reserved from the funded budget.",
         );
       }}
     >
-      <Field label="Captain fee (rupees)" id="cp-fee">
-        <Input id="cp-fee" name="feeRupees" type="number" min={0} defaultValue={currentFee / 100} className="tabular w-36" />
+      <Field label={`Captain fee (${currency})`} id="cp-fee">
+        <Input id="cp-fee" name="feeMajor" type="number" min={0} defaultValue={currentFee / 100} className="tabular w-36" />
       </Field>
       <Button type="submit" size="sm" disabled={busy}>
         Save fee
@@ -700,11 +703,14 @@ function ChildRow({
 function AllocateForm({
   parentId,
   children,
+  currency,
   busy,
   onRun,
 }: {
   parentId: string;
   children: DetailData["children"];
+  /** The parent's persisted currency (RC5.2: allocations come out of it). */
+  currency: string;
   busy: boolean;
   onRun: (fn: () => Promise<{ ok: boolean; message?: string; code?: string }>, okNote: string) => Promise<void>;
 }) {
@@ -742,7 +748,7 @@ function AllocateForm({
               data: {
                 parentWorkId: parentId,
                 title: String(f.get("childTitle")),
-                allocatedRupees: Number(f.get("childRupees")),
+                allocatedMajor: Number(f.get("childMajor")),
                 kind,
                 dependsOnIds: dependsOn,
                 ...(kind === "BOUNTY" ? { bountySpec: spec } : { projectSpec: spec }),
@@ -778,8 +784,8 @@ function AllocateForm({
         <Field label="Title" required id="al-title">
           <Input id="al-title" name="childTitle" required minLength={3} maxLength={140} placeholder="Landing page" />
         </Field>
-        <Field label="Allocation (rupees)" required id="al-amount" hint="From the available balance; the engine refuses more than exists.">
-          <Input id="al-amount" name="childRupees" type="number" required min={1} className="tabular" />
+        <Field label={`Allocation (${currency})`} required id="al-amount" hint="From the available balance; the engine refuses more than exists. Bounty units must meet the bounty launch floor.">
+          <Input id="al-amount" name="childMajor" type="number" required min={1} className="tabular" />
         </Field>
       </div>
       {children.length > 0 ? (

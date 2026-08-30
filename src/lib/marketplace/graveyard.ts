@@ -34,8 +34,8 @@ const createInput = z
     liabilities: z.string().trim().max(4000).default(""),
     historySelfReported: z.string().trim().max(4000).default(""),
     transferChecklist: z.array(z.string().trim().min(1).max(120)).max(12).default([]),
-    askingPriceRupees: z.number().int().min(0).optional(),
-    reserveRupees: z.number().int().min(0).optional(),
+    askingPriceMajor: z.number().int().min(0).optional(),
+    reserveMajor: z.number().int().min(0).optional(),
   })
   .strict();
 
@@ -61,8 +61,8 @@ export const createListingFn = createServerFn({ method: "POST" })
           liabilities: data.liabilities,
           historySelfReported: data.historySelfReported,
           transferChecklist: data.transferChecklist,
-          askingPriceMinor: data.askingPriceRupees != null ? data.askingPriceRupees * 100 : undefined,
-          reserveMinor: data.reserveRupees != null ? data.reserveRupees * 100 : undefined,
+          askingPriceMinor: data.askingPriceMajor != null ? data.askingPriceMajor * 100 : undefined,
+          reserveMinor: data.reserveMajor != null ? data.reserveMajor * 100 : undefined,
         });
         return { ok: true, ...result };
       } catch (err) {
@@ -110,7 +110,7 @@ export const submitOfferFn = createServerFn({ method: "POST" })
     z
       .object({
         listingId: z.string().trim().min(4).max(64),
-        amountRupees: z.number().int().min(1),
+        amountMajor: z.number().int().min(1),
         message: z.string().trim().max(2000).default(""),
       })
       .strict()
@@ -123,7 +123,7 @@ export const submitOfferFn = createServerFn({ method: "POST" })
       return await submitOffer({
         listingId: data.listingId,
         buyerUserId: session.user.id,
-        amountMinor: data.amountRupees * 100,
+        amountMinor: data.amountMajor * 100,
         message: data.message,
       });
     } catch (err) {

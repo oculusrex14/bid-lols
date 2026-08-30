@@ -181,7 +181,7 @@ export const PRODUCTS = {
     kicker: "One project, one budget, a team of specialists",
     title: "Build Projects With Freelance Teams | Bidception",
     description:
-      "Fund one big project with a single budget. A captain you choose splits it into work packages, each with its own budget and deadline. Specialists take the parts they are good at. Every rupee reconciles to the parent budget.",
+      "Fund one big project with a single budget. A captain you choose splits it into work packages, each with its own budget and deadline. Specialists take the parts they are good at. Every amount reconciles to the parent budget.",
     oneLine: "Big project. One budget. The right people for each part.",
     contactEmail: "contact@foundersbid.lol", // single network inbox
   },

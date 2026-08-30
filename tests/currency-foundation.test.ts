@@ -208,9 +208,17 @@ test("WS8: a proposal quote inherits the PROJECT's currency, never a literal INR
 const DEPLOYED_ENV = { VERCEL_ENV: "production", NODE_ENV: "production" } as NodeJS.ProcessEnv;
 const DEV_ENV = { NODE_ENV: "development" } as NodeJS.ProcessEnv;
 
+/**
+ * The production contract is Vercel's documented client-country header
+ * `x-vercel-ip-country` ("two-character ISO 3166-1 country code for the
+ * country associated with the location of the requester's public IP
+ * address" — vercel.com/docs/headers/request-headers; COUNTRY_HEADER_NAME in
+ * Vercel's own packages/functions/src/headers.ts). It is set by the Vercel
+ * proxy from the original client IP.
+ */
 function h(country?: string): Headers {
   const headers = new Headers();
-  if (country) headers.set("x-vercel-sc", country);
+  if (country) headers.set("x-vercel-ip-country", country);
   return headers;
 }
 
@@ -222,9 +230,28 @@ test("WS6: deployed policy — IN -> INR, every other/missing country -> USD", a
   assert.equal(viewerCurrencyFromHeaders(h("GB"), DEPLOYED_ENV), "USD");
   assert.equal(viewerCurrencyFromHeaders(h(), DEPLOYED_ENV), "USD", "missing header -> USD");
   assert.equal(viewerCurrencyFromHeaders(h("IN"), DEPLOYED_ENV), "INR", "case-insensitive edge value");
+  // Normalization: lowercase + surrounding whitespace still resolves safely.
   const lower = new Headers();
-  lower.set("x-vercel-sc", "in");
+  lower.set("x-vercel-ip-country", "  in \n");
   assert.equal(viewerCurrencyFromHeaders(lower, DEPLOYED_ENV), "INR");
+  const garbage = new Headers();
+  garbage.set("x-vercel-ip-country", "IN/XX");
+  assert.equal(viewerCurrencyFromHeaders(garbage, DEPLOYED_ENV), "USD", "malformed value -> safe default");
+});
+
+test("WS6/RC5.2: the resolver reads the client-country header, not the edge-location header", async () => {
+  const { viewerCurrencyFromHeaders, VERCEL_COUNTRY_HEADER } = await import("../src/lib/viewer-currency.server");
+  assert.equal(VERCEL_COUNTRY_HEADER, "x-vercel-ip-country", "pinned to the documented Vercel contract");
+  // RC5.1 read `x-vercel-sc` (the country of the EDGE that served the
+  // request — Vercel's server location, not the viewer's). Guard the
+  // regression explicitly: an edge-country header must have ZERO effect.
+  const edgeOnly = new Headers();
+  edgeOnly.set("x-vercel-sc", "IN");
+  assert.equal(viewerCurrencyFromHeaders(edgeOnly, DEPLOYED_ENV), "USD", "x-vercel-sc alone never selects INR");
+  const edgeUsViewerIn = new Headers();
+  edgeUsViewerIn.set("x-vercel-sc", "US");
+  edgeUsViewerIn.set("x-vercel-ip-country", "IN");
+  assert.equal(viewerCurrencyFromHeaders(edgeUsViewerIn, DEPLOYED_ENV), "INR", "the client-country header wins");
 });
 
 test("WS6: non-deployed override works, garbage override falls back to USD", async () => {
@@ -246,4 +273,157 @@ test("WS6: no client-supplied source can pick the viewer currency in production"
   assert.equal(viewerCurrencyFromHeaders(spoof, DEPLOYED_ENV), "USD");
   const overrideInProd = { ...DEPLOYED_ENV, DEFAULT_VIEWER_CURRENCY: "INR" };
   assert.equal(viewerCurrencyFromHeaders(new Headers(), overrideInProd), "USD", "the env override is dev/test-only, never honored in deployed runtimes");
+});
+
+/* --------------------------------------------------------------------------
+ * RC5.2: the per-currency launch floor (one authoritative policy in
+ * money.ts) enforced at the boundaries, plus persistence invariance under
+ * differing viewer contexts.
+ * ------------------------------------------------------------------------ */
+
+test("RC5.2: the bounty floor is per-currency (INR 100,000 minor / USD 5,000 minor)", async () => {
+  const {
+    meetsBountyRewardFloor,
+    minBountyRewardMinor,
+    minBountyRewardMajor,
+    bountyFloorCopy,
+    CURRENCY_MONEY_POLICY,
+  } = await import("../src/lib/money");
+  // The policy is the single source: INR ₹1,000 / USD $50.
+  assert.equal(minBountyRewardMinor("INR"), 100_000);
+  assert.equal(minBountyRewardMinor("USD"), 5_000);
+  assert.equal(minBountyRewardMajor("INR"), 1_000, "major floor derives from minor (no duplicated constant)");
+  assert.equal(minBountyRewardMajor("USD"), 50);
+  assert.equal(bountyFloorCopy("INR"), "₹1,000");
+  assert.equal(bountyFloorCopy("USD"), "$50");
+
+  // Boundary cases (the exact audit pairs).
+  assert.equal(meetsBountyRewardFloor(99_999, "INR"), false, "₹999.99 rejects");
+  assert.equal(meetsBountyRewardFloor(100_000, "INR"), true, "₹1,000 accepts");
+  assert.equal(meetsBountyRewardFloor(4_999, "USD"), false, "$49.99 rejects");
+  assert.equal(meetsBountyRewardFloor(5_000, "USD"), true, "$50 accepts");
+  assert.equal(meetsBountyRewardFloor(100_000, "EUR"), false, "unknown currency rejects (never assumes INR)");
+  assert.equal(meetsBountyRewardFloor(0, "INR"), false);
+  assert.equal(CURRENCY_MONEY_POLICY.INR.minParentBudgetMajor, 1_000, "team-project budget floor (major units)");
+  assert.equal(CURRENCY_MONEY_POLICY.USD.minParentBudgetMajor, 1_000, "documented product scale, not an FX value");
+});
+
+test("RC5.2: createBounty enforces the floor in both currencies (and rejects unknown)", async () => {
+  const pg = await getPglite();
+  await pg.query("truncate bounties, users restart identity cascade");
+  await seedUser(pg, "usr_floor_s");
+  const S = "usr_floor_s";
+  const { createBounty } = await import("../src/lib/marketplace/bounties.server");
+  const base = {
+    sponsorUserId: S,
+    product: "foundersbid",
+    title: "Floor boundary bounty",
+    description: "A bounty at the exact launch floor for its currency.",
+    category: "development",
+    rewardStructure: "WINNER_TAKES_ALL" as const,
+    submissionDeadline: "2026-09-01T00:00:00Z",
+  };
+
+  // USD: $49.99 must fail, $50 must succeed (CultureBid uses the same rule).
+  await assert.rejects(
+    createBounty({ ...base, rewardTotalMinor: 4_999, currency: "USD", rewardAllocations: [{ place: 1, amountMinor: 4_999 }] }),
+    /at least \$50/i,
+  );
+  const usd = await createBounty({ ...base, rewardTotalMinor: 5_000, currency: "USD", rewardAllocations: [{ place: 1, amountMinor: 5_000 }] });
+  const usdRow = (await q(pg, "select currency from bounties where id=$1", [usd.id]))[0];
+  assert.equal(String(usdRow.currency), "USD");
+
+  const culture = await createBounty({
+    ...base,
+    product: "culturebid",
+    title: "CultureBid floor brief",
+    rewardTotalMinor: 5_000,
+    currency: "USD",
+    rewardAllocations: [{ place: 1, amountMinor: 5_000 }],
+  });
+  assert.ok(culture.id, "CultureBid bounties use the same underlying rule");
+
+  // INR: ₹999.99 must fail, ₹1,000 must succeed.
+  await assert.rejects(
+    createBounty({ ...base, rewardTotalMinor: 99_999, currency: "INR", rewardAllocations: [{ place: 1, amountMinor: 99_999 }] }),
+    /at least ₹1,000/i,
+  );
+  const inr = await createBounty({ ...base, rewardTotalMinor: 100_000, currency: "INR", rewardAllocations: [{ place: 1, amountMinor: 100_000 }] });
+  const inrRow = (await q(pg, "select currency from bounties where id=$1", [inr.id]))[0];
+  assert.equal(String(inrRow.currency), "INR");
+
+  // Unknown currency at the engine boundary fails safely (never assumed INR).
+  await assert.rejects(
+    createBounty({ ...base, rewardTotalMinor: 100_000, currency: "EUR", rewardAllocations: [{ place: 1, amountMinor: 100_000 }] }),
+    /EUR|at least/i,
+  );
+});
+
+test("RC5.2: 9 INR + 9 USD outcomes in one category publish NOTHING", async () => {
+  const pg = await getPglite();
+  await pg.query("truncate bounties, bounty_awards, users restart identity cascade");
+  await seedUser(pg, "usr_mix_s");
+  await seedUser(pg, "usr_mix_p");
+  const S = "usr_mix_s";
+  const P = "usr_mix_p";
+  for (let i = 1; i <= 9; i += 1) {
+    await doneBountyCurrency(pg, `bnt_mix_i${i}`, S, P, i * 100_000, "INR", "development");
+    await doneBountyCurrency(pg, `bnt_mix_u${i}`, S, P, i * 10_000, "USD", "development");
+  }
+  const { marketRateFor } = await import("../src/lib/marketplace/reputation.server");
+  const inr = await marketRateFor(null, "development", "INR");
+  const usd = await marketRateFor(null, "development", "USD");
+  assert.equal(inr.sampleSize, 9, "the INR partition sees only its 9");
+  assert.equal(usd.sampleSize, 9, "the USD partition sees only its 9");
+  assert.equal(inr.sufficient, false, "9 < 10: the INR benchmark must not publish");
+  assert.equal(usd.sufficient, false, "9 < 10: the USD benchmark must not publish");
+  assert.equal(inr.medianMinor, null, "no INR median leaks out of an insufficient sample");
+  assert.equal(usd.medianMinor, null, "no USD median leaks out of an insufficient sample");
+  // The 18 total outcomes must NOT combine into one 18-sample benchmark:
+  // each partition sees exactly its own 9 (a mixed aggregate would see 18).
+  assert.notEqual(inr.sampleSize, 18, "the INR partition is not the mixed aggregate");
+  assert.notEqual(usd.sampleSize, 18, "the USD partition is not the mixed aggregate");
+});
+
+test("RC5.2: persisted records keep their currency under every viewer context", async () => {
+  const pg = await getPglite();
+  await pg.query("truncate bounties, bounty_awards, users restart identity cascade");
+  await seedUser(pg, "usr_inv_s");
+  await seedUser(pg, "usr_inv_p");
+  const S = "usr_inv_s";
+  const P = "usr_inv_p";
+  await doneBountyCurrency(pg, "bnt_inv_inr", S, P, 2_000_000, "INR", "development");
+  await doneBountyCurrency(pg, "bnt_inv_usd", S, P, 200_000, "USD", "development");
+  // An OPEN USD record (listOpenBounties only sees open-family statuses).
+  await pg.query(
+    `insert into bounties
+       (id, product, sponsor_user_id, title, slug, description, category,
+        reward_total_minor, currency, reward_structure, reward_allocations,
+        status, submission_deadline, published_at, skills)
+     values
+       ('bnt_inv_open_usd','foundersbid',$1,'Open USD record','slug-inv-usd',
+        'An open bounty denominated in US dollars for the invariance test.',
+        'research',150000,'USD','WINNER_TAKES_ALL',
+        $2::jsonb,'OPEN','2026-12-01T00:00:00Z','2026-09-15T00:00:00Z','["api"]'::jsonb)`,
+    [S, JSON.stringify([{ place: 1, amount_minor: 150_000 }])],
+  );
+
+  const { listOpenBounties } = await import("../src/lib/marketplace/queries.server");
+  const { viewerCurrencyFromHeaders } = await import("../src/lib/viewer-currency.server");
+
+  // India viewer (INR default) reads the list: the USD record is still USD.
+  const inHeader = new Headers();
+  inHeader.set("x-vercel-ip-country", "IN");
+  assert.equal(viewerCurrencyFromHeaders(inHeader, { VERCEL_ENV: "production" } as NodeJS.ProcessEnv), "INR");
+  const usHeader = new Headers();
+  usHeader.set("x-vercel-ip-country", "US");
+  assert.equal(viewerCurrencyFromHeaders(usHeader, { VERCEL_ENV: "production" } as NodeJS.ProcessEnv), "USD");
+
+  // The engine reads through the app Sql (PGLite-backed in tests), not the
+  // raw handle.
+  const { getSql } = await import("../src/lib/db.server");
+  const rows = await listOpenBounties(await getSql(), "foundersbid", { limit: 10 });
+  const usdRow = rows.items.find((b) => b.id === "bnt_inv_open_usd")!;
+  assert.equal(usdRow.currency, "USD", "an INR-default viewer's read of a USD record stays USD");
+  assert.equal(Number(usdRow.reward_total_minor), 150_000, "the amount is untouched by viewer context");
 });

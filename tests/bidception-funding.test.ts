@@ -17,7 +17,7 @@ const { getPaymentProvider } = await import("../src/lib/payments/provider");
 
 const SPONSOR = "usr_bcn2_sponsor";
 const CAPTAIN = "usr_bcn2_captain";
-const BUDGET = 500; // ₹500.00 in rupees
+const BUDGET = 1000; // ₹1,000.00 — the INR team-project launch floor (RC5.2 policy)
 
 type AnyRow = Record<string, any>;
 async function q(pg: import("@electric-sql/pglite").PGlite, text: string, params: unknown[] = []): Promise<AnyRow[]> {
@@ -52,15 +52,15 @@ test("RC1 R2: parent funding through the real production path (no status shortcu
 
   // 2. payment decomposition is authoritative + correct
   const payment = (await q(pg, "select id, amount_cents, status, provider_order_id, meta from payments where kind='funding'"))[0];
-  assert.equal(Number(payment.amount_cents), 55_000, "₹500.00 reward + 10% fee = ₹550.00 (55,000 paise)");
+  assert.equal(Number(payment.amount_cents), 110_000, "₹1,000.00 reward + 10% fee = ₹1,100.00 (110,000 paise)");
   assert.equal(payment.meta.parent_id, id);
-  assert.equal(Number(payment.meta.reward_minor), 50_000, "reward ₹500.00 in paise");
-  assert.equal(Number(payment.meta.platform_fee_minor), 5_000);
-  assert.equal(payment.meta.reward_minor + payment.meta.platform_fee_minor, 55_000);
+  assert.equal(Number(payment.meta.reward_minor), 100_000, "reward ₹1,000.00 in paise");
+  assert.equal(Number(payment.meta.platform_fee_minor), 10_000);
+  assert.equal(payment.meta.reward_minor + payment.meta.platform_fee_minor, 110_000);
 
   // 3. parent row carries the numeric budget + payment link (the reversed-binding regression)
   const parent = (await q(pg, "select funded_budget_minor, funding_payment_id, status from parent_works where id=$1", [id]))[0];
-  assert.equal(Number(parent.funded_budget_minor), 50_000, "funded_budget_minor is the numeric budget (paise)");
+  assert.equal(Number(parent.funded_budget_minor), 100_000, "funded_budget_minor is the numeric budget (paise)");
   assert.equal(String(parent.funding_payment_id), String(payment.id), "funding_payment_id is the payment id");
   assert.equal(String(parent.status), "AWAITING_FUNDING");
 
@@ -82,19 +82,22 @@ test("RC1 R2: parent funding through the real production path (no status shortcu
   const reward = events.find((e) => e.type === "REWARD");
   const fee = events.find((e) => e.type === "PLATFORM_FEE");
   assert.ok(reward && fee, "REWARD and PLATFORM_FEE events exist");
-  assert.equal(Number(reward!.amount_minor), 50_000);
-  assert.equal(Number(fee!.amount_minor), 5_000);
+  assert.equal(Number(reward!.amount_minor), 100_000);
+  assert.equal(Number(fee!.amount_minor), 10_000);
 
   // 7. captain selection via the real engine + activation + one allocation
   const sel = await selectCaptain({ parentWorkId: id, sponsorUserId: SPONSOR, captainUserId: CAPTAIN });
   assert.ok(sel.ok, JSON.stringify(sel));
   const act = await activateParent({ parentWorkId: id, sponsorUserId: SPONSOR });
   assert.ok(act.ok, JSON.stringify(act));
+  // The single child takes the whole pool: it is exactly the INR bounty
+  // launch floor (₹1,000) — below that the child-bounty floor guard would
+  // refuse it (RC5.2).
   const alloc = await allocateChildWork({
     parentWorkId: id,
     actorUserId: CAPTAIN,
     title: "Landing page",
-    allocatedMinor: 20_000,
+    allocatedMinor: 100_000,
     kind: "BOUNTY" as const,
   });
   assert.ok(alloc.ok, JSON.stringify(alloc));
@@ -105,7 +108,7 @@ test("RC1 R2: parent funding through the real production path (no status shortcu
     allocatedMinor: 30_001,
     kind: "BOUNTY" as const,
   });
-  assert.equal(over.ok, false, "allocation exceeding the remaining balance (50,000-20,000=30,000) is refused");
+  assert.equal(over.ok, false, "allocation exceeding the remaining balance (100,000-100,000=0) is refused");
   if (!over.ok) assert.equal(over.code, "insufficient_balance");
 });
 
@@ -197,4 +200,54 @@ test("RC5.1 WS9: Cashfree rejects USD before any provider order creation", async
   );
   const fake = getPaymentProvider() as unknown as { capabilities: { currencies: readonly string[] } };
   assert.deepEqual([...fake.capabilities.currencies], ["INR", "USD"], "the fake test provider exercises both");
+});
+
+test("RC5.2 WS4: parent budget floor and child-bounty floor are currency-aware", async () => {
+  const pg = await getPglite();
+  await pg.query(
+    "truncate parent_works, child_works, money_events, notifications, payments, bounties, bounty_awards restart identity cascade",
+  );
+  const USR = "usr_rc52_floor";
+  const CP3 = "usr_rc52_floor_cp";
+  await pg.query("insert into users (id, email, email_verified) values ($1,'f@t',true), ($2,'fcp@t',true)", [USR, CP3]);
+
+  // $999 parent budget: below the USD team-project floor (1,000 major).
+  const { id: low } = await createParentWork({
+    sponsorUserId: USR, product: "bidception",
+    title: "RC5.2 below-floor parent", objective: "Budget below the parent floor must be refused.",
+  });
+  const lowR = await publishParentForFunding({ parentWorkId: low, sponsorUserId: USR, budgetMajor: 999, currency: "USD" });
+  assert.equal(lowR.ok, false, JSON.stringify(lowR));
+  if (!lowR.ok) assert.equal(lowR.code, "invalid_budget");
+
+  // $1,000 exactly: the floor is inclusive.
+  const { id: at } = await createParentWork({
+    sponsorUserId: USR, product: "bidception",
+    title: "RC5.2 at-floor parent", objective: "Budget exactly at the parent floor must pass the check.",
+  });
+  const atR = await publishParentForFunding({ parentWorkId: at, sponsorUserId: USR, budgetMajor: 1000, currency: "USD" });
+  assert.ok(atR.ok, JSON.stringify(atR));
+
+  // Drive the at-floor parent to ACTIVE via the fake rail, then check the
+  // child-bounty floor: a $49.99 child BOUNTY is refused, $50 passes.
+  const bal = await q(pg, "select funded_budget_minor, captain_compensation_minor from parent_works where id=$1", [at]);
+  assert.equal(Number(bal[0].funded_budget_minor), 100_000);
+  const payId = String((await q(pg, "select id from payments where idempotency_key=$1", [`parent-funding:${at}`]))[0].id);
+  (getPaymentProvider() as unknown as { markPaid(id: string): void }).markPaid(payId);
+  assert.equal(await verifyParentFunding({ parentWorkId: at, paymentId: payId }), "funded");
+  await selectCaptain({ parentWorkId: at, sponsorUserId: USR, captainUserId: CP3 });
+  await activateParent({ parentWorkId: at, sponsorUserId: USR });
+  const under2 = await allocateChildWork({
+    parentWorkId: at, actorUserId: CP3, title: "Below floor child bounty again",
+    allocatedMinor: 4_999, kind: "BOUNTY",
+  });
+  assert.equal(under2.ok, false, "a $49.99 child bounty is below the USD bounty floor");
+  if (!under2.ok) assert.equal(under2.code, "below_bounty_floor");
+  const ok2 = await allocateChildWork({
+    parentWorkId: at, actorUserId: CP3, title: "At floor child bounty",
+    allocatedMinor: 5_000, kind: "BOUNTY",
+  });
+  assert.ok(ok2.ok, `a $50 child bounty meets the floor (${JSON.stringify(ok2)})`);
+  const childRow = (await q(pg, "select currency from bounties where id=$1", [ok2.ok ? ok2.linkedId : ""]))[0];
+  assert.equal(String(childRow.currency), "USD");
 });

@@ -72,8 +72,8 @@ function NewListingPage() {
           transferChecklist: checklist.length > 0
             ? checklist
             : ["Confirm registrar/admin access handover", "Share repository access", "Transfer brand assets"],
-          askingPriceRupees: f.get("askingPrice") ? Number(f.get("askingPrice")) : undefined,
-          reserveRupees: f.get("reservePrice") ? Number(f.get("reservePrice")) : undefined,
+          askingPriceMajor: f.get("askingPrice") ? Number(f.get("askingPrice")) : undefined,
+          reserveMajor: f.get("reservePrice") ? Number(f.get("reservePrice")) : undefined,
         },
       });
       if (result.ok) {
