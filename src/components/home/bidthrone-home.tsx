@@ -110,7 +110,9 @@ function ThroneGrid({
 }) {
   return (
     <section className="canvas-brand mt-14 sm:mt-16 grid gap-8 lg:grid-cols-[1.1fr_0.9fr]">
-      <div>
+      {/* min-w-0 on both grid items: the ghost ledger min-width table must
+          scroll inside its container, never push the page (390px). */}
+      <div className="min-w-0">
         <SectionHeader
           title="Leaderboard preview"
           aside={
@@ -123,7 +125,7 @@ function ThroneGrid({
           <LeaderboardPreview boards={boards} />
         </div>
       </div>
-      <div>
+      <div className="min-w-0">
         <SectionHeader
           title="Market rates"
           aside={

@@ -147,8 +147,25 @@ async function host(browser) {
   {
     const { context, page } = await newPage(browser, { mobile: true });
     await page.goto(url("foundersbid.lol", "/"), { waitUntil: "networkidle" });
-    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
-    ok("mobile home: no horizontal overflow", overflow <= 1, `${overflow}px`);
+    const overflowInfo = await page.evaluate(() => {
+      const vw = document.documentElement.clientWidth;
+      const sw = document.documentElement.scrollWidth;
+      const offenders = [];
+      if (sw - vw > 1) {
+        for (const el of document.querySelectorAll("body *")) {
+          const r = el.getBoundingClientRect();
+          if (r.right > vw + 1 && r.width > 0) {
+            offenders.push(`${el.tagName}.${String(el.className).slice(0, 50)} right=${Math.round(r.right)}`);
+          }
+        }
+      }
+      return { px: sw - vw, offenders: offenders.slice(0, 6) };
+    });
+    ok(
+      "mobile home: no horizontal overflow",
+      overflowInfo.px <= 1,
+      `${overflowInfo.px}px :: ${overflowInfo.offenders.join(" | ")}`,
+    );
     await page.click('[aria-label="Open menu"]');
     const expanded = await page.getAttribute('[aria-label="Close menu"]', "aria-expanded");
     ok("mobile menu aria-expanded flips", expanded === "true", String(expanded));
