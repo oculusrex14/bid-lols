@@ -1,4 +1,8 @@
-node_modules/
+# No trailing slash: the release worktree links node_modules as a SYMLINK for
+# speed (RC5.1 WS1). A slash-terminated pattern matches directories only; a
+# symlink is an untracked, non-ignored blob and made Vercel report gitDirty=1
+# for the RC5 production deployment. This pattern covers file, symlink and dir.
+node_modules
 .project_id
 .github_repo
 .env*

@@ -30,6 +30,40 @@ Production must be reproducible from GitHub. The release protocol:
 5. Deploy production from that exact tree: `vercel deploy --prod` (or the platform mechanism) while `git status --porcelain` is still empty. Record the deployment id and confirm the deployment's recorded git SHA == the released SHA and its dirty flag is not set (`vercel inspect <url>` / API).
 6. Until Vercel Git-integration is available (external follow-up below), step 5's clean-tree CLI deploy is the reproducibility guarantee: anyone checking out the pushed SHA and running `vite build` produces the deployed artifact.
 
+### Release worktree + gitDirty (RC5.1 WS1 lesson)
+
+Deploy from a CLEAN DETACHED WORKTREE at the exact pushed runtime SHA,
+never from the development checkout:
+
+```sh
+git fetch origin
+git worktree add --detach /tmp/release-<tag> <FINAL_RUNTIME_SHA>
+cd /tmp/release-<tag>
+cp <repo>/.vercel/project.json .vercel/     # project binding only; .vercel/ is ignored
+ln -s <repo>/node_modules node_modules      # speed: no second npm install
+git status --porcelain=v1 --untracked-files=all   # MUST print nothing
+```
+
+Root cause behind the RC5 `gitDirty=1` finding: `.gitignore` listed
+`node_modules/` (trailing slash = directories only). A symlink named
+`node_modules` is a git BLOB, not a directory, so the release worktree's
+link was untracked AND non-ignored — Vercel's CLI recorded
+`gitDirty=1` even though every tracked file matched the SHA. The ignore
+pattern is now `node_modules` (no trailing slash) so file/symlink/dir all
+match. Rules:
+
+- Re-run `git status --porcelain=v1 --untracked-files=all` in the release
+  worktree IMMEDIATELY before `vercel deploy --prod --yes`; any output
+  aborts the release.
+- After deploy, query the ACTUAL Vercel deployment metadata and assert
+  `gitCommitSha == FINAL_RUNTIME_SHA` and `gitDirty != "1"` (via
+  `npx vercel inspect <deployment-url>` from a worktree that has
+  `.vercel/project.json`). A local clean status never substitutes for the
+  platform metadata.
+- If the metadata still reports dirty from an objectively clean worktree:
+  STOP and investigate the CLI/source metadata mechanism — do not record
+  `gitDirty=0` in docs.
+
 External follow-up (not in repo scope): install the Vercel GitHub App for the account (browser: github.com/settings/apps), then `vercel git connect https://github.com/oculusrex14/bid-lols.git` so pushes to `main` auto-deploy production from the SHA.
 
 ### Independent CI gate (Phase 00.6, WS5; extended RC3)
