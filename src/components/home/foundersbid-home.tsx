@@ -181,7 +181,9 @@ function JobCard({ item }: { item: HomeOpenItem[number] }) {
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="truncate text-[15px] font-semibold leading-snug group-hover:underline group-hover:underline-offset-4">
+          {/* Wrapping title (never truncate: a nowrap min-content would push
+              the card — and the page — wide at 390px). */}
+          <p className="text-[15px] font-semibold leading-snug group-hover:underline group-hover:underline-offset-4">
             {item.title}
           </p>
           <p className="mt-1 text-xs text-subtle">
