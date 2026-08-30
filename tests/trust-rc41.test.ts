@@ -222,6 +222,7 @@ test("RC5 §5.2: fingerprint changes with restriction and reinstatement facts (u
         excludedFromEvidence: false,
         occurredDaysAgo: 30,
         amountMinor: 2500000,
+        currency: "INR",
         severity: "NORMAL" as const,
         complexity: 0.5,
         review: null,
@@ -251,6 +252,19 @@ test("RC5 §5.2: fingerprint changes with restriction and reinstatement facts (u
     reportFingerprint("u1", [{ ...base, severeEventReinstatedDaysAgo: 101 }]),
     reportFingerprint("u1", [{ ...base, severeEventReinstatedDaysAgo: 100 }]),
     "reinstatement age changes the fingerprint (the recovery cap is time-dependent)",
+  );
+  // RC5.1 WS11: currency is scoring-relevant (the INR-native gate), so a
+  // changed denomination must invalidate a cached report too.
+  const base2 = {
+    ...base,
+    outcomes: [
+      { ...base.outcomes[0], currency: "USD" },
+    ],
+  };
+  assert.notEqual(
+    reportFingerprint("u1", [base2]),
+    h0,
+    "currency fact changes the fingerprint (BI-1.0 is INR-native)",
   );
 });
 
@@ -349,10 +363,10 @@ test("RC5 §5.7: the homepage market rates preview shares marketRateFor() semant
   }
   const { homePreview } = await import("../src/lib/marketplace/home-preview.server");
   const { marketRateFor, MARKET_RATE_MIN_SAMPLE } = await import("../src/lib/marketplace/reputation.server");
-  const preview = await homePreview("bidthrone");
+  const preview = await homePreview("bidthrone", "INR");
   assert.equal(preview.kind, "boards");
   const dev = preview.marketRates.find((r) => r.category === "development")!;
-  const live = await marketRateFor(null, "development");
+  const live = await marketRateFor(null, "development", "INR");
   assert.equal(dev.sampleSize, live.sampleSize, "same sample size as the /market-rates source");
   assert.equal(dev.sufficient, true);
   assert.equal(dev.medianMinor, live.medianMinor, "same median as the /market-rates source");

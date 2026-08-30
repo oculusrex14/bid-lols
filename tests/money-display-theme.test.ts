@@ -1,6 +1,11 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { formatMinor, formatMinorTrimmed } from "../src/lib/money";
+import {
+  formatMajor,
+  formatMinor,
+  formatMinorTrimmed,
+  toSupportedCurrency,
+} from "../src/lib/money";
 import { modeBootScript, readMode } from "../src/lib/mode";
 
 /**
@@ -26,9 +31,38 @@ test("accounting format is unchanged (always two decimals for INR)", () => {
   assert.equal(formatMinor(10_000_050, "INR"), "₹1,00,000.50");
 });
 
-test("zero-decimal currencies keep their exact form in both modes", () => {
-  assert.equal(formatMinor(10_000, "JPY"), "JPY 10,000");
-  assert.equal(formatMinorTrimmed(10_000, "JPY"), "JPY 10,000");
+/* --------------------------------------------------------------------------
+ * RC5.1 WS5: the INR + USD registry.
+ * ------------------------------------------------------------------------ */
+
+test("USD uses US grouping and the $ symbol, never Indian digit groups", () => {
+  assert.equal(formatMinor(10_000_000, "USD"), "$100,000.00");
+  assert.equal(formatMinor(100_050, "USD"), "$1,000.50");
+  assert.equal(formatMinor(1_000_000, "USD"), "$10,000.00");
+  assert.ok(!formatMinor(10_000_000, "USD").includes("1,00,000"), "no lakh grouping for USD");
+});
+
+test("INR keeps Indian digit grouping and the rupee symbol", () => {
+  assert.equal(formatMinor(10_000_000, "INR"), "₹1,00,000.00");
+  assert.equal(formatMinor(10_000, "INR"), "₹100.00");
+});
+
+test("USD trimming mirrors INR trimming (zero cents trim, real cents stay)", () => {
+  assert.equal(formatMinorTrimmed(10_000_000, "USD"), "$100,000");
+  assert.equal(formatMinorTrimmed(100_050, "USD"), "$1,000.50");
+  assert.equal(formatMinorTrimmed(0, "USD"), "$0");
+});
+
+test("major-unit display for form previews is locale-correct", () => {
+  assert.equal(formatMajor(85_000, "INR"), "₹85,000");
+  assert.equal(formatMajor(1_000, "USD"), "$1,000");
+});
+
+test("unknown currencies fail visibly (never silently assumed INR)", () => {
+  assert.throws(() => toSupportedCurrency("EUR"), /unsupported currency/i);
+  assert.throws(() => toSupportedCurrency(""), /unsupported currency/i);
+  assert.throws(() => formatMinor(100, "JPY" as never), /unsupported currency/i);
+  assert.throws(() => formatMinorTrimmed(100, "JPY" as never), /unsupported currency/i);
 });
 
 test("trimming never rounds away a paise", () => {

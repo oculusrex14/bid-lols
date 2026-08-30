@@ -49,10 +49,10 @@ const ROUTES = {
 
 // RC5 §33: the critical product-object routes, captured at 390 / 768 / 1440.
 const RESPONSIVE = {
-  foundersbid: ["/", "/bounties", "/post"],
+  foundersbid: ["/", "/bounties", "/post", "/bounties/new"],
   culturebid: ["/", "/bounties", "/bounties/new"],
   bidception: ["/", "/bidception"],
-  bidthrone: ["/", "/leaderboards", "/bid-index", "/market-rates"],
+  bidthrone: ["/", "/leaderboards", "/bid-index", "/market-rates", "/market-rates?currency=USD"],
 };
 const VIEWPORTS = [
   { width: 390, height: 844 },

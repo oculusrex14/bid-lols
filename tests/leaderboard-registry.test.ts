@@ -111,3 +111,13 @@ test("server dispatch + validator agree with the registry (no second array)", as
     "an unregistered board key throws instead of guessing",
   );
 });
+
+test("RC5.1 WS3: Most Reliable copy is Bayesian wording, never a literal share", () => {
+  const mr = boardSpec("most_reliable")!;
+  assert.ok(/Bayesian/i.test(mr.explanation), "names the pillar as a Bayesian estimate");
+  assert.ok(/not the literal percentage of jobs completed clean/i.test(mr.explanation), "explicitly disclaims the literal-share reading");
+  assert.ok(!/share of .*verified.*clean|evidence ratio/i.test(mr.explanation), "no literal-share / evidence-ratio wording remains");
+  // The row format stays the accepted short form (the word is "Reliability",
+  // not "% jobs completed").
+  assert.equal(mr.format(0.92, 8), "Reliability 92% · 8 verified outcomes");
+});

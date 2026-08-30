@@ -1,60 +1,90 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  BIDCEPTION_SAMPLE_TREE,
-  CULTURE_BRIEF_EXAMPLE,
-  CULTURE_SAMPLE_WALL,
-  FOUNDERS_WORK_TICKET_EXAMPLE,
   BIDTHRONE_SAMPLE_RECORD,
+  cultureBriefExample,
+  cultureSampleWall,
+  foundersResearchTicketExample,
+  foundersWorkTicketExample,
+  bidceptionSampleTree,
 } from "../src/lib/sample-content";
+import { SUPPORTED_CURRENCIES } from "../src/lib/money";
 
 /**
- * RC5 §12/§37: the example/sample contract. Samples are labelled
+ * RC5 §12/§37 + RC5.1 WS7: the example/sample contract, now with an
+ * explicit amount set PER VIEWER DEFAULT CURRENCY. Samples are labelled
  * presentation only: every one carries example: true, the visible
  * EXAMPLE/SAMPLE wording, integer minor-unit money, and none of the
  * words that would imply actual marketplace activity (verified, paid,
- * settled, or unqualified "live").
+ * settled, or unqualified "live"). The INR and USD sets are independent
+ * product values — NOT FX conversions of each other.
  */
 
 function assertSampled(obj: { example: true }, label: string): void {
   assert.equal(obj.example, true, `${label} must be flagged as an example`);
 }
 
-test("every sample object carries example: true", () => {
-  assertSampled(FOUNDERS_WORK_TICKET_EXAMPLE, "founders ticket");
-  assertSampled(CULTURE_BRIEF_EXAMPLE, "culture brief");
-  for (const s of CULTURE_SAMPLE_WALL) assertSampled(s, `culture wall ${s.category}`);
-  assertSampled(BIDCEPTION_SAMPLE_TREE, "bidception tree");
+test("every sample object carries example: true, in both currencies", () => {
+  for (const c of SUPPORTED_CURRENCIES) {
+    assertSampled(foundersWorkTicketExample(c), `founders ticket ${c}`);
+    assertSampled(foundersResearchTicketExample(c), `founders research ticket ${c}`);
+    assertSampled(cultureBriefExample(c), `culture brief ${c}`);
+    for (const s of cultureSampleWall(c)) assertSampled(s, `culture wall ${s.category} ${c}`);
+    assertSampled(bidceptionSampleTree(c), `bidception tree ${c}`);
+  }
   assertSampled(BIDTHRONE_SAMPLE_RECORD, "bidthrone record");
 });
 
-test("sample money is integer minor units (never floats)", () => {
-  const values = [
-    FOUNDERS_WORK_TICKET_EXAMPLE.rewardMinor,
-    CULTURE_BRIEF_EXAMPLE.rewardMinor,
-    ...CULTURE_SAMPLE_WALL.map((s) => s.rewardMinor),
-    BIDCEPTION_SAMPLE_TREE.totalMinor,
-    BIDCEPTION_SAMPLE_TREE.captainMinor,
-    ...BIDCEPTION_SAMPLE_TREE.children.map((c) => c.minor),
-    BIDCEPTION_SAMPLE_TREE.reserveMinor,
-  ];
-  for (const v of values) {
-    assert.ok(Number.isInteger(v), `sample amount ${v} must be an integer minor unit`);
-    assert.ok(v >= 0, "sample amounts are non-negative");
+test("sample money is integer minor units in the sample's own currency", () => {
+  for (const c of SUPPORTED_CURRENCIES) {
+    const t = foundersWorkTicketExample(c);
+    const r = foundersResearchTicketExample(c);
+    const b = cultureBriefExample(c);
+    const wall = cultureSampleWall(c);
+    const tree = bidceptionSampleTree(c);
+    assert.equal(t.currency, c, "ticket currency matches the set");
+    assert.equal(b.currency, c);
+    assert.equal(tree.currency, c);
+    for (const s of wall) assert.equal(s.currency, c);
+    const values = [
+      t.rewardMinor,
+      r.rewardMinor,
+      b.rewardMinor,
+      ...wall.map((s) => s.rewardMinor),
+      tree.totalMinor,
+      tree.captainMinor,
+      ...tree.children.map((ch) => ch.minor),
+      tree.reserveMinor,
+    ];
+    for (const v of values) {
+      assert.ok(Number.isInteger(v), `sample amount ${v} must be an integer minor unit`);
+      assert.ok(v >= 0, "sample amounts are non-negative");
+    }
   }
 });
 
+test("the INR and USD sample sets are independent values (no FX conversion)", () => {
+  // Illustrative local sample values: the two sets are unrelated product
+  // decisions, so at least one pair differs in ratio and nothing is a
+  // round-number exchange rate of the other.
+  const inr = foundersWorkTicketExample("INR");
+  const usd = foundersWorkTicketExample("USD");
+  assert.equal(inr.rewardMinor, 8_500_000, "INR hero ticket is ₹85,000");
+  assert.equal(usd.rewardMinor, 100_000, "USD hero ticket is $1,000");
+  assert.equal(foundersResearchTicketExample("INR").rewardMinor, 4_000_000, "INR research ₹40,000");
+  assert.equal(foundersResearchTicketExample("USD").rewardMinor, 50_000, "USD research $500");
+  assert.equal(cultureBriefExample("INR").rewardMinor, 5_000_000, "INR culture hero ₹50,000");
+  assert.equal(cultureBriefExample("USD").rewardMinor, 60_000, "USD culture hero $600");
+});
+
 test("no sample implies real marketplace activity", () => {
-  // The activity-state words (verified/paid/settled) must not appear in the
-  // sample NOTES: a note claiming "paid" or "verified" would imply actual
-  // marketplace activity. The license lines are the spec's sample license
-  // wording ("Paid amplification · 90 days" describes the winning work's
-  // rights, not an event), so they are asserted against the spec strings
-  // instead.
   const notes = [
-    FOUNDERS_WORK_TICKET_EXAMPLE.note,
-    CULTURE_BRIEF_EXAMPLE.note,
-    BIDCEPTION_SAMPLE_TREE.note,
+    foundersWorkTicketExample("INR").note,
+    foundersWorkTicketExample("USD").note,
+    cultureBriefExample("INR").note,
+    cultureBriefExample("USD").note,
+    bidceptionSampleTree("INR").note,
+    bidceptionSampleTree("USD").note,
     BIDTHRONE_SAMPLE_RECORD.label,
     BIDTHRONE_SAMPLE_RECORD.disclaimer,
   ];
@@ -65,7 +95,12 @@ test("no sample implies real marketplace activity", () => {
     );
   }
   assert.deepEqual(
-    CULTURE_SAMPLE_WALL.map((s) => s.licenseLine),
+    cultureSampleWall("INR").map((s) => s.licenseLine),
+    cultureSampleWall("USD").map((s) => s.licenseLine),
+    "license wording is currency-independent",
+  );
+  assert.deepEqual(
+    cultureSampleWall("INR").map((s) => s.licenseLine),
     [
       "Paid amplification · 60 days",
       "Exclusive license · 180 days",
@@ -76,9 +111,9 @@ test("no sample implies real marketplace activity", () => {
   );
   // "live" only in the negated form ("Not a live bounty", "Not live").
   for (const t of [
-    FOUNDERS_WORK_TICKET_EXAMPLE.note,
-    CULTURE_BRIEF_EXAMPLE.note,
-    BIDCEPTION_SAMPLE_TREE.note,
+    foundersWorkTicketExample("INR").note,
+    cultureBriefExample("USD").note,
+    bidceptionSampleTree("INR").note,
   ]) {
     assert.ok(/not (a )?live/i.test(t), `sample disclaimer negates "live": ${t}`);
   }
@@ -94,28 +129,42 @@ test("the bidthrone sample record is NR with zero counters (no invented number)"
   assert.equal(r.modelVersion, "BI-1.0");
 });
 
-test("the sample allocation tree reconciles exactly (total = captain + children + reserve)", () => {
-  const t = BIDCEPTION_SAMPLE_TREE;
-  const parts =
-    t.captainMinor + t.children.reduce((a, c) => a + c.minor, 0) + t.reserveMinor;
-  assert.equal(parts, t.totalMinor, "the sample tree must add up, to the paise");
-  assert.equal(t.totalMinor, 100_000_00, "total is ₹1,00,000 in minor units");
-  assert.equal(t.captainMinor, 1_000_000, "captain is ₹10,000");
+test("the sample allocation tree reconciles exactly in BOTH currencies", () => {
+  const inr = bidceptionSampleTree("INR");
+  const usd = bidceptionSampleTree("USD");
+  for (const t of [inr, usd]) {
+    const parts =
+      t.captainMinor + t.children.reduce((a, c) => a + c.minor, 0) + t.reserveMinor;
+    assert.equal(parts, t.totalMinor, `${t.currency}: the sample tree must add up, to the minor unit`);
+  }
+  // INR: ₹1,00,000 total, ₹10,000 captain, 30k/20k/25k/15k children, no reserve.
+  assert.equal(inr.totalMinor, 100_000_00, "total is ₹1,00,000 in minor units");
+  assert.equal(inr.captainMinor, 1_000_000, "captain is ₹10,000");
   assert.deepEqual(
-    t.children.map((c) => c.minor),
+    inr.children.map((c) => c.minor),
     [3_000_000, 2_000_000, 2_500_000, 1_500_000],
-    "child allocations are the spec values",
+    "INR child allocations are the spec values",
   );
-  assert.equal(t.reserveMinor, 0, "the sample carries no reserve");
+  assert.equal(inr.reserveMinor, 0);
+  // USD: $1,200 total, $120 captain, 360/240/300/180 children, no reserve.
+  assert.equal(usd.totalMinor, 120_000, "total is $1,200 in minor units");
+  assert.equal(usd.captainMinor, 12_000, "captain is $120");
+  assert.deepEqual(
+    usd.children.map((c) => c.minor),
+    [36_000, 24_000, 30_000, 18_000],
+    "USD child allocations are the spec values",
+  );
+  assert.equal(usd.reserveMinor, 0);
 });
 
 test("samples never enter the database (no sample rows in users/bounties)", async () => {
   const { getPglite } = await import("../src/lib/db.server");
   const pg = await getPglite();
   const titles = [
-    FOUNDERS_WORK_TICKET_EXAMPLE.title,
-    CULTURE_BRIEF_EXAMPLE.title,
-    ...CULTURE_SAMPLE_WALL.map((x) => x.title),
+    foundersWorkTicketExample("INR").title,
+    cultureBriefExample("INR").title,
+    ...cultureSampleWall("INR").map((x) => x.title),
+    ...cultureSampleWall("USD").map((x) => x.title),
   ];
   const users = await pg.query<{ n: number }>("select count(*)::int as n from users where display_name = $1", [BIDTHRONE_SAMPLE_RECORD.name]);
   assert.equal(Number(users.rows[0]?.n ?? 0), 0, "the EXAMPLE MEMBER is not a user row");
@@ -125,10 +174,17 @@ test("samples never enter the database (no sample rows in users/bounties)", asyn
   }
 });
 
-test("sample wall categories are the spec set with real-looking, clearly sample data", () => {
-  const cats = CULTURE_SAMPLE_WALL.map((s) => s.category);
-  assert.deepEqual(cats.sort(), ["Music", "Naming", "Photography", "UGC"].sort());
-  for (const s of CULTURE_SAMPLE_WALL) {
-    assert.equal(s.slotsTaken, 0, "no sample claims a filled slot");
+test("sample wall categories are the spec set in both currencies", () => {
+  for (const c of SUPPORTED_CURRENCIES) {
+    const cats = cultureSampleWall(c).map((s) => s.category);
+    assert.deepEqual(cats.sort(), ["Music", "Naming", "Photography", "UGC"].sort(), `${c}`);
+    for (const s of cultureSampleWall(c)) {
+      assert.equal(s.slotsTaken, 0, "no sample claims a filled slot");
+    }
   }
+});
+
+test("unknown sample currencies fail visibly (never assumed INR)", () => {
+  assert.throws(() => foundersWorkTicketExample("EUR"), /unsupported sample currency/i);
+  assert.throws(() => bidceptionSampleTree("AUD"), /unsupported sample currency/i);
 });

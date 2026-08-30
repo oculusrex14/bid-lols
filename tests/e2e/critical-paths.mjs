@@ -352,6 +352,21 @@ async function bidthrone(browser) {
   const lb = await page.textContent("main");
   ok("leaderboards show methodology + empty honesty", /No payment or placement input changes a rank/.test(lb ?? ""));
 
+  // RC5.1 WS3: the Most Reliable board copy is Bayesian, never a literal
+  // completion share.
+  await page.goto(url("bidthrone.lol", "/leaderboards?board=most_reliable"), { waitUntil: "networkidle" });
+  const mr = await page.textContent("main");
+  ok(
+    "Most Reliable explains a Bayesian estimate, not a literal share",
+    /Bayesian estimate/i.test(mr ?? "") &&
+      /not the literal percentage of jobs completed clean/i.test(mr ?? ""),
+  );
+  ok(
+    "Most Reliable copy no longer claims a clean-completion share",
+    !/share of their verified provider outcomes that completed clean/.test(mr ?? "") &&
+      !/evidence ratio/.test(mr ?? ""),
+  );
+
   await page.goto(url("bidthrone.lol", "/bid-index"), { waitUntil: "networkidle" });
   const idx = await page.textContent("main");
   ok(
@@ -364,9 +379,27 @@ async function bidthrone(browser) {
   const rates = await page.textContent("main");
   ok(
     "market-rates gates on sample size (insufficient labels, never zero prices)",
-    /Not enough verified data yet|Insufficient sample/.test(rates ?? "") && !/Insufficient sample\s*₹0/.test(rates ?? ""),
+    /Not enough verified (₹|\$) data yet|Insufficient sample/.test(rates ?? "") && !/Insufficient sample\s*(₹|\$)0/.test(rates ?? ""),
   );
   ok("market rates are separate from the trust score", /that is the Bid Index/i.test(rates ?? "") || /Market rates/.test(rates ?? ""));
+
+  // RC5.1 WS10: the currency partition is URL-addressable and labelled.
+  // The fake-provider dev server is NOT a deployed runtime, so the viewer
+  // default is USD (no DEFAULT_VIEWER_CURRENCY set); ?currency=INR must show
+  // the INR partition explicitly.
+  ok("market-rates shows the currency selector", await page.$('[data-testid="market-rates-currency"]') !== null);
+  await page.goto(url("bidthrone.lol", "/market-rates?currency=INR"), { waitUntil: "networkidle" });
+  const ratesInr = await page.textContent("main");
+  ok(
+    "market-rates?currency=INR labels the INR partition",
+    /in INR across verified work|Currency/.test(ratesInr ?? "") && /INR/.test(ratesInr ?? ""),
+  );
+  await page.goto(url("bidthrone.lol", "/market-rates?currency=EUR"), { waitUntil: "networkidle" });
+  const ratesEur = await page.textContent("main");
+  ok(
+    "unknown ?currency= normalizes to the viewer's default partition (documented behavior)",
+    /Aggregated market rates in (INR|USD) across/.test(ratesEur ?? ""),
+  );
 
   // RC4 P0: versioned social card assets reachable over HTTP (loopback +
   // Host header, same mechanism as the browser resolver map).
@@ -384,6 +417,17 @@ async function rc5Objects(browser) {
     await page.goto(url("foundersbid.lol", "/"), { waitUntil: "networkidle" });
     const menuButtons = await page.$$('[aria-label="Open menu"]');
     ok("mobile top bar has exactly ONE menu button", menuButtons.length === 1, String(menuButtons.length));
+    // RC5.1 WS2: appearance lives ONLY inside the one mobile menu — the
+    // standalone icon toggle must not be VISIBLE below md (no duplicate
+    // control). It is display:none on mobile, so a visibility count is the
+    // honest assertion (the node exists for desktop but renders nothing).
+    const headerIcons = await page.$$eval(
+      'header button[aria-label^="Switch to"]',
+      (as) => as.filter((el) => el.getClientRects().length > 0).length,
+    );
+    ok("mobile header shows no standalone appearance icon", headerIcons === 0, String(headerIcons));
+    const cta = await page.$('[data-testid="primary-cta"]');
+    ok("primary CTA stays visible on the mobile header", cta !== null && (await cta.isVisible()));
     await page.click('[aria-label="Open menu"]');
     const menuText = await page.textContent('[aria-label="Mobile product"]');
     ok(
@@ -409,6 +453,12 @@ async function rc5Objects(browser) {
     await page.goto(url("bidthrone.lol", "/leaderboards"), { waitUntil: "networkidle" });
     const rail = await page.$('[data-testid="board-rail"]');
     ok("leaderboards: single registry board rail", rail !== null);
+    // RC5.1 WS2: desktop keeps the header appearance icon toggle.
+    const desktopIcons = await page.$$eval(
+      'header button[aria-label^="Switch to"]',
+      (as) => as.filter((el) => el.getClientRects().length > 0).length,
+    );
+    ok("desktop header keeps the appearance icon toggle", desktopIcons === 1, String(desktopIcons));
     const ledger = await page.textContent('[data-testid="board-most_experience"]');
     ok(
       "selected board keeps ledger chrome when empty (no 12 giant tables)",
