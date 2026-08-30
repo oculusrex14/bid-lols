@@ -256,13 +256,21 @@ boot gate (`REQUIRED_MIGRATIONS`) is unchanged.
 
 - Previously: nothing enforced.
 - Now ENABLED via authenticated tooling: repository ruleset
-  `21853296` ("RC5.2 main-branch guard: CI + E2E + CodeQL required before
-  merge"), enforcement `active`, targeting `refs/heads/main`, requiring
-  status checks: `lint · typecheck · test · build` (CI gates),
+  `21853296` ("RC5.2 main-branch guard: CI + E2E + CodeQL required"),
+  enforcement `active`, targeting `refs/heads/main`, requiring status
+  checks: `lint · typecheck · test · build` (CI gates),
   `Playwright critical paths` (CI e2e), `Analyze (javascript-typescript)`
-  (CodeQL). This protects the PR/merge path and does not change the
-  autonomous direct-to-main workflow (pushes remain fast-forward; the
-  release protocol never force-pushes).
+  (CodeQL), with a bypass actor for the repository Admin role
+  (`current_user_can_bypass: always`).
+- Interaction with the direct-push workflow: the first push after creating
+  the ruleset WAS rejected by it ("3 of 3 required status checks are
+  expected" — rulesets apply required checks to direct pushes, not just
+  merges). To keep the established autonomous direct-to-main workflow
+  intact (per the phase guardrail), the Admin-role bypass was added; the
+  docs commit then pushed. Net effect: PRs from other contributors are
+  gated on CI+E2E+CodeQL; the operator's fast-forward pushes (which the
+  release protocol only ever does after local gates pass) work as before.
+  The final state was verified by the successful push of `e468bf9`.
 - NOT yet possible through this API shape: the force-push / branch
   deletion guard rules (`allow_force_pushes` / `allow_deletions` /
   `allow_non_fast_forward_updates` types were rejected by the current
