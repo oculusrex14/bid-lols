@@ -20,7 +20,7 @@ import { MoneyValue } from "@/components/ui/money";
 const loadGraveyard = createServerFn({ method: "GET" }).handler(async () => {
   const sql = await getSql();
   const productKey = await currentProductKey();
-  const { me } = await (await import("@/lib/shell-context")).getShellContext();
+  const { me, funding } = await (await import("@/lib/shell-context")).getShellContext();
   const items = await sql.query<{
     id: string; title: string; slug: string; status: string;
     asking_price_minor: number | null; currency: string; created_at: string;
@@ -31,7 +31,7 @@ const loadGraveyard = createServerFn({ method: "GET" }).handler(async () => {
      order by created_at desc limit 50`,
     [productKey],
   );
-  return { product: productKey, me, items };
+  return { product: productKey, me, funding, items };
 });
 
 export const Route = createFileRoute("/graveyard/")({
@@ -44,7 +44,7 @@ function GraveyardPage() {
   const pKey = d.product as ProductKey;
 
   return (
-    <ProductShell site={pKey} me={d.me}>
+    <ProductShell site={pKey} me={d.me} funding={d.funding}>
       <div className="canvas-wide pb-16">
         <PageHeader
           kicker={product(pKey).name}
@@ -72,14 +72,16 @@ function GraveyardPage() {
               </>
             }
           />
+        /* RC5 §20.9: the asset list keeps its document/folder register
+           (Founders paper card), never a reinterpreted "completed work". */
         ) : (
-          <div className="mt-6">
+          <div className="mt-6 space-y-3">
             {d.items.map((l) => (
               <Link
                 key={l.id}
                 to="/graveyard/$id"
                 params={{ id: l.id }}
-                className="row-line group flex flex-wrap items-center gap-x-4 gap-y-1 px-1 py-4 transition-colors duration-150 hover:bg-surface/70"
+                className="group flex flex-wrap items-center gap-x-4 gap-y-1 rounded-md border border-line bg-surface px-4 py-3.5 transition-colors duration-150 hover:border-line-strong"
               >
                 {l.asking_price_minor != null ? (
                   <MoneyValue minor={Number(l.asking_price_minor)} currency={l.currency} className="w-28 shrink-0 text-accent" />

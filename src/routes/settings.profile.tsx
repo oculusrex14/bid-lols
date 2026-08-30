@@ -12,8 +12,8 @@ const loadSettings = createServerFn({ method: "GET" }).handler(async () => {
   const { getSession } = await import("@/lib/authz");
   const session = await getSession();
   if (!session) throw redirect({ to: "/signin" });
-  const { me } = await (await import("@/lib/shell-context")).getShellContext();
-  return { product: await currentProductKey(), me };
+  const { me, funding } = await (await import("@/lib/shell-context")).getShellContext();
+  return { product: await currentProductKey(), me, funding };
 });
 
 export const Route = createFileRoute("/settings/profile")({
@@ -22,9 +22,9 @@ export const Route = createFileRoute("/settings/profile")({
 });
 
 function SettingsProfilePage() {
-  const { product: site, me } = Route.useLoaderData();
+  const { product: site, me, funding } = Route.useLoaderData();
   return (
-    <ProductShell site={site} me={me}>
+    <ProductShell site={site} me={me} funding={funding}>
       <div className="canvas-app py-10">
         <p className="text-xs font-medium uppercase tracking-kicker text-subtle">
           Your account

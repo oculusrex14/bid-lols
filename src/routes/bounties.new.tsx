@@ -36,9 +36,10 @@ const loadCreate = createServerFn({ method: "GET" }).handler(async () => {
   const session = await getSession();
   if (!session) throw redirect({ to: "/signin" });
   const product = await currentProductKey();
+  const shellContext = await (await import("@/lib/shell-context")).getShellContext();
   return {
     product,
-    me: (await (await import("@/lib/shell-context")).getShellContext()).me,
+    me: shellContext.me, funding: shellContext.funding,
     emailVerified: session.user.emailVerified,
   };
 });
@@ -189,7 +190,7 @@ function NewBountyPage() {
   const isReview = step === steps.length - 1;
 
   return (
-    <ProductShell site={d.product} me={d.me}>
+    <ProductShell site={d.product} me={d.me} funding={d.funding}>
       <div className="canvas-wide pb-24">
         <CreateHeader isCulture={isCulture} steps={steps} step={step} emailVerified={d.emailVerified} error={error} />
 

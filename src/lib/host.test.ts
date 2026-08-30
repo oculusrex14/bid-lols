@@ -177,15 +177,17 @@ test("theme-color is product-aware in the SSR head (RC3, S-38)", () => {
   // The stale umbrella value (#f4efe4 = foundersbid's light bg) must be
   // replaced per product — no Founders color leaking onto other domains.
   const html = '<html><head><meta name="theme-color" content="#f4efe4"></head><body>x</body></html>';
-  assert.match(injectSeoHead(html, "bidthrone", "/"), /<meta name="theme-color" content="#f1f2f4">/);
-  assert.match(injectSeoHead(html, "foundersbid", "/"), /<meta name="theme-color" content="#f4efe4">/);
-  assert.match(injectSeoHead(html, "culturebid", "/"), /<meta name="theme-color" content="#f0eff4">/);
-  assert.match(injectSeoHead(html, "bidception", "/"), /<meta name="theme-color" content="#f3f3f5">/);
+  // RC5 §9: the SSR value is the product DEFAULT-mode background —
+  // Bidthrone is dark-first (#0c0d10), the others light-first.
+  assert.match(injectSeoHead(html, "bidthrone", "/"), /<meta name="theme-color" content="#0c0d10">/);
+  assert.match(injectSeoHead(html, "foundersbid", "/"), /<meta name="theme-color" content="#f3eadc">/);
+  assert.match(injectSeoHead(html, "culturebid", "/"), /<meta name="theme-color" content="#f3eef7">/);
+  assert.match(injectSeoHead(html, "bidception", "/"), /<meta name="theme-color" content="#f2f5f6">/);
   // exactly one theme-color meta after injection
   const out = injectSeoHead(html, "bidception", "/");
   assert.equal((out.match(/theme-color/g) ?? []).length, 1);
   // 404 head carries the product color too
-  assert.match(notFoundHeadTags("culturebid"), /<meta name="theme-color" content="#f0eff4">/);
+  assert.match(notFoundHeadTags("culturebid"), /<meta name="theme-color" content="#f3eef7">/);
 });
 
 test("entity meta wins over the host fallback and escapes user content (RC2, C3)", () => {

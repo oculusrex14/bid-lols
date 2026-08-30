@@ -1,8 +1,8 @@
 # State
 
-Current phase: RC4 BID INDEX / TRUST INFRASTRUCTURE (BI-1.0)
-Status: COMPLETE (production release; see docs/reports/RC4_BID_INDEX_REPORT.md)
-Production: RC4 runtime — Bid Index trust system BI-1.0 + versioned social cards + taxonomy split (app SHA b9a698f; deployment dpl_8Rx9WTFQC3b7kuPCqPAepEuLswPd / bidthrone-40tkbngwi; previous good: dpl_7dzaSDwdvFtP6CgyGBjYi9Az5BDQ, dpl_EfRsnBWF9VJqQdJUVFmZPRUSd9wT, dpl_HaHbAwGeiojAgG3Fzpg1mxtfXd8Z, dpl_5WugdV9fwyvWthw6kBVR6DLva58i, dpl_8EUVrSncC6fPQ14237Tc1jGFoBNR, dpl_7hLTtmKTR3vPwt2o5z3CbQZctkeE, dpl_E2UdhbQVjJq3kPqKRBHaLCk8MhUQ)
+Current phase: RC5 PRODUCT OBJECT REDESIGN + RC4.1 TRUST CORRECTNESS HARDENING
+Status: IN PROGRESS (spec: docs/phases/PHASE_RC5_PRODUCT_OBJECTS.md)
+Production: RC4 runtime (baseline for RC5) — Bid Index trust system BI-1.0 + versioned social cards + taxonomy split (app SHA b9a698f; deployment dpl_8Rx9WTFQC3b7kuPCqPAepEuLswPd / bidthrone-40tkbngwi; previous good: dpl_7dzaSDwdvFtP6CgyGBjYi9Az5BDQ, dpl_EfRsnBWF9VJqQdJUVFmZPRUSd9wT, dpl_HaHbAwGeiojAgG3Fzpg1mxtfXd8Z, dpl_5WugdV9fwyvWthw6kBVR6DLva58i, dpl_8EUVrSncC6fPQ14237Tc1jGFoBNR, dpl_7hLTtmKTR3vPwt2o5z3CbQZctkeE, dpl_E2UdhbQVjJq3kPqKRBHaLCk8MhUQ)
 Funding: OFF (no MARKETPLACE_MONEY_LIVE anywhere; nothing takes payment). TRUST_VERIFICATION_LIVE: 0 (scaffolding only; payment earns zero Bid Index effect).
 Objective: complete
 Next: post-RC4 liquidity (scores go live as real completed work exists; GSC/Bing verification + CultureBid apex DNS remain operator follow-ups)

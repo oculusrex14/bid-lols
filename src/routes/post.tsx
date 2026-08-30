@@ -28,9 +28,9 @@ export const Route = createFileRoute("/post")({
 });
 
 function PostChooser() {
-  const { product, me } = Route.useLoaderData();
+  const { product, me, funding } = Route.useLoaderData();
   return (
-    <ProductShell site={product} me={me}>
+    <ProductShell site={product} me={me} funding={funding}>
       <div className="canvas-prose py-14">
         <h1 className="font-display-site text-3xl tracking-tight sm:text-4xl">Post work</h1>
         <p className="mt-3 max-w-2xl text-base leading-relaxed text-muted">

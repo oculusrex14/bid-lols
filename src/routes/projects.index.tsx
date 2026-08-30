@@ -23,9 +23,9 @@ import { ButtonLink } from "@/components/ui/button";
 const loadProjects = createServerFn({ method: "GET" }).handler(async () => {
   const sql = await getSql();
   const productKey = await currentProductKey();
-  const { me } = await (await import("@/lib/shell-context")).getShellContext();
+  const { me, funding } = await (await import("@/lib/shell-context")).getShellContext();
   const result = await listOpenProjects(sql, productKey, { limit: 20 });
-  return { ...result, product: productKey, me };
+  return { ...result, product: productKey, me, funding };
 });
 
 export const Route = createFileRoute("/projects/")({
@@ -46,7 +46,7 @@ function ProjectsPage() {
   const pKey = data.product as ProductKey;
 
   return (
-    <ProductShell site={pKey} me={data.me}>
+    <ProductShell site={pKey} me={data.me} funding={data.funding}>
       <div className="canvas-wide pb-16">
         <PageHeader
           kicker={product(pKey).name}

@@ -41,11 +41,24 @@ const HOSTS =
 
 // The full route matrix per product. Slugs unique per host.
 const ROUTES = {
-  bidthrone: ["/", "/leaderboards", "/bid-index", "/bounties", "/graveyard", "/blog", "/blog/introducing-the-bid-network", "/signup", "/dashboard", "/settings/profile"],
+  bidthrone: ["/", "/leaderboards", "/bid-index", "/market-rates", "/bounties", "/graveyard", "/blog", "/blog/reputation-from-completed-work", "/signup", "/dashboard", "/settings/profile"],
   foundersbid: ["/", "/bounties", "/bounties/new", "/projects", "/graveyard", "/graveyard/new", "/post", "/signup", "/dashboard"],
   culturebid: ["/", "/bounties", "/bounties/new", "/graveyard", "/blog"],
   bidception: ["/", "/bidception", "/bidception/new", "/bounties", "/graveyard", "/leaderboards", "/bid-index"],
 };
+
+// RC5 §33: the critical product-object routes, captured at 390 / 768 / 1440.
+const RESPONSIVE = {
+  foundersbid: ["/", "/bounties", "/post"],
+  culturebid: ["/", "/bounties", "/bounties/new"],
+  bidception: ["/", "/bidception"],
+  bidthrone: ["/", "/leaderboards", "/bid-index", "/market-rates"],
+};
+const VIEWPORTS = [
+  { width: 390, height: 844 },
+  { width: 768, height: 1024 },
+  { width: 1440, height: 900 },
+];
 
 mkdirSync(OUT, { recursive: true });
 const launchArgs = ENV === "local" ? ["--host-resolver-rules=MAP *.lol 127.0.0.1", "--font-render-hinting=none"] : ["--font-render-hinting=none"];
@@ -140,6 +153,56 @@ try {
         } catch (err) {
           fingerprints.push({ url, status, shot: null, errors, fp });
           console.log(`FAIL ${url} ${String(err).slice(0, 150)}`);
+        }
+        await context.close();
+      }
+    }
+  }
+// RC5 responsive pass: light mode only (dark variants are covered by the
+// full matrix above). Also records no-overflow + sample-label facts so the
+// visual pass is measurable, not just a screenshot dump. Same outer
+// try/finally: one browser, two passes.
+for (const [product, base] of Object.entries(HOSTS)) {
+    for (const vp of VIEWPORTS) {
+      for (const route of RESPONSIVE[product]) {
+        const context = await browser.newContext({
+          viewport: { width: vp.width, height: vp.height },
+          isMobile: vp.width < 500,
+          hasTouch: vp.width < 500,
+        });
+        const p = await context.newPage();
+        const errors = [];
+        p.on("pageerror", (e) => errors.push(`pageerror: ${String(e).slice(0, 200)}`));
+        const url = base + route;
+        const slug = route.replace(/\/$/, "").replace(/\//g, "_") || "home";
+        let status = null;
+        let check = null;
+        try {
+          const res = await p.goto(url, { waitUntil: "networkidle", timeout: 30000 });
+          status = res ? res.status() : null;
+          await p.waitForTimeout(350);
+          check = await p.evaluate(() => {
+            const overflow = document.documentElement.scrollWidth > window.innerWidth + 1;
+            const samples = [...document.querySelectorAll("[data-example='true']")].map((el) => {
+              const t = (el.textContent || "").trim();
+              return { labelled: /EXAMPLE|SAMPLE|Sample|Example/i.test(t) };
+            });
+            return {
+              overflow,
+              sampleCount: samples.length,
+              allSamplesLabelled: samples.every((s) => s.labelled),
+              h1: (document.querySelector("h1")?.textContent || "").slice(0, 60),
+            };
+          });
+          const shot = `${OUT}/${product}${slug}-${vp.width}.png`;
+          await p.screenshot({ path: shot, fullPage: false });
+          fingerprints.push({ url: `${url}@${vp.width}`, status, shot, errors, fp: check, responsive: true });
+          console.log(
+            `${status} ${url} @${vp.width} overflow=${check.overflow} samples=${check.sampleCount}/${check.allSamplesLabelled ? "labelled" : "UNLABELLED"} -> ${shot}`,
+          );
+        } catch (err) {
+          fingerprints.push({ url, status, shot: null, errors, fp: check, responsive: true });
+          console.log(`FAIL ${url}@${vp.width} ${String(err).slice(0, 150)}`);
         }
         await context.close();
       }

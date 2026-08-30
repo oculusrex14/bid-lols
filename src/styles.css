@@ -3,16 +3,29 @@
 @import "@fontsource/newsreader/latin-400-italic.css";
 @import "@fontsource/newsreader/latin-500.css";
 @import "@fontsource/newsreader/latin-600.css";
-@import "@fontsource/syne/latin-600.css";
-@import "@fontsource/syne/latin-700.css";
 @import "@fontsource/outfit/latin-400.css";
 @import "@fontsource/outfit/latin-500.css";
 @import "@fontsource/outfit/latin-600.css";
+@import "@fontsource/outfit/latin-700.css";
 
 /* ==========================================================================
-   Network Spine (RC3). One operational design system, four product skins.
-   - Outfit is the transactional face (forms, tables, money, status, cards,
-     nav, dashboards). Newsreader/Syne are brand/editorial moments only.
+   Network Spine (RC3) + Product Object Layer (RC5). One operational design
+   system, four distinct product object languages, one network family.
+
+   RC5 two-layer law (docs/03_DESIGN_SYSTEM.md, docs/phases/
+   PHASE_RC5_PRODUCT_OBJECTS.md):
+   - LAYER A (operational spine): everything below stays tokenized,
+     hairline, accessible, authority-free. No product-object styling may
+     leak into controls, forms, admin, payment or security surfaces.
+   - LAYER B (product objects): the marked PRODUCT OBJECT LAYER at the end
+     of this file may carry product-specific radii, selective shadows,
+     decorative gradients and pseudo-elements — presentation only, owned by
+     named product-object classes.
+
+   - Outfit is the body/UI face everywhere; Newsreader is the display face
+     for Bidthrone, FoundersBid and CultureBid heroes; Bidception's display
+     is Outfit 700 (console voice). Syne was retired in RC5 (no remaining
+     usage).
    - 4px spacing scale; "inverted density": quiet between major sections,
      efficient inside product surfaces.
    - 1px hairline borders are the default; 2px is reserved for focus,
@@ -20,7 +33,7 @@
    - Every text role is WCAG-AA (>=4.5:1) on every surface it can sit on,
      light and dark, for all four products: enforced by
      scripts/contrast-audit.test.mjs (a CI gate). Paper temperature
-     matches accent temperature per product (cool accent -> cool paper).
+     matches accent temperature per product.
    - Product accents are used sparingly.
    ========================================================================== */
 
@@ -28,6 +41,9 @@
   --color-bg: var(--bg);
   --color-surface: var(--surface);
   --color-raised: var(--raised);
+  --color-chip: var(--chip);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
   --color-fg: var(--fg);
   --color-muted: var(--muted);
   --color-subtle: var(--subtle);
@@ -39,9 +55,12 @@
   --color-up: var(--up);
   --color-danger: var(--danger);
   --color-warn: var(--warn);
+  --color-header: var(--header);
+  --color-header-fg: var(--header-fg);
+  --color-header-soft: var(--header-fg-soft);
+  --color-header-line: var(--header-line);
   --font-sans: "Outfit", "Segoe UI", system-ui, sans-serif;
   --font-display: "Newsreader", "Iowan Old Style", Georgia, serif;
-  --font-meta: "Syne", "Avenir Next", "Segoe UI", sans-serif;
   --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   /* RC3 radii: controls 8, cards 12, pills for status chips only. */
   --radius-xs: 4px;
@@ -49,25 +68,31 @@
   --radius-md: 12px;
   --radius-lg: 16px;
   --radius-xl: 24px;
-  /* RC3 layout canvases: wide marketplace, application, prose. */
+  /* Layout canvases: wide marketplace + shell, application, prose, and the
+     RC5 brand canvas for hero compositions and product-object galleries. */
   --canvas-wide: 77.5rem; /* 1240px */
   --canvas-app: 67.5rem; /* 1080px */
   --canvas-prose: 45rem; /* 720px */
+  --canvas-brand: 73.75rem; /* 1180px */
   --tracking-kicker: 0.22em;
   --motion-quick: 150ms;
   --motion-fast: 250ms;
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-/* ---- Bidthrone skin (the umbrella default): royal indigo ---------------
-   Paper is cool porcelain, not beige: the indigo accent sits on a neutral
-   with a slight cool lean so light mode reads as one family. (Style pass
-   2026-08-29: the original warm cream paper clashed with the cool accent;
-   text tiers are WCAG-AA verified by scripts/contrast-audit.test.mjs.) */
+/* ---- Bidthrone skin (the umbrella default; RC5 dark-first) -------------
+   The marketed identity defaults to the archival dark ledger (see the
+   html[data-mode="dark"] block below; DEFAULT_THEME_MODE in
+   host-seo-shared.mjs). Light mode stays cool porcelain: the indigo accent
+   sits on a neutral with a slight cool lean. Text tiers are WCAG-AA
+   verified by scripts/contrast-audit.test.mjs. */
 :root {
   --bg: #f1f2f4;
   --surface: #e9eaee;
   --raised: #dfe0e5;
+  --chip: #e4e5ea;
+  --line: #d5d7dd;
+  --line-strong: #b9bcc4;
   --fg: #15171c;
   --muted: #545a66;
   --subtle: #596070;
@@ -79,59 +104,98 @@
   --up: #33683d;
   --danger: #9c453e;
   --warn: #7a5a14;
+  --header: #e9eaee;
+  --header-fg: #15171c;
+  --header-fg-soft: #545a66;
+  --header-line: #d5d7dd;
   --font-display-active: var(--font-display);
 }
 
-/* ---- FoundersBid skin: warm copper / burnt orange ----------------------
-   Warm paper stays (the copper accent is warm: harmonious by design); the
-   text tiers were deepened to clear AA on every surface. */
+/* ---- FoundersBid skin: warm workshop paper / copper (RC5 §20.1) --------
+   RC5 target palette: warm workshop paper; the copper accent is warm,
+   harmonious by design. Card sits a touch lighter than the page (workshop
+   paper on desk); text tiers are WCAG-AA verified. */
 [data-theme="founders"] {
-  --bg: #f4efe4;
-  --surface: #ebe4d6;
-  --raised: #e3dac8;
-  --fg: #1c1712;
-  --muted: #645c50;
-  --subtle: #675e50;
-  --accent: #97431d;
-  --accent-fg: #ffffff;
+  --bg: #f3eadc;
+  --surface: #faf4ea;
+  --raised: #f7f1e6;
+  --chip: #efe4d2;
+  --line: #e0d2bc;
+  --line-strong: #c9b89a;
+  --fg: #2c1d12;
+  --muted: #5d4f3d;
+  --subtle: #6a5c49;
+  --accent: #8d4a28;
+  --accent-fg: #fff8f0;
   --accent-soft: color-mix(in oklab, var(--accent) 10%, transparent);
   --border: color-mix(in oklab, var(--fg) 14%, transparent);
   --ring: color-mix(in oklab, var(--accent) 45%, transparent);
+  --up: #3f6d3d;
+  --danger: #9a463c;
+  --warn: #7c500e;
+  --header: #f7f1e6;
+  --header-fg: #2c1d12;
+  --header-fg-soft: #5d4f3d;
+  --header-line: #e0d2bc;
   --font-display-active: var(--font-display);
 }
 
-/* ---- CultureBid skin: violet / cool stone --------------------------------
-   Cool violet-leaned stone paper (the documented "cool stone" intent): the
-   violet accent and the neutral finally live in the same temperature. */
+/* ---- CultureBid skin: editorial violet / warm lilac paper (RC5 §21) ----
+   RC5 target palette: the editorial studio surface. Cards are true white
+   against the lilac page (poster on wall); violet accent in the same
+   temperature. Text tiers WCAG-AA verified. */
 [data-theme="culture"] {
-  --bg: #f0eff4;
-  --surface: #e8e7ee;
-  --raised: #dedce5;
-  --fg: #17161d;
-  --muted: #565464;
-  --subtle: #585464;
+  --bg: #f3eef7;
+  --surface: #ffffff;
+  --raised: #faf7fc;
+  --chip: #ece4f4;
+  --line: #e0d5ec;
+  --line-strong: #c9b8dc;
+  --fg: #16131c;
+  --muted: #55515f;
+  --subtle: #635e6e;
   --accent: #6d28d9;
   --accent-fg: #ffffff;
   --accent-soft: color-mix(in oklab, var(--accent) 10%, transparent);
   --border: color-mix(in oklab, var(--fg) 14%, transparent);
   --ring: color-mix(in oklab, var(--accent) 45%, transparent);
-  --font-display-active: var(--font-sans);
+  --up: #2e6b36;
+  --danger: #943c34;
+  --warn: #7c500e;
+  --header: #faf7fc;
+  --header-fg: #16131c;
+  --header-fg-soft: #55515f;
+  --header-line: #e0d5ec;
+  --font-display-active: var(--font-display);
 }
 
-/* ---- Bidception skin: teal / graphite ----------------------------------- */
+/* ---- Bidception skin: systems console, teal / cool slate (RC5 §22.1) ----
+   RC5 target palette: allocation console. The product header is DARK
+   GRAPHITE even in light mode (--header #152028): the console bar over the
+   cool slate page. Display voice is Outfit 700 (no Syne). */
 [data-theme="bidception"] {
-  --bg: #f3f3f5;
-  --surface: #eaeaee;
-  --raised: #e1e1e6;
-  --fg: #18181b;
-  --muted: #5c5c66;
-  --subtle: #5f606e;
-  --accent: #0c6b62;
+  --bg: #f2f5f6;
+  --surface: #ffffff;
+  --raised: #fbfcfd;
+  --chip: #e8eef0;
+  --line: #d5dee2;
+  --line-strong: #b7c4ca;
+  --fg: #12202a;
+  --muted: #4c5b66;
+  --subtle: #5d6d78;
+  --accent: #0f766e;
   --accent-fg: #ffffff;
   --accent-soft: color-mix(in oklab, var(--accent) 10%, transparent);
   --border: color-mix(in oklab, var(--fg) 14%, transparent);
   --ring: color-mix(in oklab, var(--accent) 45%, transparent);
-  --font-display-active: var(--font-meta);
+  --up: #2e6b36;
+  --danger: #943c34;
+  --warn: #7c500e;
+  --header: #152028;
+  --header-fg: #e8eef0;
+  --header-fg-soft: #9fb0b8;
+  --header-line: #24333c;
+  --font-display-active: var(--font-sans);
 }
 
 /* ---- Dark mode (product-aware, not a blanket invert) --------------------
@@ -140,21 +204,33 @@
    A descendant form would theme the shell subtree but leave the page/body
    chrome on the default (bidthrone) dark palette. */
 html[data-mode="dark"] {
-  /* bidthrone dark */
-  --bg: #0a0a0a;
-  --surface: #121110;
-  --raised: #1a1917;
-  --fg: #f3efe6;
-  --muted: #a39e94;
+  /* bidthrone dark — the archival ledger (RC5 §23.1 target palette).
+     Bidthrone ships dark-first (DEFAULT_THEME_MODE): this block is the
+     default first paint on bidthrone.lol for new visitors. The violet
+     accent is the spec #7b5cff lightened one step (#8570ff) because the
+     raw target fails WCAG AA as text on the page background; the accent
+     foreground is dark, not light, for the same reason. */
+  --bg: #0c0d10;
+  --surface: #12131a;
+  --raised: #14151a;
+  --chip: #1b1c22;
+  --line: #2a2c34;
+  --line-strong: #3a3d48;
+  --fg: #f3ead8;
+  --muted: #b9b1a3;
   --subtle: #85827c;
-  --accent: #a5b4fc;
-  --accent-fg: #0a0a0a;
+  --accent: #8570ff;
+  --accent-fg: #0d0e13;
   --accent-soft: color-mix(in oklab, var(--accent) 16%, transparent);
   --border: color-mix(in oklab, var(--fg) 14%, transparent);
   --ring: color-mix(in oklab, var(--accent) 55%, transparent);
   --up: #8fbf9a;
   --danger: #c97b73;
   --warn: #d4a84c;
+  --header: #14151a;
+  --header-fg: #f3ead8;
+  --header-fg-soft: #b9b1a3;
+  --header-line: #2a2c34;
   --font-display-active: var(--font-display);
 }
 
@@ -162,6 +238,9 @@ html[data-mode="dark"][data-theme="founders"] {
   --bg: #1a1612;
   --surface: #221e19;
   --raised: #2c2620;
+  --chip: #322b22;
+  --line: #3d362c;
+  --line-strong: #55493a;
   --fg: #f4efe4;
   --muted: #b7aea0;
   --subtle: #968d82;
@@ -170,6 +249,10 @@ html[data-mode="dark"][data-theme="founders"] {
   --accent-soft: color-mix(in oklab, var(--accent) 16%, transparent);
   --border: color-mix(in oklab, var(--fg) 14%, transparent);
   --ring: color-mix(in oklab, var(--accent) 55%, transparent);
+  --header: #221e19;
+  --header-fg: #f4efe4;
+  --header-fg-soft: #b7aea0;
+  --header-line: #3d362c;
   --font-display-active: var(--font-display);
 }
 
@@ -177,6 +260,9 @@ html[data-mode="dark"][data-theme="culture"] {
   --bg: #141613;
   --surface: #1c1e1a;
   --raised: #252822;
+  --chip: #232621;
+  --line: #34382f;
+  --line-strong: #4a4f42;
   --fg: #ecebe4;
   --muted: #b0b3aa;
   --subtle: #8b8f87;
@@ -185,13 +271,20 @@ html[data-mode="dark"][data-theme="culture"] {
   --accent-soft: color-mix(in oklab, var(--accent) 16%, transparent);
   --border: color-mix(in oklab, var(--fg) 14%, transparent);
   --ring: color-mix(in oklab, var(--accent) 55%, transparent);
-  --font-display-active: var(--font-sans);
+  --header: #1c1e1a;
+  --header-fg: #ecebe4;
+  --header-fg-soft: #b0b3aa;
+  --header-line: #34382f;
+  --font-display-active: var(--font-display);
 }
 
 html[data-mode="dark"][data-theme="bidception"] {
   --bg: #09090b;
   --surface: #121214;
   --raised: #18181b;
+  --chip: #1d1f24;
+  --line: #26272c;
+  --line-strong: #3a3d45;
   --fg: #ececef;
   --muted: #a1a1aa;
   --subtle: #818189;
@@ -200,7 +293,11 @@ html[data-mode="dark"][data-theme="bidception"] {
   --accent-soft: color-mix(in oklab, var(--accent) 16%, transparent);
   --border: color-mix(in oklab, var(--fg) 12%, transparent);
   --ring: color-mix(in oklab, var(--accent) 55%, transparent);
-  --font-display-active: var(--font-meta);
+  --header: #101418;
+  --header-fg: #ececef;
+  --header-fg-soft: #a1a1aa;
+  --header-line: #26272c;
+  --font-display-active: var(--font-sans);
 }
 
 /* ---- Base --------------------------------------------------------------- */
@@ -282,10 +379,20 @@ html[data-mode="dark"][data-theme="bidception"] {
   max-width: var(--canvas-prose);
   padding-inline: 1rem;
 }
+/* RC5 §10: the brand canvas — hero compositions and product-object
+   galleries. Browse/filter pages and operational workspaces keep
+   canvas-wide; this one is 1180px, not 1240. */
+.canvas-brand {
+  margin-inline: auto;
+  width: 100%;
+  max-width: var(--canvas-brand);
+  padding-inline: 1rem;
+}
 @media (min-width: 40rem) {
   .canvas-wide { padding-inline: 1.25rem; }
   .canvas-app { padding-inline: 1.25rem; }
   .canvas-prose { padding-inline: 1.25rem; }
+  .canvas-brand { padding-inline: 1.25rem; }
 }
 
 /* A hairline row separator for dense lists (instead of a card per row). */
@@ -363,4 +470,402 @@ html[data-mode="dark"][data-theme="bidception"] {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* ==========================================================================
+   PRODUCT OBJECT LAYER (RC5, Layer B)
+   --------------------------------------------------------------------------
+   Product-specific presentational objects ONLY. Each is a named class,
+   consumed exclusively by the product-object components in
+   src/components/product-objects/ (and the four homepage compositions).
+   Rules (docs/phases/PHASE_RC5_PRODUCT_OBJECTS.md):
+     - presentation only: no business logic, no authority, no payment,
+       no auth decisions;
+     - raw product values live HERE, not in TSX style props;
+     - nothing in this layer may sit in a control, form, admin, payment,
+       security, or lifecycle surface (those stay on the operational
+       spine tokens above);
+     - text contrast inside an object still clears WCAG AA (the audit gate
+       covers the semantic tokens; object text uses object-safe values).
+   ========================================================================== */
+
+/* ---- Header object (all products) ------------------------------------ */
+/* 64px sticky product bar on the header token; blur so content scrolls
+   beneath without a hard edge. */
+.obj-header {
+  background: color-mix(in oklab, var(--header) 92%, transparent);
+  color: var(--header-fg);
+  border-bottom-color: var(--header-line);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+.shell-header {
+  height: 4rem; /* 64px target */
+}
+/* Active nav: a subtle inset 2px accent rule — not a thick SaaS pill. */
+.obj-nav {
+  position: relative;
+  display: inline-block;
+  padding: 6px 10px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  border-radius: 4px;
+  transition: color 150ms;
+}
+.obj-nav-active {
+  color: var(--header-fg);
+  font-weight: 600;
+  box-shadow: inset 0 -2px 0 0 var(--accent);
+}
+/* Quiet funding status chip (moneyMode === off; RC5 §18). */
+.obj-funding-chip {
+  border-color: color-mix(in oklab, var(--header-fg) 25%, transparent);
+  color: var(--header-fg-soft);
+}
+
+/* ---- Hero typography (RC5 §7) ---------------------------------------- */
+.obj-hero-type {
+  font-family: var(--font-display-active), serif;
+  font-size: clamp(40px, 5.2vw, 64px);
+  line-height: 1.02;
+  letter-spacing: -0.03em;
+  font-weight: 500;
+}
+html[data-theme="bidception"] .obj-hero-type,
+html[data-mode="dark"][data-theme="bidception"] .obj-hero-type {
+  font-family: var(--font-sans);
+  font-weight: 700;
+  letter-spacing: -0.04em;
+}
+.obj-hero-lead {
+  font-size: 16.5px;
+  line-height: 1.55;
+  max-width: 42ch;
+}
+.obj-microlabel {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.obj-kicker {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+/* ---- FoundersBid: the manila work ticket (RC5 §20.3/20.4/20.5) -------- */
+/* Workshop paper folder with a clipped tab, a strip of paper tape, and
+   (for samples only) a rotated EXAMPLE ribbon. Real work uses the same
+   morphology with real fields and no ribbon. */
+.work-ticket {
+  position: relative;
+  background: #f6eddc;
+  border: 1px solid #d9c7a8;
+  border-radius: 4px 18px 14px 14px;
+  padding: 22px 22px 20px;
+  box-shadow: 0 10px 28px rgba(80, 50, 20, 0.08);
+  color: #2c1d12;
+}
+/* The ticket keeps its own paper in both modes: its inner text tiers are
+   fixed (theme tokens would invert in dark mode and fail on the paper).
+   All three clear WCAG AA on #f6eddc (audited). */
+.work-ticket-muted {
+  color: #5d4f3d;
+}
+.work-ticket-subtle {
+  color: #6a5c49;
+}
+.work-ticket-accent {
+  color: #8d4a28;
+}
+.work-ticket-title {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+.work-ticket::before {
+  /* the clipped folder tab */
+  content: "";
+  position: absolute;
+  top: -16px;
+  left: 18px;
+  width: 120px;
+  height: 18px;
+  background: #efe3cd;
+  border: 1px solid #d9c7a8;
+  border-bottom: none;
+  border-radius: 8px 14px 0 0;
+  clip-path: polygon(0 0, 78% 0, 92% 100%, 0 100%);
+}
+.work-ticket-tape {
+  position: absolute;
+  top: 10px;
+  left: 28px;
+  width: 86px;
+  height: 18px;
+  transform: rotate(-8deg);
+  opacity: 0.85;
+  background: repeating-linear-gradient(
+    90deg,
+    rgba(214, 188, 144, 0.55) 0 6px,
+    rgba(214, 188, 144, 0.25) 6px 12px
+  );
+  border-left: 1px solid rgba(160, 130, 90, 0.25);
+  border-right: 1px solid rgba(160, 130, 90, 0.25);
+  pointer-events: none;
+}
+.example-ribbon {
+  position: absolute;
+  top: 14px;
+  right: -8px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  padding: 6px 16px 6px 14px;
+  transform: rotate(28deg);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.18);
+  background: #8d4a28;
+  color: #fff8f0;
+  pointer-events: none;
+}
+@media (max-width: 480px) {
+  .example-ribbon {
+    transform: none;
+    right: 10px;
+  }
+}
+/* Founders brand layer: one allowed decorative gradient over the paper. */
+.founders-brand-layer {
+  background:
+    radial-gradient(1200px 500px at 80% -10%, rgba(141, 74, 40, 0.08), transparent 50%),
+    var(--bg);
+}
+
+/* ---- CultureBid: brief poster + gallery tile (RC5 §21.2/21.4) --------- */
+.brief-poster {
+  position: relative;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 18px 40px rgba(40, 20, 60, 0.08);
+}
+.brief-poster-media {
+  aspect-ratio: 16 / 9;
+  width: 100%;
+  object-fit: cover;
+  display: block;
+}
+.brief-poster-body {
+  padding: 16px 18px 18px;
+}
+.brief-poster-title {
+  font-family: var(--font-display);
+  font-size: 26px;
+  font-weight: 500;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+}
+.brief-tile {
+  position: relative;
+  border-radius: 14px;
+  min-height: 168px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+}
+.brief-tile-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0) 30%, rgba(0, 0, 0, 0.72) 100%);
+  pointer-events: none;
+}
+.brief-tile-content {
+  position: relative;
+  z-index: 1;
+  height: 100%;
+  margin: 12px 14px 14px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  color: #ffffff;
+}
+
+/* ---- Bidception: the allocation tree (RC5 §22.4-22.8) ------------------ */
+/* Presentation shell: the tree receives authoritative values from the
+   caller and renders geometry. It computes no business decision. */
+.budget-tree-shell {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 18px 20px 16px;
+  box-shadow: 0 16px 40px rgba(18, 32, 42, 0.06);
+}
+.tree-captain-node {
+  max-width: 220px;
+  background: #1b2a33;
+  color: #eef4f6;
+  border-radius: 12px;
+  padding: 10px 14px;
+}
+.tree-child-node {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px 10px 10px;
+  background: var(--surface);
+}
+.tree-child-amount {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  color: var(--accent);
+  font-size: 14px;
+}
+.tree-children {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 10px;
+  position: relative;
+}
+.tree-connector::before {
+  content: "";
+  position: absolute;
+  left: 10%;
+  right: 10%;
+  top: -18px;
+  height: 18px;
+  border-top: 1px solid var(--line-strong);
+  border-left: 1px solid var(--line-strong);
+  border-right: 1px solid var(--line-strong);
+}
+@media (max-width: 900px) {
+  .tree-children {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  /* The connector geometry would mislead at 2-up: hide it. */
+  .tree-connector::before {
+    display: none;
+  }
+}
+@media (max-width: 480px) {
+  .tree-children {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ---- Bidthrone: the public record card (RC5 §23.3) --------------------- */
+/* The archival record: a pinned dark object that keeps its identity on
+   both the dark-first page and the light override. */
+.record-card {
+  position: relative;
+  background: linear-gradient(180deg, #16171e, #101117);
+  border-radius: 16px;
+  border: 1px solid #2a2c34;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.03),
+    0 20px 40px rgba(0, 0, 0, 0.35);
+  color: #f3ead8;
+}
+.record-card-subtle {
+  color: #b9b1a3;
+}
+.record-card-line {
+  border-color: #2a2c34;
+}
+.record-card-subtle {
+  color: #b9b1a3;
+}
+.record-avatar {
+  border-color: #3a3d48;
+  background: #1b1c22;
+  color: #f3ead8;
+}
+.record-stat {
+  background: #14151a;
+  border: 1px solid #2a2c34;
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+.record-review-slot {
+  border: 1px dashed #3a3d48;
+  border-radius: 12px;
+  padding: 12px 14px;
+  color: #b9b1a3;
+}
+.record-timeline {
+  position: relative;
+  height: 24px;
+  background:
+    repeating-linear-gradient(90deg, #2a2c34 0 1px, transparent 1px 24px) no-repeat,
+    linear-gradient(90deg, #2a2c34 0 100%);
+  background-size:
+    100% 6px,
+    100% 1px;
+  background-position:
+    0 50%,
+    0 50%;
+}
+
+/* ---- Bidthrone: the ghost ledger (RC5 §23.10/23.13) -------------------- */
+.obj-board-rail {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  overflow: hidden;
+}
+.obj-rail-active {
+  background: color-mix(in oklab, var(--accent) 10%, transparent);
+  box-shadow: inset 2px 0 0 0 var(--accent);
+  color: var(--fg);
+}
+.obj-cell {
+  padding: 10px 8px;
+  border-bottom: 1px solid var(--line);
+}
+.obj-ghost-bar {
+  height: 10px;
+  border-radius: 5px;
+  background: color-mix(in oklab, var(--fg) 8%, transparent);
+}
+
+/* ---- Market rates: sample completeness bar (RC5 §23.11) ---------------- */
+/* The width means SAMPLE COMPLETENESS ONLY. Never trust, rank, or price. */
+.market-rate-progress {
+  height: 4px;
+  border-radius: 2px;
+  background: color-mix(in oklab, var(--fg) 10%, transparent);
+  overflow: hidden;
+}
+.market-rate-progress > span {
+  display: block;
+  height: 100%;
+  border-radius: 2px;
+  background: var(--accent);
+}
+
+/* ---- Bidception: the role rail (RC5 §22.3) ----------------------------- */
+.role-rail {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.role-door {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px 14px;
+}
+.role-door-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 9999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }

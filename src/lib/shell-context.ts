@@ -20,16 +20,38 @@ export type ShellMe = {
   role: string;
 } | null;
 
+/**
+ * RC5 §18: the public-safe funding status. The value is derived from the
+ * single authority, moneyMode() in src/lib/payments/provider.ts (off /
+ * sandbox / live) — never from the capability matrix, never a second flag.
+ * Only the mode string crosses to the client: no credentials, no env.
+ */
+export type FundingMode = "off" | "sandbox" | "live";
+
 export type ShellContext = {
   me: ShellMe;
+  funding: FundingMode;
 };
+
+async function fundingMode(): Promise<FundingMode> {
+  try {
+    // provider.ts is server-only (node:crypto); the dynamic import keeps the
+    // client graph clean. moneyMode() itself is a pure env reader.
+    const { moneyMode } = await import("@/lib/payments/provider");
+    return moneyMode();
+  } catch {
+    // Fail closed to the safe state: no funding claims, ever.
+    return "off";
+  }
+}
 
 /** Plain async — callable from other serverFn handlers without RPC overhead. */
 export async function getShellContext(): Promise<ShellContext> {
+  const funding = await fundingMode();
   try {
     const { getSession } = await import("@/lib/authz");
     const session = await getSession();
-    if (!session) return { me: null };
+    if (!session) return { me: null, funding };
     let handle: string | null = null;
     try {
       const { getOrCreateProfile } = await import("@/lib/profiles.server");
@@ -48,13 +70,14 @@ export async function getShellContext(): Promise<ShellContext> {
         emailVerified: session.user.emailVerified,
         role: session.user.role ?? "user",
       },
+      funding,
     };
   } catch (err) {
     // RC3, S-10.1: shell navigation may degrade to anonymous (no PII either
     // way), but the failure must be logged — silent nulls hid a whole class
     // of infrastructure faults in RC2 and earlier.
     console.error("[shell-context] shell context degraded to anonymous:", err);
-    return { me: null };
+    return { me: null, funding };
   }
 }
 
@@ -68,13 +91,13 @@ export const shellContext = createServerFn({ method: "GET" }).handler(
  * Combined page shell context: active product (server-derived from Host) +
  * the auth-aware `me`. One serverFn so route loaders stay one-liners.
  */
-export type MarketplaceShell = { product: ProductKey; me: ShellMe };
+export type MarketplaceShell = { product: ProductKey; me: ShellMe; funding: FundingMode };
 
 /** Plain async — callable from other serverFn handlers. */
 export async function getMarketplaceShell(): Promise<MarketplaceShell> {
   const { currentProductKey } = await import("@/lib/host");
-  const { me } = await getShellContext();
-  return { product: await currentProductKey(), me };
+  const { me, funding } = await getShellContext();
+  return { product: await currentProductKey(), me, funding };
 }
 
 /** The serverFn wrapper. */

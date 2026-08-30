@@ -3,7 +3,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { currentProductKey, type ProductKey } from "@/lib/host";
 import { ProductShell } from "@/components/product-shell";
 import { PageHeader } from "@/components/ui/layout";
-import { EmptyState, InlineNotice } from "@/components/ui/states";
+import { InlineNotice } from "@/components/ui/states";
 import { ButtonLink } from "@/components/ui/button";
 
 /**
@@ -35,12 +35,12 @@ type OverallView = {
 
 const loadIndex = createServerFn({ method: "GET" }).handler(async () => {
   const product = await currentProductKey();
-  const { me } = await (await import("@/lib/shell-context")).getShellContext();
+  const { me, funding } = await (await import("@/lib/shell-context")).getShellContext();
   let trust: Awaited<ReturnType<typeof loadTrustBlock>> | null = null;
   if (me) {
     trust = await loadTrustBlock(me.id).catch(() => null);
   }
-  return { product, me, trust };
+  return { product, me, funding, trust };
 });
 
 async function loadTrustBlock(userId: string): Promise<{
@@ -65,7 +65,7 @@ export const Route = createFileRoute("/bid-index")({
 function BidIndexPage() {
   const d = Route.useLoaderData();
   return (
-    <ProductShell site={d.product as ProductKey} me={d.me}>
+    <ProductShell site={d.product as ProductKey} me={d.me} funding={d.funding}>
       <div className="canvas-wide pb-16">
         <PageHeader
           kicker="Bidthrone · Bid Index"
@@ -200,11 +200,13 @@ function PersonalReport({ trust }: { trust: { overall: OverallView; roles: Array
       </div>
       <div className="mt-5 grid gap-4 sm:grid-cols-3">
         {trust.roles.map((r) => (
-          <div key={r.role} className="rounded-md border border-fg/15 bg-raised/40 p-3">
+          <div key={r.role} className="rounded-md border border-line bg-raised/40 p-3">
             <p className="text-xs uppercase tracking-kicker text-subtle">{roleLabel(r.role)}</p>
-            <p className="mt-1 font-display-site text-2xl tracking-tight">{r.score ?? "NR"}</p>
+            <p className="tabular mt-1 font-display-site text-2xl tracking-tight">{r.score ?? "NR"}</p>
             <p className="text-xs text-muted">
-              {r.score != null ? bandText(r.band) : `${r.primaryOutcomes} verified outcome${r.primaryOutcomes === 1 ? "" : "s"} · not enough history`}
+              {r.score != null
+                ? `${r.band} · ${r.primaryOutcomes} verified outcome${r.primaryOutcomes === 1 ? "" : "s"} · ${r.uniqueCounterparties} independent counterparty${r.uniqueCounterparties === 1 ? "" : "ies"}`
+                : `${r.primaryOutcomes} verified outcome${r.primaryOutcomes === 1 ? "" : "s"} · not enough history`}
             </p>
           </div>
         ))}

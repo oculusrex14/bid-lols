@@ -13,8 +13,8 @@ import { articlesForProduct, type BlogArticle } from "@/content/blog/articles";
  */
 const loadBlog = createServerFn({ method: "GET" }).handler(async () => {
   const product = await currentProductKey();
-  const { me } = await (await import("@/lib/shell-context")).getShellContext();
-  return { product, me, articles: articlesForProduct(product) };
+  const { me, funding } = await (await import("@/lib/shell-context")).getShellContext();
+  return { product, me, funding, articles: articlesForProduct(product) };
 });
 
 export const Route = createFileRoute("/blog/")({
@@ -26,7 +26,7 @@ function BlogIndexPage() {
   const d = Route.useLoaderData();
   const p = d.product as BlogArticle["product"];
   return (
-    <ProductShell site={p} me={d.me}>
+    <ProductShell site={p} me={d.me} funding={d.funding}>
       <div className="canvas-prose py-10">
         <p className="text-xs font-medium uppercase tracking-kicker text-subtle">
           {product(p).name}

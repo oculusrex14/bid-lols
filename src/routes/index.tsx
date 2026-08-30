@@ -20,7 +20,7 @@ const getShell = createServerFn({ method: "GET" }).handler(async () => {
   const { currentProductKey } = await import("@/lib/host");
   const { getShellContext } = await import("@/lib/shell-context");
   const productKey = await currentProductKey();
-  const { me } = await getShellContext();
+  const { me, funding } = await getShellContext();
   // The preview must never break the home: a blip degrades to an empty
   // preview (the hero falls back to its labelled example / honest state).
   let preview: HomePreview;
@@ -31,10 +31,10 @@ const getShell = createServerFn({ method: "GET" }).handler(async () => {
       productKey === "bidception"
         ? { kind: "parents", items: [] }
         : productKey === "bidthrone"
-          ? { kind: "boards", boards: [], bidIndexReady: false }
+          ? { kind: "boards", boards: [], marketRates: [] }
           : { kind: "bounties", items: [] };
   }
-  return { product: productKey, me, preview };
+  return { product: productKey, me, funding, preview };
 });
 
 export const Route = createFileRoute("/")({
@@ -43,10 +43,10 @@ export const Route = createFileRoute("/")({
 });
 
 function ProductHome() {
-  const { product: productKey, me, preview } = Route.useLoaderData();
+  const { product: productKey, me, funding, preview } = Route.useLoaderData();
 
   return (
-    <ProductShell site={productKey} me={me}>
+    <ProductShell site={productKey} me={me} funding={funding}>
       <TrackProductView site={productKey} />
       <HomeByProduct productKey={productKey} me={me} preview={preview} />
     </ProductShell>

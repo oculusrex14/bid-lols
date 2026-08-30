@@ -46,7 +46,8 @@ const loadAdmin = createServerFn({ method: "GET" }).handler(async () => {
               (select count(*)::int from bounties) as bounties_n`,
     ),
   ]);
-  return { product: await currentProductKey(), me: (await (await import("@/lib/shell-context")).getShellContext()).me, users, bounties, payments, obligations, disputes, auditTrail, stats };
+  const shellContext = await (await import("@/lib/shell-context")).getShellContext();
+  return { product: await currentProductKey(), me: shellContext.me, funding: shellContext.funding, users, bounties, payments, obligations, disputes, auditTrail, stats };
 });
 
 export const Route = createFileRoute("/admin")({
@@ -172,7 +173,7 @@ const adminAction = createServerFn({ method: "POST" })
 function AdminPage() {
   const d = Route.useLoaderData();
   return (
-    <ProductShell site={d.product} me={d.me}>
+    <ProductShell site={d.product} me={d.me} funding={d.funding}>
       <div className="canvas-app py-10">
         <p className="text-xs font-medium uppercase tracking-kicker text-subtle">Admin</p>
         <h1 className="mt-1 font-display-site text-2xl tracking-tight sm:text-3xl">Operations</h1>

@@ -1,0 +1,71 @@
+import { MARKET_RATE_MIN_SAMPLE } from "@/lib/marketplace/reputation";
+import { formatMinor } from "@/lib/money";
+
+/**
+ * RC5 §23.11: the Bidthrone home Market Rates preview. It renders REAL
+ * sample data from marketRateFor() (same gated source as /market-rates).
+ * The progress bar width means SAMPLE COMPLETENESS ONLY — never trust,
+ * ranking, or price. Below the threshold the row says "Insufficient
+ * sample" and shows no price. No Bid Index language here: this is the
+ * category pricing product.
+ */
+export type MarketRatePreviewRow = {
+  category: string;
+  sampleSize: number;
+  sufficient: boolean;
+  minMinor: number | null;
+  medianMinor: number | null;
+  maxMinor: number | null;
+};
+
+export function MarketRatesPreview({
+  rows,
+}: {
+  rows: MarketRatePreviewRow[];
+}) {
+  if (rows.length === 0) {
+    return (
+      <p className="text-sm leading-relaxed text-muted">
+        Market rates publish only when a category has at least{" "}
+        {MARKET_RATE_MIN_SAMPLE} verified, settled outcomes. Until then it
+        shows <span className="font-medium">Insufficient sample</span>{" "}
+        instead of inventing a price. That is the product working as
+        designed.
+      </p>
+    );
+  }
+  return (
+    <ul className="space-y-3" data-testid="market-rates-preview">
+      {rows.map((r) => (
+        <li key={r.category} className="row-line py-2.5">
+          <div className="flex items-baseline justify-between gap-3">
+            <span className="text-sm font-medium">{r.category}</span>
+            <span className="tabular text-xs text-subtle">
+              {r.sampleSize}/{MARKET_RATE_MIN_SAMPLE} verified
+            </span>
+          </div>
+          <div
+            className="market-rate-progress mt-1.5"
+            role="img"
+            aria-label={`${r.category}: ${r.sampleSize} of ${MARKET_RATE_MIN_SAMPLE} verified outcomes`}
+          >
+            <span
+              style={{
+                width: `${Math.min(r.sampleSize / MARKET_RATE_MIN_SAMPLE, 1) * 100}%`,
+              }}
+            />
+          </div>
+          {r.sufficient ? (
+            <p className="tabular mt-1.5 text-xs text-muted">
+              {formatMinor(r.minMinor as number, "INR")} –{" "}
+              {formatMinor(r.maxMinor as number, "INR")} · median{" "}
+              {formatMinor(r.medianMinor as number, "INR")}
+            </p>
+          ) : (
+            <p className="mt-1.5 text-xs text-muted">Insufficient sample</p>
+          )}
+        </li>
+      ))}
+    </ul>
+  );
+}

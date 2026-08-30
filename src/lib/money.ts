@@ -111,6 +111,21 @@ export function formatMinor(minor: number, currency: string = "INR"): string {
   return `${currency === "INR" ? "₹" : `${currency} `}${formatted}`;
 }
 
+/**
+ * Display-only variant of formatMinor (RC5 §29): when paise are exactly
+ * zero the marketing surfaces prefer "₹1,00,000" over "₹1,00,000.00".
+ * Nonzero paise stay visible ("₹1,00,000.50") — money is never rounded
+ * away, and accounting/detail surfaces keep using formatMinor().
+ */
+export function formatMinorTrimmed(minor: number, currency: string = "INR"): string {
+  const trimmed = currency === "INR" && minor % 100 === 0;
+  if (trimmed) {
+    const whole = Math.floor(minor / 100);
+    return "₹" + whole.toLocaleString("en-IN");
+  }
+  return formatMinor(minor, currency);
+}
+
 /** Valid ISO-4217-ish currency codes accepted at boundaries (launch: INR only). */
 export const ACCEPTED_CURRENCIES = new Set(["INR"]);
 

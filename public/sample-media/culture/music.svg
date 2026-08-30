@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450" role="img" aria-label="Abstract music sample artwork: warm waveform bars on dark violet">
+  <rect width="800" height="450" fill="#241a3d"/>
+  <g fill="#c9b8dc">
+    <rect x="100" y="200" width="14" height="60" rx="7"/>
+    <rect x="130" y="170" width="14" height="120" rx="7"/>
+    <rect x="160" y="140" width="14" height="180" rx="7"/>
+    <rect x="190" y="180" width="14" height="100" rx="7"/>
+    <rect x="220" y="110" width="14" height="240" rx="7" fill="#6d28d9"/>
+    <rect x="250" y="150" width="14" height="160" rx="7"/>
+    <rect x="280" y="190" width="14" height="80" rx="7"/>
+    <rect x="310" y="130" width="14" height="200" rx="7" fill="#f3eef7"/>
+    <rect x="340" y="170" width="14" height="120" rx="7"/>
+    <rect x="370" y="100" width="14" height="260" rx="7" fill="#6d28d9"/>
+    <rect x="400" y="150" width="14" height="160" rx="7"/>
+    <rect x="430" y="190" width="14" height="80" rx="7"/>
+    <rect x="460" y="140" width="14" height="180" rx="7" fill="#f3eef7"/>
+    <rect x="490" y="170" width="14" height="120" rx="7"/>
+    <rect x="520" y="120" width="14" height="220" rx="7" fill="#6d28d9"/>
+    <rect x="550" y="160" width="14" height="140" rx="7"/>
+    <rect x="580" y="200" width="14" height="60" rx="7"/>
+    <rect x="610" y="150" width="14" height="160" rx="7" fill="#c9b8dc"/>
+    <rect x="640" y="180" width="14" height="100" rx="7"/>
+    <rect x="670" y="130" width="14" height="200" rx="7"/>
+  </g>
+  <text x="400" y="420" font-family="Georgia, serif" font-size="19" fill="#f3eef7" text-anchor="middle" letter-spacing="6">WARM · MINIMAL · 3S</text>
+</svg>

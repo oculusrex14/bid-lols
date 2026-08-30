@@ -28,6 +28,7 @@ import { Field, Input, CheckRow } from "@/components/ui/field";
 import { StickyPanel } from "@/components/ui/market";
 import { InlineNotice } from "@/components/ui/states";
 import { BudgetBar, Metric } from "@/components/ui/data";
+import { BudgetTree } from "@/components/product-objects/budget-tree";
 import { Avatar } from "@/components/ui/identity";
 
 /**
@@ -77,9 +78,10 @@ const loadDetail = createServerFn({ method: "GET" })
     );
     const allocated = children.reduce((t, c) => t + Number(c.allocated_minor), 0);
     const balance = Number(row.funded_budget_minor ?? 0) - allocated - Number(row.captain_compensation_minor);
+    const shellContext = await (await import("@/lib/shell-context")).getShellContext();
     return {
       product: await currentProductKey(),
-      me: (await (await import("@/lib/shell-context")).getShellContext()).me,
+      me: shellContext.me, funding: shellContext.funding,
       parent: row,
       children,
       allocated,
@@ -140,7 +142,7 @@ function Workspace({ data }: { data: DetailData }) {
   const completeCount = data.children.filter((c) => c.state === "COMPLETE").length;
 
   return (
-    <ProductShell site={data.product} me={data.me}>
+    <ProductShell site={data.product} me={data.me} funding={data.funding}>
       <div className="canvas-wide pb-16">
         <nav aria-label="Breadcrumb" className="pt-6 text-sm text-subtle">
           <Link to="/" className="hover:underline hover:underline-offset-4">{productInfo(data.product as ProductKey).name}</Link>
@@ -168,8 +170,29 @@ function Workspace({ data }: { data: DetailData }) {
         ) : null}
 
         <div className="mt-8 grid grid-cols-1 gap-10 lg:grid-cols-12">
-          {/* Main: the work-unit tree. */}
+          {/* Main: the allocation tree dominates; the work units below it
+              keep every row-level control (RC5 §22.10). */}
           <div className="order-2 lg:order-1 lg:col-span-8">
+            {p.funded_budget_minor != null && data.children.length > 0 ? (
+              <BudgetTree
+                className="mb-8"
+                values={{
+                  title: p.title,
+                  currency: p.currency,
+                  totalMinor: Number(p.funded_budget_minor),
+                  captainLabel: "Captain",
+                  captainMinor: Number(p.captain_compensation_minor),
+                  children: data.children.map((c) => ({
+                    key: c.id,
+                    label: c.title,
+                    minor: Number(c.allocated_minor),
+                  })),
+                  // reserve = funded - captain - allocations (data.balance);
+                  // a negative value renders the honest non-reconciling line.
+                  reserveMinor: data.balance,
+                }}
+              />
+            ) : null}
             <ChildUnits data={data} canAct={canAct} busy={busy} onRun={run} />
             {canAct && status === "ACTIVE" ? (
               <AllocateForm parentId={p.id} children={data.children} busy={busy} onRun={run} />

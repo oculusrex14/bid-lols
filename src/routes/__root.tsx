@@ -7,8 +7,13 @@ import {
 } from "@tanstack/react-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "sonner";
-import { MODE_BOOT_SCRIPT, readMode, type Mode } from "@/lib/mode";
-import { currentProductKey, product, type ProductKey } from "@/lib/host";
+import { modeBootScript, readMode, type Mode } from "@/lib/mode";
+import {
+  currentProductKey,
+  DEFAULT_THEME_MODE,
+  product,
+  type ProductKey,
+} from "@/lib/host";
 import appCss from "../styles.css?url";
 
 /**
@@ -39,9 +44,10 @@ export const Route = createRootRoute({
           "The Bid Network is an internet bounty network across foundersbid.lol, culturebid.lol, and bidception.lol, with bidthrone.lol as its reputation and discovery layer.",
       },
       // Umbrella default only. On deployed runtimes the host-aware SEO
-      // middleware replaces this per product (RC3, S-38); in dev it stands
-      // as the bidthrone (default product) light color.
-      { name: "theme-color", content: "#f1f2f4" },
+      // middleware replaces this per product (RC3, S-38; RC5 §9: the value
+      // is the product DEFAULT-mode background — Bidthrone is dark-first);
+      // in dev it stands as the bidthrone (default product) dark color.
+      { name: "theme-color", content: "#0c0d10" },
     ],
     links: [
       { rel: "icon", type: "image/svg+xml", href: "/favicon.svg" },
@@ -64,9 +70,15 @@ function RootDocument() {
         },
       }),
   );
-  const [mode, setMode] = useState<Mode>("light");
+  // RC5 §9: the SSR/first-paint mode is the product's DEFAULT mode
+  // (Bidthrone dark, the rest light). The initial state matches the SSR
+  // value exactly, so hydration never mismatches; a stored preference was
+  // already applied to the DOM by the boot script before first paint, and
+  // the effect below syncs React's state to it.
+  const defaultMode: Mode = (DEFAULT_THEME_MODE[productKey] ?? "light") as Mode;
+  const [mode, setMode] = useState<Mode>(defaultMode);
   useEffect(() => {
-    const current = readMode();
+    const current = readMode(defaultMode);
     setMode(current);
     const onMode = (event: Event) => {
       const next = (event as CustomEvent<Mode>).detail;
@@ -74,7 +86,7 @@ function RootDocument() {
     };
     window.addEventListener("bidlol:mode", onMode);
     return () => window.removeEventListener("bidlol:mode", onMode);
-  }, []);
+  }, [defaultMode]);
 
   return (
     <html
@@ -85,7 +97,7 @@ function RootDocument() {
       suppressHydrationWarning
     >
       <head>
-        <script dangerouslySetInnerHTML={{ __html: MODE_BOOT_SCRIPT }} />
+        <script dangerouslySetInnerHTML={{ __html: modeBootScript(defaultMode) }} />
         <HeadContent />
       </head>
       <body className="min-h-screen bg-bg text-fg">

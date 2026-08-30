@@ -67,11 +67,13 @@ async function host(browser) {
   {
     const { context, page, errors } = await newPage(browser);
     // 1. All four homepages load with the right product + chrome.
+    // RC5 palettes; Bidthrone is DARK-FIRST for a new visitor (DEFAULT_THEME_MODE),
+    // so its accent is the dark-ledger value, not the light porcelain one.
     const homes = [
-      ["bidthrone.lol", "Reputation built from work, not self-promotion.", "#4f46e5"],
-      ["foundersbid.lol", "Get startup work done without hiring a whole team.", "#97431d"],
+      ["bidthrone.lol", "Reputation built from work, not self-promotion.", "#8570ff"],
+      ["foundersbid.lol", "Get startup work done without hiring a whole team.", "#8d4a28"],
       ["www.culturebid.lol", "A better way to commission creative work.", "#6d28d9"],
-      ["bidception.lol", "Big project. One budget.", "#0c6b62"],
+      ["bidception.lol", "Big project. One budget.", "#0f766e"],
     ];
     for (const [host, h1, accent] of homes) {
       await page.goto(url(host, "/"), { waitUntil: "networkidle" });
@@ -86,7 +88,27 @@ async function host(browser) {
       ok(`home ${host}: zero page errors`, errors.length === 0, errors[0] ?? "");
     }
 
-    // 2. Active navigation + aria-current on a nested route.
+    // 2. RC5 §9: Bidthrone new visitor is dark (SSR default); Founders light.
+    await page.goto(url("bidthrone.lol", "/"), { waitUntil: "networkidle" });
+    const bithroneMode = await page.evaluate(() => document.documentElement.getAttribute("data-mode"));
+    ok("bidthrone new visitor defaults to dark (dark-first)", bithroneMode === "dark", String(bithroneMode));
+    await page.goto(url("foundersbid.lol", "/"), { waitUntil: "networkidle" });
+    const foundersMode = await page.evaluate(() => document.documentElement.getAttribute("data-mode"));
+    ok("foundersbid new visitor defaults to light", foundersMode === "light", String(foundersMode));
+
+    // 2b. RC5 §9: a stored preference always wins over the product default.
+    await page.goto(url("bidthrone.lol", "/"), { waitUntil: "networkidle" });
+    await page.evaluate(() => {
+      try { localStorage.setItem("bidlol.appearance", "light"); } catch { /* ignore */ }
+    });
+    await page.reload({ waitUntil: "networkidle" });
+    const overridden = await page.evaluate(() => document.documentElement.getAttribute("data-mode"));
+    ok("stored light preference overrides the bidthrone dark default", overridden === "light", String(overridden));
+    await page.evaluate(() => {
+      try { localStorage.removeItem("bidlol.appearance"); } catch { /* ignore */ }
+    });
+
+    // 3. Active navigation + aria-current on a nested route.
     await page.goto(url("foundersbid.lol", "/bounties"), { waitUntil: "networkidle" });
     await hydrate(page, 'nav[aria-label="Product"] a');
     const active = await page.getAttribute('nav[aria-label="Product"] a:has-text("Bounties")', "aria-current");
@@ -183,7 +205,9 @@ async function auth(browser) {
   // Anonymous CTA on bidthrone: Create account. Signed-in: My profile/Dashboard.
   await page.goto(url("bidthrone.lol", "/"), { waitUntil: "networkidle" });
   const anonCta = await page.textContent('[data-testid="primary-cta"]');
-  ok("anonymous bidthrone CTA is Create account", (anonCta ?? "").trim() === "Create account", anonCta ?? "");
+  // RC5 §23.2: the anonymous primary CTA is "Create your record" (no
+  // claiming/import workflow exists; "My profile" once authenticated).
+  ok("anonymous bidthrone CTA is Create your record", (anonCta ?? "").trim() === "Create your record", anonCta ?? "");
 
   await page.goto(`${BASE}/signin`, { waitUntil: "networkidle" });
   await hydrate(page, "#au-email");
@@ -234,8 +258,10 @@ async function founders(browser) {
   await page.goto(url("foundersbid.lol", "/"), { waitUntil: "networkidle" });
 
   // Marketplace-first: open-now/hero within the first meaningful scroll.
-  const heroHasPreview = await page.$('[aria-label="Live opportunities right now"], [aria-label="Example opportunity (not live)"]');
-  ok("hero carries a marketplace preview (or labelled example)", heroHasPreview !== null);
+  // RC5 §20: the hero object is the manila work ticket — real fields when
+  // open work exists, the labelled EXAMPLE ticket otherwise.
+  const heroHasPreview = await page.$('[aria-label="Work ticket"], [aria-label="Example work ticket (not live)"]');
+  ok("hero carries the work ticket (real or labelled example)", heroHasPreview !== null);
 
   // /post chooser routes to both creation flows.
   await page.goto(url("foundersbid.lol", "/post"), { waitUntil: "networkidle" });
@@ -334,6 +360,63 @@ async function bidthrone(browser) {
   await context.close();
 }
 
+async function rc5Objects(browser) {
+  console.log("\n== RC5 product objects ==");
+  {
+    const { context, page } = await newPage(browser, { mobile: true });
+    await page.goto(url("foundersbid.lol", "/"), { waitUntil: "networkidle" });
+    const menuButtons = await page.$$('[aria-label="Open menu"]');
+    ok("mobile top bar has exactly ONE menu button", menuButtons.length === 1, String(menuButtons.length));
+    await page.click('[aria-label="Open menu"]');
+    const menuText = await page.textContent('[aria-label="Mobile product"]');
+    ok(
+      "the one menu owns nav + network + appearance + blog",
+      /Bounties/.test(menuText ?? "") && /The Bid Network/.test(menuText ?? "") &&
+        /Light/.test(menuText ?? "") && /Dark/.test(menuText ?? "") && /blog/i.test(menuText ?? ""),
+      (menuText ?? "").slice(0, 200),
+    );
+    // RC5 §18: the chip renders only when moneyMode() is "off". The
+    // fake-provider test runtime runs "sandbox" (the funding machinery is
+    // what gets exercised there), so an ABSENT chip is the correct answer;
+    // a false "Funding not live" claim on that runtime is the failure.
+    const chip = await page.textContent('[data-testid="funding-status-mobile"]').catch(() => "");
+    ok(
+      "funding status is honest: chip when off, absent on the sandbox test runtime",
+      /Funding not live/.test(chip ?? "") || chip === "",
+      chip ?? "<absent>",
+    );
+    await context.close();
+  }
+  {
+    const { context, page } = await newPage(browser);
+    await page.goto(url("bidthrone.lol", "/leaderboards"), { waitUntil: "networkidle" });
+    const rail = await page.$('[data-testid="board-rail"]');
+    ok("leaderboards: single registry board rail", rail !== null);
+    const ledger = await page.textContent('[data-testid="board-most_experience"]');
+    ok(
+      "selected board keeps ledger chrome when empty (no 12 giant tables)",
+      /Rank/.test(ledger ?? "") && /No eligible records yet/.test(ledger ?? ""),
+      (ledger ?? "").slice(0, 120),
+    );
+    await page.goto(url("foundersbid.lol", "/"), { waitUntil: "networkidle" });
+    const sampleCount = await page.$$eval('[data-example="true"]', (els) => els.length);
+    const sampleText = await page.textContent('[data-example="true"]');
+    ok("founders home sample is labelled EXAMPLE (visible text)", sampleCount >= 1 && /EXAMPLE|Example/i.test(sampleText ?? ""), sampleText ?? "");
+    await page.goto(url("bidthrone.lol", "/"), { waitUntil: "networkidle" });
+    const record = await page.$('[aria-label="Sample public record, not a real member"]');
+    const recordText = record ? await record.textContent() : "";
+    ok(
+      "bidthrone record card: SAMPLE RECORD, NR, no fake number",
+      record !== null && /sample record/i.test(recordText) && /not a real member/i.test(recordText) && /NR/.test(recordText) && /BI-1\.0/.test(recordText),
+      recordText.slice(0, 120),
+    );
+    await page.goto(url("bidception.lol", "/"), { waitUntil: "networkidle" });
+    const tree = await page.$('[aria-label^="Example allocation"]');
+    ok("bidception home shows the labelled sample allocation tree", tree !== null);
+    await context.close();
+  }
+}
+
 async function graveyard(browser) {
   console.log("\n== Graveyard ==");
   const { context, page } = await newPage(browser);
@@ -348,8 +431,16 @@ async function moneyOff(browser) {
   const { context, page } = await newPage(browser);
   await signInOn(page, "foundersbid.lol");
   await page.goto(url("foundersbid.lol", "/"), { waitUntil: "networkidle" });
-  const note = await page.textContent('[data-testid="funding-note"]');
-  ok("home states funding is off", /Funding is not enabled yet/.test(note ?? ""), note ?? "");
+  // RC5 §18: the funding state is the shell chip derived from moneyMode()
+  // (single authority), not a repeated homepage paragraph. The chip shows
+  // when moneyMode is "off" (plain dev / production); the fake-provider CI
+  // runtime is "sandbox" and correctly carries no chip.
+  const note = await page.textContent('[data-testid="funding-status"]').catch(() => "");
+  ok(
+    "shell funding posture is honest (chip when off; absent on the sandbox test runtime)",
+    /Funding not live/.test(note ?? "") || note === "",
+    note ?? "<absent>",
+  );
   // The funding-off claim lives on the creation review step (and the home
   // note above). Walk the steps to reach the review.
   await page.goto(url("foundersbid.lol", "/bounties/new"), { waitUntil: "networkidle" });
@@ -382,6 +473,7 @@ try {
   await culture(browser);
   await bidception(browser);
   await bidthrone(browser);
+  await rc5Objects(browser);
   await graveyard(browser);
   await moneyOff(browser);
 } finally {

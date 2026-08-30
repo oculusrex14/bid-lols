@@ -1,14 +1,31 @@
-import { FoundingAccess } from "@/components/founding-access";
+import { Kicker } from "@/components/home/shared";
 import { JsonLd } from "@/components/seo";
 import { websiteSchema } from "@/lib/schema";
-import { Kicker } from "@/components/home/shared";
+import { FoundingAccess } from "@/components/founding-access";
 import type { ShellMe } from "@/components/product-shell";
 import type { HomePreview } from "@/lib/marketplace/home-preview.server";
-import { MoneyValue } from "@/components/ui/money";
+import { ButtonLink } from "@/components/ui/button";
 import { StatusBadge } from "@/components/ui/status";
 import { SectionHeader } from "@/components/ui/layout";
 import { deadlinePhrase, absoluteDate } from "@/lib/reltime";
+import {
+  CultureBriefCard,
+  CultureBriefTile,
+} from "@/components/product-objects/culture-brief-card";
+import {
+  CULTURE_BRIEF_EXAMPLE,
+  CULTURE_SAMPLE_WALL,
+} from "@/lib/sample-content";
+import { artForCategory } from "@/components/product-objects/category-art";
 import { Camera, Clapperboard, Mic, PenTool, Tag, Type, Users, Video, Wrench } from "lucide-react";
+
+/**
+ * CultureBid home (RC5 §21): the editorial creative studio. Poster hero
+ * (16:9 local art, framed, EXAMPLE-labelled when it is a sample), a
+ * sample brief wall that is clearly labelled sample, and real brief cards
+ * that render ONLY stored fields (usageNotes when present, never
+ * inferred rights). No remote stock media, ever.
+ */
 
 const FORMAT_ICONS: Record<string, typeof Camera> = {
   ugc: Users,
@@ -40,55 +57,41 @@ const FORMAT_LINKS: Array<{ label: string; icon: typeof Camera; href: string }> 
 ];
 
 /**
- * CultureBid home (RC3, S-26): creative-format-first, visual composition
- * from real data only. No stock imagery, no fake thumbnails: the visual
- * language is the format icon system + live brief previews + typography.
+ * Deterministic LOCAL art per category (public/sample-media/culture;
+ * RC5 §21.3): content artwork for the object morphology. Never labelled
+ * sample when it frames a REAL brief: the text on the card is what the
+ * data says.
  */
+
 type HomeOpenItem = Extract<HomePreview, { kind: "bounties" }>["items"];
 
 export function CulturebidHome({ me, preview }: { me?: ShellMe | null; preview: HomePreview }) {
   const openItems = preview.kind === "bounties" ? preview.items : [];
-
+  void me;
   return (
     <>
-      <CultureHero me={me} openItems={openItems} />
-      {/* 2 — Formats you can commission (each links into a REAL filter). */}
-      <section className="canvas-wide mt-14 sm:mt-16">
-        <SectionHeader title="What you can commission" />
-        <ul className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-          {FORMAT_LINKS.map((f) => (
-            <li key={f.label}>
-              <a
-                href={f.href}
-                className="flex items-center gap-2.5 rounded-sm border border-fg/10 bg-surface/50 px-3 py-2.5 transition-colors duration-150 hover:border-fg/35"
-              >
-                <f.icon className="size-4 shrink-0 text-accent" aria-hidden="true" />
-                <span className="text-sm font-medium">{f.label}</span>
-              </a>
-            </li>
-          ))}
-        </ul>
-      </section>
-
-      <CultureOpenBriefs openItems={openItems} />
+      <CultureHero openItems={openItems} />
+      <FormatsSection />
+      {openItems.length > 0 ? (
+        <OpenBriefsSection openItems={openItems} />
+      ) : (
+        <>
+          <EmptyBriefsStage />
+          <SampleBriefWall />
+        </>
+      )}
       <CultureRules />
-      {/* 5 — Funding state + write up, secondary. */}
-      <section className="canvas-wide py-6">
-        <p className="max-w-2xl text-sm leading-relaxed text-muted" data-testid="funding-note">
-          Accounts, profiles, and drafts work today. Funding is not enabled
-          yet, so nothing on this site takes payment now.
-        </p>
+      <section className="canvas-brand mt-6 py-6">
+        <SectionHeader title="The write up" />
         <a
           href="/blog/fair-creative-bounty"
-          className="mt-3 inline-block text-sm font-medium text-accent underline underline-offset-4"
+          className="mt-2 inline-block text-sm font-medium text-accent underline underline-offset-4"
         >
           What a fair creative bounty looks like
         </a>
       </section>
-
       <JsonLd data={[websiteSchema("culturebid")]} />
-
-      <section className="canvas-wide pb-16">
+      <section className="canvas-brand pb-16">
         <FoundingAccess
           site="culturebid"
           heading="Want to know when funding opens?"
@@ -99,183 +102,219 @@ export function CulturebidHome({ me, preview }: { me?: ShellMe | null; preview: 
     </>
   );
 }
-/** 1 — Hero, 7/5: statement left, live briefs (or labelled example) right. */
-function CultureHero({ me, openItems }: { me: ShellMe | null | undefined; openItems: HomeOpenItem }) {
+
+/** 1 — Hero: editorial statement left, brief poster right. */
+function CultureHero({ openItems }: { openItems: HomeOpenItem }) {
+  const first = openItems[0];
   return (
-        <section className="canvas-wide grid grid-cols-1 gap-8 pt-14 sm:pt-20 lg:grid-cols-12">
-          <div className="lg:col-span-7">
-            <Kicker>CultureBid</Kicker>
-            <h1 className="mt-4 font-display-site text-4xl leading-none tracking-tight sm:text-5xl lg:text-6xl">
-              A better way to{" "}
-              <span className="block text-accent">commission creative work.</span>
-            </h1>
-            <p className="mt-6 max-w-xl text-base leading-relaxed text-muted sm:text-lg">
-              Brands post a brief with a published reward, a deadline, and a
-              capped number of creator slots. Creators read the full rules,
-              including how the winning work is licensed, before they start.
-            </p>
-            <div className="mt-8 flex flex-wrap items-center gap-3">
-              <a
-                href="/bounties/new"
-                className="inline-flex h-12 items-center rounded-sm bg-accent px-5 text-sm font-semibold text-accent-fg transition-colors duration-150 hover:bg-accent/90"
-              >
-                Post a brief
-              </a>
-              <a
-                href="/bounties"
-                className="inline-flex h-12 items-center rounded-sm border border-fg/25 px-5 text-sm font-semibold transition-colors duration-150 hover:border-fg/50"
-              >
-                Browse briefs
-              </a>
-              {me ? (
-                <a href="/dashboard" className="text-sm font-medium text-accent underline underline-offset-4">
-                  Your dashboard
-                </a>
-              ) : (
-                <a href="/signup" className="text-sm font-medium text-accent underline underline-offset-4">
-                  Create an account
-                </a>
-              )}
-            </div>
-          </div>
-  
-          <div className="lg:col-span-5">
-            {openItems.length > 0 ? (
-              <div className="rounded-md border border-fg/10 bg-surface/60 p-4" aria-label="Live creative briefs">
-                <p className="text-xs font-semibold uppercase tracking-kicker text-subtle">Live briefs</p>
-                <ul className="mt-3 space-y-3">
-                  {openItems.slice(0, 3).map((b) => {
-                    const Icon = b.creative?.formats?.length ? (FORMAT_ICONS[b.creative.formats[0]] ?? Camera) : Camera;
-                    return (
-                      <li key={b.id}>
-                        <a href={`/bounties/${b.id}`} className="-m-2 block rounded-sm p-2 transition-colors duration-150 hover:bg-raised/60">
-                          <div className="flex items-start gap-3">
-                            <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-sm bg-accent-soft text-accent">
-                              <Icon className="size-4" aria-hidden="true" />
-                            </span>
-                            <span className="min-w-0">
-                              <span className="block truncate text-sm font-semibold hover:underline hover:underline-offset-4">{b.title}</span>
-                              <span className="mt-0.5 flex items-baseline justify-between gap-3 text-xs text-subtle">
-                                <span>{b.category}</span>
-                                <MoneyValue minor={b.reward_total_minor} currency={b.currency} size="sm" className="text-accent" />
-                              </span>
-                            </span>
-                          </div>
-                        </a>
-                      </li>
-                    );
-                  })}
-                </ul>
-                <a href="/bounties" className="mt-3 inline-block text-xs font-medium text-accent underline underline-offset-4">
-                  See all briefs
-                </a>
-              </div>
-            ) : (
-              <div className="rounded-md border border-fg/10 bg-surface/60 p-4" aria-label="Example brief (not live)">
-                <p className="text-xs font-semibold uppercase tracking-kicker text-subtle">Example, not a live brief</p>
-                <div className="mt-3 flex items-start gap-3">
-                  <span className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-sm bg-accent-soft text-accent">
-                    <Clapperboard className="size-4.5" aria-hidden="true" />
-                  </span>
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold">Three 15-second Reels for a skincare launch</p>
-                    <p className="mt-1 text-xs leading-relaxed text-muted">
-                      Short video · posted on Instagram · reward ₹50,000 · two
-                      creator slots · winner is licensed for paid amplification
-                      for 90 days.
-                    </p>
-                    <p className="mt-2 text-xs text-subtle">This is an example. It is not a live brief.</p>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        </section>
-  
-  );
-}
-/** 3 — Open briefs (real inventory, or the honest empty state). */
-function CultureOpenBriefs({ openItems }: { openItems: HomeOpenItem }) {
-  return (
-        <section className="canvas-wide py-10 sm:py-12">
-          <SectionHeader
-            title="Open now"
-            aside={
-              <a href="/bounties" className="text-xs font-medium text-accent underline underline-offset-4">
-                Browse all
-              </a>
-            }
+    <section className="canvas-brand grid grid-cols-1 gap-10 pt-14 sm:pt-20 lg:grid-cols-12">
+      <div className="lg:col-span-7">
+        <Kicker>CultureBid</Kicker>
+        <h1 className="obj-hero-type mt-5">
+          A better way to{" "}
+          <span className="block">commission</span>{" "}
+          <span className="block font-display italic text-accent">creative work.</span>
+        </h1>
+        <p className="obj-hero-lead mt-5 text-muted">
+          Brands post a brief with a published reward, a deadline, and a
+          capped field of creators. Creators read the full rules, including
+          how the winning work is licensed, before they start.
+        </p>
+        <div className="mt-7 flex flex-wrap gap-3">
+          <ButtonLink href="/bounties/new" size="lg">
+            Post a brief
+          </ButtonLink>
+          <ButtonLink href="/bounties" variant="secondary" size="lg">
+            Browse briefs
+          </ButtonLink>
+        </div>
+      </div>
+      <div className="lg:col-span-5">
+        {first ? (
+          <CultureBriefCard
+            sample={false}
+            title={first.title}
+            rewardMinor={first.reward_total_minor}
+            currency={first.currency}
+            slotsTaken={first.participants}
+            slotsCap={first.participant_cap}
+            licenseLine={first.creative?.usageNotes ?? "See brief for usage terms"}
+            media={artForCategory(first.category)}
           />
-          {openItems.length > 0 ? (
-            <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {openItems.map((b) => {
-                const Icon = b.creative?.formats?.length ? (FORMAT_ICONS[b.creative.formats[0]] ?? Camera) : Camera;
-                return (
-                  <a
-                    key={b.id}
-                    href={`/bounties/${b.id}`}
-                    className="group rounded-md border border-fg/15 bg-surface p-4 transition-colors duration-150 hover:border-fg/40"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <span className="flex size-9 items-center justify-center rounded-sm bg-accent-soft text-accent">
-                        <Icon className="size-4.5" aria-hidden="true" />
-                      </span>
-                      <MoneyValue minor={b.reward_total_minor} currency={b.currency} size="lg" className="text-accent" />
-                    </div>
-                    <h2 className="mt-3 text-[15px] font-semibold leading-snug group-hover:underline group-hover:underline-offset-4">{b.title}</h2>
-                    <div className="mt-2 flex items-center justify-between border-t border-fg/10 pt-3">
-                      <StatusBadge status={b.status} />
-                      <span className="text-xs text-subtle" title={absoluteDate(b.submission_deadline)}>
-                        {b.participants}/{b.participant_cap} slots · {deadlinePhrase(b.submission_deadline)}
-                      </span>
-                    </div>
-                  </a>
-                );
-              })}
-            </div>
+        ) : (
+          <CultureBriefCard
+            sample
+            title={CULTURE_BRIEF_EXAMPLE.title}
+            support={CULTURE_BRIEF_EXAMPLE.support}
+            rewardMinor={CULTURE_BRIEF_EXAMPLE.rewardMinor}
+            currency={CULTURE_BRIEF_EXAMPLE.currency}
+            slotsTaken={CULTURE_BRIEF_EXAMPLE.slotsTaken}
+            slotsCap={CULTURE_BRIEF_EXAMPLE.slotsCap}
+            licenseLine={CULTURE_BRIEF_EXAMPLE.licenseLine}
+            media={CULTURE_BRIEF_EXAMPLE.media}
+            note={CULTURE_BRIEF_EXAMPLE.note}
+          />
+        )}
+        <p className="mt-3 text-xs text-subtle">
+          {first ? (
+            <>
+              Live brief. Closes {deadlinePhrase(first.submission_deadline)}{" "}
+              (<span title={absoluteDate(first.submission_deadline)}>{first.category}</span>).
+            </>
           ) : (
-            <div className="mt-5 rounded-md border border-dashed border-fg/15 bg-surface/40 p-6 text-sm leading-relaxed text-muted">
-              No open briefs yet. Brands post creative briefs with a reward, a
-              deadline, and a capped field of creators; creators know the full
-              rules, including licensing, before they start. The first live
-              briefs will appear here.
-            </div>
+            "The first live briefs will open in this shape."
           )}
-        </section>
-  
+        </p>
+      </div>
+    </section>
   );
 }
-/** 4 — The rules, short: what makes a brief fair. */
+
+/** 2 — Formats you can commission (real filter targets, gallery look). */
+function FormatsSection() {
+  return (
+    <section className="canvas-brand mt-14 sm:mt-16">
+      <SectionHeader title="What you can commission" />
+      <ul className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+        {FORMAT_LINKS.map((f) => (
+          <li key={f.label}>
+            <a
+              href={f.href}
+              className="flex items-center gap-2.5 rounded-md border border-line bg-surface px-3 py-2.5 transition-colors duration-150 hover:border-line-strong"
+            >
+              <f.icon className="size-4 shrink-0 text-accent" aria-hidden="true" />
+              <span className="text-sm font-medium">{f.label}</span>
+            </a>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+/** 3 — Open briefs: real inventory only, poster-tile cards. */
+function OpenBriefsSection({ openItems }: { openItems: HomeOpenItem }) {
+  return (
+    <section className="canvas-brand py-10 sm:py-12">
+      <SectionHeader
+        title="Open now"
+        aside={
+          <a href="/bounties" className="text-xs font-medium text-accent underline underline-offset-4">
+            Browse all
+          </a>
+        }
+      />
+      <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {openItems.map((b) => (
+          <a key={b.id} href={`/bounties/${b.id}`} className="group block">
+            <CultureBriefCard
+              sample={false}
+              title={b.title}
+              rewardMinor={b.reward_total_minor}
+              currency={b.currency}
+              slotsTaken={b.participants}
+              slotsCap={b.participant_cap}
+              licenseLine={b.creative?.usageNotes ?? "See brief for usage terms"}
+              media={artForCategory(b.category)}
+              className="transition-shadow duration-150 group-hover:brightness-[0.98]"
+            />
+            <div className="mt-2 flex items-center justify-between px-1 text-xs text-subtle">
+              <StatusBadge status={b.status} />
+              <span title={absoluteDate(b.submission_deadline)}>
+                {deadlinePhrase(b.submission_deadline)}
+              </span>
+            </div>
+          </a>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+/** The honest empty stage (real inventory = zero). */
+function EmptyBriefsStage() {
+  return (
+    <section className="canvas-brand py-10 sm:py-12">
+      <SectionHeader title="Open now" />
+      <div
+        className="mt-5 rounded-md border border-dashed border-line-strong bg-surface/40 p-6 sm:p-8"
+        data-testid="open-now-empty"
+      >
+        <p className="font-display-site text-lg tracking-tight">No open briefs yet.</p>
+        <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-muted">
+          Brands post creative briefs with a reward, a deadline, and a capped
+          field of creators; creators know the full rules, including
+          licensing, before they start.
+        </p>
+        <div className="mt-4">
+          <ButtonLink href="/bounties/new" variant="secondary">
+            Post the first brief
+          </ButtonLink>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/** 4 — The labelled sample wall (only when live inventory is empty). */
+function SampleBriefWall() {
+  return (
+    <section className="canvas-brand py-10 sm:py-12" data-sample-wall="true">
+      <SectionHeader
+        title="Sample briefs"
+        aside={<span className="obj-microlabel text-subtle">SAMPLE, NOT LIVE</span>}
+      />
+      {/* RC5 §21.7: wide 4-up, <=900px 2-up, mobile 1-up. */}
+      <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {CULTURE_SAMPLE_WALL.map((s) => (
+          <CultureBriefTile
+            key={s.category}
+            sample
+            category={s.category}
+            title={s.title}
+            rewardMinor={s.rewardMinor}
+            currency={s.currency}
+            slotsTaken={s.slotsTaken}
+            slotsCap={s.slotsCap}
+            licenseLine={s.licenseLine}
+            media={s.media}
+          />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+/** 5 — The rules, short: what makes a brief fair. */
 function CultureRules() {
   return (
-        <section className="canvas-wide py-8">
-          <SectionHeader title="The rules, before anyone starts" />
-          <div className="mt-5 grid gap-6 sm:grid-cols-3">
-            <div>
-              <h2 className="text-sm font-semibold">Capped entries</h2>
-              <p className="mt-1.5 text-sm leading-relaxed text-muted">
-                Every brief states exactly how many creators take part. No
-                unlimited field, no "top of the feed wins."
-              </p>
-            </div>
-            <div>
-              <h2 className="text-sm font-semibold">Published reward structure</h2>
-              <p className="mt-1.5 text-sm leading-relaxed text-muted">
-                Winner takes all, a podium, or a finalist pool: the split is
-                shown on the brief before the work begins, and the advertised
-                amount is exactly what is paid.
-              </p>
-            </div>
-            <div>
-              <h2 className="text-sm font-semibold">Clear licensing</h2>
-              <p className="mt-1.5 text-sm leading-relaxed text-muted">
-                Where the winning work will run, for how long, and whether it
-                is used commercially: stated in the brief, not negotiated
-                after the fact.
-              </p>
-            </div>
-          </div>
-        </section>
-  
+    <section className="canvas-brand py-8">
+      <SectionHeader title="The rules, before anyone starts" />
+      <div className="mt-5 grid gap-6 sm:grid-cols-3">
+        <div>
+          <h2 className="text-sm font-semibold">Capped entries</h2>
+          <p className="mt-1.5 text-sm leading-relaxed text-muted">
+            Every brief states exactly how many creators take part. No
+            unlimited field, no "top of the feed wins."
+          </p>
+        </div>
+        <div>
+          <h2 className="text-sm font-semibold">Published reward structure</h2>
+          <p className="mt-1.5 text-sm leading-relaxed text-muted">
+            Winner takes all, a podium, or a finalist pool: the split is
+            shown on the brief before the work begins, and the advertised
+            amount is exactly what is paid.
+          </p>
+        </div>
+        <div>
+          <h2 className="text-sm font-semibold">Clear licensing</h2>
+          <p className="mt-1.5 text-sm leading-relaxed text-muted">
+            Where the winning work will run, for how long, and whether it is
+            used commercially: stated in the brief, not negotiated after the
+            fact.
+          </p>
+        </div>
+      </div>
+    </section>
   );
 }

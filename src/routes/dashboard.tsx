@@ -22,9 +22,10 @@ const loadDashboard = createServerFn({ method: "GET" }).handler(async () => {
   ]);
   const { listNotifications } = await import("@/lib/marketplace/notifications.server");
   const notifications = await listNotifications(session.user.id, 20);
-  const { me } = await (await import("@/lib/shell-context")).getShellContext();
+  const { me, funding } = await (await import("@/lib/shell-context")).getShellContext();
   return {
     me,
+    funding,
     product: await currentProductKey(),
     emailVerified: user?.email_verified ?? false,
     handle: profile.handle,
@@ -42,7 +43,7 @@ export const Route = createFileRoute("/dashboard")({
 function DashboardPage() {
   const d = Route.useLoaderData();
   return (
-    <ProductShell site={d.product as ProductKey} me={d.me}>
+    <ProductShell site={d.product as ProductKey} me={d.me} funding={d.funding}>
       <div className="canvas-app pb-16">
         <PageHeader
           kicker="Dashboard"

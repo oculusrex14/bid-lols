@@ -6,12 +6,16 @@ import { ProductShell } from "@/components/product-shell";
 import { JsonLd } from "@/components/seo";
 import { profileSchema } from "@/lib/schema";
 import type { PublicProfile } from "@/lib/profiles.server";
+import { Avatar } from "@/components/ui/identity";
 
 /**
- * Public profile (Phase 01, FR-2): /profile/:handle. SSR-fetched; shows only
- * public fields (no email, no admin state). Missing or suspended profiles are
- * real 404s (RC2, C3.5). Head tags are owned by the SEO middleware (single
- * head authority across runtimes; thin profiles get noindex,follow there).
+ * Public profile (RC5 §24): Bidthrone's case-file layout. Identity, the
+ * Bid Index state, factual counters, role breakdown, and the revealed
+ * reviews — one record, in reading order. No cover photo, no follower
+ * count, no vanity badges: this is a work record, not a social profile.
+ *
+ * Authoritative trust facts are server-fetched only; the browser renders
+ * data it was given (never queries trust itself).
  */
 const loadProfile = createServerFn({ method: "GET" })
   .validator((input: { handle: string }) =>
@@ -20,6 +24,7 @@ const loadProfile = createServerFn({ method: "GET" })
   .handler(async ({ data }) => {
     const { getPublicProfile } = await import("@/lib/profiles.server");
     const { reputationFor } = await import("@/lib/marketplace/reputation.server");
+    const { reviewsForUser } = await import("@/lib/marketplace/reviews.server");
     const [profile, product, shell] = await Promise.all([
       getPublicProfile(data.handle),
       currentProductKey(),
@@ -29,7 +34,7 @@ const loadProfile = createServerFn({ method: "GET" })
       })(),
     ]);
     if (!profile) throw notFound();
-    const [reputation, trust] = await Promise.all([
+    const [reputation, trust, reviews] = await Promise.all([
       reputationFor(profile.userId).catch(() => null),
       (async () => {
         try {
@@ -39,14 +44,26 @@ const loadProfile = createServerFn({ method: "GET" })
           return null;
         }
       })(),
+      reviewsForUser(profile.userId).catch(() => []),
     ]);
-    return { profile, product, handle: data.handle, reputation, trust, me: shell.me };
+    return {
+      profile,
+      product,
+      handle: data.handle,
+      reputation,
+      trust,
+      reviews,
+      me: shell.me,
+      funding: shell.funding,
+    };
   });
 
 export const Route = createFileRoute("/profile/$handle")({
   loader: (ctx) => loadProfile({ data: { handle: ctx.params.handle } }),
   component: ProfilePage,
 });
+
+type ReviewRow = NonNullable<Awaited<ReturnType<typeof loadProfile>>["reviews"]>[number];
 
 function ProfilePage() {
   const d = Route.useLoaderData();
@@ -57,47 +74,19 @@ function ProfilePage() {
     p.portfolioLinks.length > 0 ||
     Boolean(p.githubUrl || p.linkedinUrl || p.websiteUrl);
   return (
-    <ProductShell site={d.product} me={d.me}>
+    <ProductShell site={d.product} me={d.me} funding={d.funding}>
       <div className="canvas-app py-10">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <p className="text-xs font-medium uppercase tracking-kicker text-subtle">
-              {p.isSponsor ? "Sponsor profile" : "Member profile"}
-            </p>
-            <h1 className="mt-1 font-display-site text-2xl tracking-tight sm:text-3xl">
-              {p.displayName}
-            </h1>
-            <p className="mt-1 text-sm text-muted">
-              @{p.handle}
-              {p.location ? ` · ${p.location}` : ""}
-              {p.timezone ? ` · ${p.timezone}` : ""}
-              {" · "}
-              {p.availability === "available"
-                ? "Available"
-                : p.availability === "limited"
-                  ? "Limited availability"
-                  : "Booked"}
-            </p>
-          </div>
-          <div className="text-right text-xs text-subtle">
-            {p.emailVerified ? (
-              <span className="inline-flex items-center gap-1 rounded-full border border-up/40 px-2 py-0.5 text-up">
-                email verified
-              </span>
-            ) : null}
-            <p className="mt-1">Joined {new Date(p.joinedAt).toISOString().slice(0, 10)}</p>
-          </div>
-        </div>
-
+        <CaseFileHeader p={p} />
         {p.bio ? <p className="mt-4 max-w-xl text-sm leading-relaxed">{p.bio}</p> : null}
 
+        {d.trust ? <TrustBlock trust={d.trust} /> : null}
+        {d.reputation ? <FactsBlock reputation={d.reputation} /> : null}
+        {d.reviews.length > 0 ? <ReviewsBlock reviews={d.reviews} /> : null}
         {p.companyName ? <CompanyBlock p={p} /> : null}
         {p.skills.length > 0 || p.categories.length > 0 ? <TagsBlock p={p} /> : null}
-        {p.portfolioLinks.length > 0 || p.githubUrl || p.linkedinUrl || p.websiteUrl ? <LinksBlock p={p} /> : null}
-
-        {d.trust ? <TrustBlock trust={d.trust} /> : null}
-
-        {d.reputation ? <ReputationBlock reputation={d.reputation} /> : null}
+        {p.portfolioLinks.length > 0 || p.githubUrl || p.linkedinUrl || p.websiteUrl ? (
+          <LinksBlock p={p} />
+        ) : null}
 
         {hasContent ? (
           <JsonLd
@@ -117,9 +106,134 @@ function ProfilePage() {
   );
 }
 
+/** Identity: the record's masthead. */
+function CaseFileHeader({ p }: { p: PublicProfile }) {
+  return (
+    <div className="flex flex-wrap items-center gap-4">
+      <Avatar name={p.displayName} size="lg" />
+      <div className="min-w-0 flex-1">
+        <p className="text-xs font-medium uppercase tracking-kicker text-subtle">
+          {p.isSponsor ? "Sponsor profile" : "Member profile"} · public record
+        </p>
+        <h1 className="mt-0.5 font-display-site text-2xl tracking-tight sm:text-3xl">
+          {p.displayName}
+        </h1>
+        <p className="mt-0.5 text-sm text-muted">
+          @{p.handle}
+          {p.location ? ` · ${p.location}` : ""}
+          {p.timezone ? ` · ${p.timezone}` : ""}
+        </p>
+      </div>
+      <div className="text-right text-xs text-subtle">
+        {p.emailVerified ? (
+          <span className="inline-flex items-center gap-1 rounded-full border border-up/40 px-2 py-0.5 text-up">
+            email verified
+          </span>
+        ) : null}
+        <p className="mt-1">Joined {new Date(p.joinedAt).toISOString().slice(0, 10)}</p>
+        <p>
+          {p.availability === "available"
+            ? "Available"
+            : p.availability === "limited"
+              ? "Limited availability"
+              : "Booked"}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+/** Factual counters: the work history in one verifiable block. */
+function FactsBlock({
+  reputation,
+}: {
+  reputation: NonNullable<Awaited<ReturnType<typeof loadProfile>>["reputation"]>;
+}) {
+  return (
+    <section className="mt-8" data-testid="reputation">
+      <h2 className="text-xs font-medium uppercase tracking-kicker text-subtle">
+        Verified outcomes
+      </h2>
+      {reputation.experience === 0 ? (
+        <p className="mt-2 text-sm text-muted">
+          No verified marketplace outcomes yet. This record will fill in
+          with real wins, completions, and reviews.
+        </p>
+      ) : (
+        <>
+          <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <Fact label="Bounties won" value={reputation.bountyWins} />
+            <Fact label="Projects completed" value={reputation.projectCompletions} />
+            <Fact label="Teams captained" value={reputation.captainedCompletions} />
+            <Fact label="Reviews received" value={reputation.reviewsReceived} />
+          </div>
+          <p className="mt-3 text-xs text-muted">
+            {reputation.disputesAsClaimant} dispute
+            {reputation.disputesAsClaimant === 1 ? "" : "s"} raised ·{" "}
+            {reputation.disputesAsRespondent} dispute
+            {reputation.disputesAsRespondent === 1 ? "" : "s"} responded
+          </p>
+        </>
+      )}
+    </section>
+  );
+}
+
+function Fact({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="rounded-md border border-line bg-surface px-3 py-2.5">
+      <p className="text-xs uppercase tracking-kicker text-subtle">{label}</p>
+      <p className="tabular mt-1 font-display-site text-lg tracking-tight">{value}</p>
+    </div>
+  );
+}
+
+/** The revealed reviews of this member (public, reveal-gated). */
+function ReviewsBlock({ reviews }: { reviews: ReviewRow[] }) {
+  return (
+    <section className="mt-8">
+      <h2 className="text-xs font-medium uppercase tracking-kicker text-subtle">
+        Reviews from the people involved
+      </h2>
+      <div className="mt-3 space-y-3">
+        {reviews.map((r, i) => (
+          <ReviewRowCard key={i} r={r} />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function ReviewRowCard({ r }: { r: ReviewRow }) {
+  const dims: string[] = [];
+  const push = (label: string, value: number | null) => {
+    if (value != null) dims.push(`${label} ${value}/5`);
+  };
+  push("Quality", r.quality);
+  push("Communication", r.communication);
+  push("Timeliness", r.timeliness);
+  push("Clarity", r.clarity);
+  push("Value", r.value);
+  push("Fairness", r.fairness);
+  return (
+    <article className="rounded-md border border-line bg-surface p-4">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <p className="text-xs font-medium text-muted">
+          {r.reviewerHandle ? `@${r.reviewerHandle}` : "A member of the network"}
+        </p>
+        <p className="text-xs text-subtle">{new Date(r.createdAt).toISOString().slice(0, 10)}</p>
+      </div>
+      {dims.length > 0 ? (
+        <p className="tabular mt-1.5 text-xs text-subtle">{dims.join(" · ")}</p>
+      ) : null}
+      {r.body ? <p className="mt-2 text-sm leading-relaxed">{r.body}</p> : null}
+    </article>
+  );
+}
+
 function CompanyBlock({ p }: { p: PublicProfile }) {
   return (
-    <div className="mt-6 rounded-md border border-fg/15 bg-raised/40 p-4">
+    <div className="mt-8 rounded-md border border-line bg-surface p-4">
       <p className="text-xs font-medium uppercase tracking-kicker text-subtle">Company</p>
       <p className="mt-1 text-sm font-medium">{p.companyName}</p>
       {p.companyAbout ? <p className="mt-1 text-sm text-muted">{p.companyAbout}</p> : null}
@@ -134,22 +248,27 @@ function CompanyBlock({ p }: { p: PublicProfile }) {
 
 function TagsBlock({ p }: { p: PublicProfile }) {
   return (
-    <div className="mt-6 flex flex-wrap gap-2">
-      {p.skills.map((s) => (
-        <span key={`s-${s}`} className="rounded-full border border-fg/20 px-3 py-1 text-xs">{s}</span>
-      ))}
-      {p.categories.map((c) => (
-        <span key={`c-${c}`} className="rounded-full bg-accent/10 px-3 py-1 text-xs font-medium text-accent">
-          {c}
-        </span>
-      ))}
+    <div className="mt-8">
+      <p className="text-xs font-medium uppercase tracking-kicker text-subtle">Skills</p>
+      <div className="mt-2 flex flex-wrap gap-2">
+        {p.skills.map((s) => (
+          <span key={`s-${s}`} className="rounded-full border border-line bg-chip px-3 py-1 text-xs">
+            {s}
+          </span>
+        ))}
+        {p.categories.map((c) => (
+          <span key={`c-${c}`} className="rounded-full bg-accent/10 px-3 py-1 text-xs font-medium text-accent">
+            {c}
+          </span>
+        ))}
+      </div>
     </div>
   );
 }
 
 function LinksBlock({ p }: { p: PublicProfile }) {
   return (
-    <div className="mt-6">
+    <div className="mt-8">
       <p className="text-xs font-medium uppercase tracking-kicker text-subtle">Links</p>
       <ul className="mt-2 space-y-1 text-sm">
         {p.portfolioLinks.map((l) => (
@@ -165,51 +284,20 @@ function LinksBlock({ p }: { p: PublicProfile }) {
   );
 }
 
-function ReputationBlock({ reputation }: { reputation: NonNullable<Awaited<ReturnType<typeof loadProfile>>["reputation"]> }) {
-  return (
-    <div className="mt-8 rounded-md border border-fg/15 bg-surface p-5" data-testid="reputation">
-      <h2 className="text-xs font-medium uppercase tracking-kicker text-subtle">Verified outcomes</h2>
-      {reputation.experience === 0 ? (
-        <p className="mt-2 text-sm text-muted">
-          No verified marketplace outcomes yet. This profile will fill in
-          with real wins, completions, and reviews.
-        </p>
-      ) : (
-        <>
-          <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
-            {[
-              ["Experience", reputation.experience],
-              ["Reliability", `${Math.round(reputation.reliability * 100)}%`],
-              ["Quality", reputation.quality ? reputation.quality.toFixed(1) : "n/a"],
-              ["Reviews", reputation.reviewsReceived],
-            ].map(([label, value]) => (
-              <div key={String(label)}>
-                <p className="text-xs uppercase tracking-kicker text-subtle">{String(label)}</p>
-                <p className="mt-1 font-display-site text-lg tracking-tight">{String(value)}</p>
-              </div>
-            ))}
-          </div>
-          <p className="mt-3 text-xs text-muted">
-            {reputation.bountyWins} bounty win{reputation.bountyWins === 1 ? "" : "s"} ·{" "}
-            {reputation.projectCompletions} project completion{reputation.projectCompletions === 1 ? "" : "s"} ·{" "}
-            {reputation.captainedCompletions} captained unit{reputation.captainedCompletions === 1 ? "" : "s"}
-          </p>
-        </>
-      )}
-    </div>
-  );
-}
-
 /**
- * Bid Index block (RC4 §50/§51): score, band, confidence, role scores, and
- * model dimensions as normalized values (NOT star reviews; never presented
- * as guarantees). NR state is honest: "not enough history".
+ * Bid Index block (RC4 §50/§51; RC5 §23.14): the personal trust state,
+ * first-class when it is NR. No category n/10 bars (that is Market Rates);
+ * no fabricated numbers; pillars shown as normalized values, explicitly
+ * not star reviews.
  */
-function TrustBlock({ trust }: { trust: NonNullable<Awaited<ReturnType<typeof loadProfile>>["trust"]> }) {
-  const scored = trust.roles.filter((r) => r.status === "SCORED");
+function TrustBlock({
+  trust,
+}: {
+  trust: NonNullable<Awaited<ReturnType<typeof loadProfile>>["trust"]>;
+}) {
   const restricted = trust.roles.some((r) => r.status === "RESTRICTED");
   return (
-    <div className="mt-8 rounded-md border border-fg/15 bg-surface p-5" data-testid="bid-index">
+    <section className="mt-8 rounded-md border border-line bg-surface p-5" data-testid="bid-index">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h2 className="text-xs font-medium uppercase tracking-kicker text-subtle">
           Bid Index · {trust.modelVersion}
@@ -222,7 +310,7 @@ function TrustBlock({ trust }: { trust: NonNullable<Awaited<ReturnType<typeof lo
         <>
           <p className="mt-2 font-display-site text-4xl tracking-tight">{trust.overall.score}</p>
           <p className="text-sm text-muted">
-            {trust.overall.band} · {trust.overall.confidenceLabel.toLowerCase()} ({Math.round(trust.overall.confidence * 100) / 100})
+            {trust.overall.band} · {trust.overall.confidenceLabel.toLowerCase()} confidence
           </p>
           <div
             className="mt-3 h-1.5 w-full max-w-md rounded-full bg-fg/10"
@@ -236,29 +324,35 @@ function TrustBlock({ trust }: { trust: NonNullable<Awaited<ReturnType<typeof lo
           </div>
         </>
       ) : (
-        <p className="mt-2 font-display-site text-3xl tracking-tight">NR</p>
+        <>
+          <p className="mt-2 font-display-site text-4xl tracking-tight text-subtle">NR</p>
+          <p className="text-sm text-muted">
+            Not enough history. A Bid Index first appears after two completed
+            outcomes with two independent counterparties.
+          </p>
+        </>
       )}
       <p className="mt-1 text-xs text-subtle">
-        {trust.overall && trust.overall.score != null
-          ? "Based on verified marketplace outcomes, not followers or spending."
-          : "Not enough history. A Bid Index first appears after two completed outcomes with two independent counterparties."}
+        Based on verified marketplace outcomes, not followers or spending.
       </p>
 
-      {scored.length > 0 ? (
-        <div className="mt-4 grid gap-3 sm:grid-cols-3">
-          {scored.map((r) => (
-            <div key={r.role} className="rounded-md border border-fg/15 bg-raised/40 p-3">
-              <p className="text-xs uppercase tracking-kicker text-subtle">{roleTitle(r.role)}</p>
-              <p className="mt-1 font-display-site text-2xl tracking-tight">{r.score ?? "NR"}</p>
-              <p className="text-xs text-muted">
-                {r.band} · {r.confidenceLabel} · {r.primaryOutcomes} verified outcome{r.primaryOutcomes === 1 ? "" : "s"}
-              </p>
-              <PillarList pillars={r.pillars} />
-            </div>
-          ))}
-        </div>
-      ) : null}
-    </div>
+      <div className="mt-4 grid gap-3 sm:grid-cols-3">
+        {trust.roles.map((r) => (
+          <div key={r.role} className="rounded-md border border-line bg-raised/40 p-3">
+            <p className="text-xs uppercase tracking-kicker text-subtle">{roleTitle(r.role)}</p>
+            <p className="tabular mt-1 font-display-site text-2xl tracking-tight">
+              {r.status === "SCORED" ? r.score : r.status === "RESTRICTED" ? "Restricted" : "NR"}
+            </p>
+            <p className="text-xs text-muted">
+              {r.status === "SCORED"
+                ? `${r.band} · ${r.confidenceLabel} · ${r.primaryOutcomes} verified outcome${r.primaryOutcomes === 1 ? "" : "s"}`
+                : `${r.primaryOutcomes} verified outcome${r.primaryOutcomes === 1 ? "" : "s"} · ${r.uniqueCounterparties} counterparty${r.uniqueCounterparties === 1 ? "" : "ies"}`}
+            </p>
+            {r.status === "SCORED" ? <PillarList pillars={r.pillars} /> : null}
+          </div>
+        ))}
+      </div>
+    </section>
   );
 }
 
@@ -275,7 +369,7 @@ function roleTitle(role: string): string {
   }
 }
 
-/** Model dimensions (§51): normalized values, explicitly not star reviews. */
+/** Model dimensions: normalized values, explicitly not star reviews. */
 function PillarList({ pillars }: { pillars: Record<string, number> }) {
   const entries = Object.entries(pillars).slice(0, 5);
   if (entries.length === 0) return null;

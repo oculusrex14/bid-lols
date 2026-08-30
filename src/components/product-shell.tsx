@@ -1,29 +1,45 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useLocation } from "@tanstack/react-router";
-import { ChevronDown, Circle, List, Menu, X } from "lucide-react";
-import { pageTitleFor, product, PRODUCT_KEYS, linkOrigin, THEME_COLORS, type ProductKey } from "@/lib/host";
+import { ChevronDown, Menu, X } from "lucide-react";
+import {
+  pageTitleFor,
+  product,
+  PRODUCT_KEYS,
+  linkOrigin,
+  THEME_COLORS,
+  DEFAULT_THEME_MODE,
+  type ProductKey,
+} from "@/lib/host";
 import { readMode, type Mode } from "@/lib/mode";
 import { ModeToggle } from "@/components/mode-toggle";
 import { LegalLinks } from "@/components/legal-links";
+import { ProductMark, NetworkMark } from "@/components/brand/product-mark";
+import { ButtonLink } from "@/components/ui/button";
 import { signOut } from "@/lib/auth-client";
+import type { FundingMode } from "@/lib/shell-context";
 import { cn } from "@/lib/cn";
 
 /**
- * The host-aware page shell — the Network Spine header/footer (RC3, S-8/S-7.3).
+ * The host-aware page shell (RC3 spine; RC5 §15-18 product-object pass).
  *
- * One shell, four skins:
- *  - primary navigation = actual marketplace actions (capability matrix);
- *    Blog is secondary (footer + mobile menu), never a primary slot;
- *  - active route: accent underline + aria-current="page";
- *  - header CTA responds to auth (no "Create account" for members);
- *  - compact Network switcher: the four products as one mental model,
- *    cross-domain links on canonical origins — host-only sessions are not
- *    faked as shared ones;
- *  - skip-to-content link; visible focus everywhere; 44px mobile targets.
+ * Desktop: 64px sticky header on the product header token, three-zone grid
+ * (identity / product nav / account + CTA). Active nav = a subtle inset 2px
+ * accent rule, never a thick pill. One mobile menu (44px targets) holds
+ * product nav, the Bid Network group, account, appearance, and blog.
+ *
+ * The funding status chip is PUBLIC-SAFE: it is the moneyMode() string
+ * threaded through the shell context (RC5 §18), never a capability read.
+ *
+ * RC3 invariants kept: capability nav (no fake surfaces), auth-aware CTA,
+ * cross-domain links on canonical origins (no faked shared auth), skip link,
+ * visible focus, one h1 per page.
  */
 
 /** Paths whose tab title the shell may manage; everything else leaves it alone. */
 const TITLE_OWNED_PATHS = new Set(["", "/", "/blog", "/post", "/terms", "/privacy", "/refund", "/contact"]);
+
+/** Products with a marketplace surface where the funding chip applies. */
+const MARKETPLACE_SITES = new Set<ProductKey>(["foundersbid", "culturebid", "bidception"]);
 
 export type ShellMe = {
   id: string;
@@ -33,7 +49,7 @@ export type ShellMe = {
   role: string;
 };
 
-/** Primary nav = actual marketplace actions (RC3: Blog moved to the footer). */
+/** Primary nav = actual marketplace actions (capability matrix). */
 function navFor(site: ProductKey): { label: string; href: string }[] {
   switch (site) {
     case "foundersbid":
@@ -47,7 +63,6 @@ function navFor(site: ProductKey): { label: string; href: string }[] {
     case "bidception":
       return [{ label: "Team projects", href: "/bidception" }];
     case "bidthrone":
-      // RC4 §3.1: the navigation concept is Bid Index · Leaderboards · Market rates.
       return [
         { label: "Bid Index", href: "/bid-index" },
         { label: "Leaderboards", href: "/leaderboards" },
@@ -56,7 +71,7 @@ function navFor(site: ProductKey): { label: string; href: string }[] {
   }
 }
 
-/** Header CTA per product; auth-aware (RC3, S-7.3). */
+/** Header CTA per product; auth-aware (RC3, S-7.3; RC5 §23.2 for bidthrone). */
 function ctaFor(site: ProductKey, me: ShellMe | null | undefined): { label: string; href: string } {
   if (site === "bidthrone") {
     if (me) {
@@ -64,7 +79,7 @@ function ctaFor(site: ProductKey, me: ShellMe | null | undefined): { label: stri
         ? { label: "My profile", href: `/profile/${me.handle}` }
         : { label: "Dashboard", href: "/dashboard" };
     }
-    return { label: "Create account", href: "/signup" };
+    return { label: "Create your record", href: "/signup" };
   }
   switch (site) {
     case "bidception":
@@ -85,17 +100,21 @@ function syncThemeColor(site: ProductKey): void {
   const meta = document.querySelector('meta[name="theme-color"]');
   if (!meta) return;
   const colors = THEME_COLORS[site] ?? THEME_COLORS.bidthrone;
-  const mode: Mode = readMode();
+  const fallback: Mode = DEFAULT_THEME_MODE[site] ?? "light";
+  const mode: Mode = readMode(fallback);
   meta.setAttribute("content", mode === "dark" ? colors.dark : colors.light);
 }
 
 export function ProductShell({
   site,
   me,
+  funding,
   children,
 }: {
   site: ProductKey;
   me?: ShellMe | null;
+  /** Public-safe moneyMode() (RC5 §18). Absent → no funding chip. */
+  funding?: FundingMode;
   children: ReactNode;
 }) {
   const cfg = product(site);
@@ -106,6 +125,7 @@ export function ProductShell({
   const [switchOpen, setSwitchOpen] = useState(false);
   const switchRef = useRef<HTMLDivElement>(null);
   const pathname = useLocation().pathname;
+  const showFundingChip = MARKETPLACE_SITES.has(site) && funding === "off";
 
   useEffect(() => {
     const path = window.location.pathname;
@@ -144,17 +164,11 @@ export function ProductShell({
     };
   }, [switchOpen]);
 
-  const navLinkClass = (item: { label: string; href: string }) =>
-    cn(
-      "rounded-sm px-2.5 py-1.5 text-sm transition-colors duration-150",
-      isNavActive(pathname, item.href)
-        ? "font-semibold text-accent underline decoration-2 underline-offset-8"
-        : "text-muted hover:text-fg",
-    );
+  // Close the mobile menu on navigation.
+  useEffect(() => {
+    setMenuOpen(false);
+  }, [pathname]);
 
-  // The product skin lives on <html> (SSR via the root loader + the effect
-  // below), so every surface — body background, header, footer — themes as
-  // one. No duplicate data-theme on this wrapper.
   return (
     <div className="flex min-h-screen flex-col">
       <a
@@ -163,76 +177,216 @@ export function ProductShell({
       >
         Skip to content
       </a>
-      <header className="sticky top-0 z-10 border-b border-fg/10 bg-surface/95 backdrop-blur">
-        <div className="canvas-wide flex h-14 items-center justify-between gap-3">
-          <div className="flex min-w-0 items-center gap-2 sm:gap-3">
-            <NetworkSwitcher site={site} switchOpen={switchOpen} onToggle={() => setSwitchOpen((v) => !v)} onNavigate={() => setSwitchOpen(false)} switchRef={switchRef} />
-
-            <a
-              href={`${linkOrigin(site)}/`}
-              className={cn("shrink-0 font-display-site text-lg tracking-tight", site === "bidthrone" && "text-accent")}
-            >
-              {cfg.wordmark}
-            </a>
-
-            {/* desktop product nav */}
-            <nav aria-label="Product" className="hidden items-center gap-1 md:flex">
-              {nav.map((item) => (
-                <a
-                  key={item.href}
-                  href={item.href}
-                  aria-current={isNavActive(pathname, item.href) ? "page" : undefined}
-                  className={navLinkClass(item)}
-                >
-                  {item.label}
-                </a>
-              ))}
-            </nav>
-          </div>
-
-          <div className="flex items-center gap-1 sm:gap-2">
-            <AccountArea me={me} cta={cta} menuOpen={menuOpen} onToggleMenu={() => setMenuOpen((v) => !v)} />
-          </div>
-        </div>
-
-        <MobileNav
-          cfg={cfg}
-          nav={nav}
-          others={others}
-          me={me}
-          pathname={pathname}
-          menuOpen={menuOpen}
-          onClose={() => setMenuOpen(false)}
-        />
-      </header>
-
+      <ShellHeader
+        site={site}
+        cfg={cfg}
+        nav={nav}
+        cta={cta}
+        others={others}
+        me={me}
+        pathname={pathname}
+        showFundingChip={showFundingChip}
+        menuOpen={menuOpen}
+        onToggleMenu={() => setMenuOpen((v) => !v)}
+        onCloseMenu={() => setMenuOpen(false)}
+        switchOpen={switchOpen}
+        onToggleSwitch={() => setSwitchOpen((v) => !v)}
+        onSwitchNavigate={() => setSwitchOpen(false)}
+        switchRef={switchRef}
+      />
       <main id="content" className="flex-1">{children}</main>
-
       <ShellFooter cfg={cfg} others={others} />
     </div>
   );
 }
 
-/** Mobile navigation (RC3): primary product links, the network group, account
- *  state, and the blog — secondary surfaces stay out of the primary slots. */
-function MobileNav({
+/**
+ * The 64px sticky product header (RC5 §15): identity / product nav /
+ * account + CTA on the product header token; ONE mobile menu button that
+ * owns navigation, network, account, appearance, and blog (§17).
+ */
+function ShellHeader({
+  site,
   cfg,
+  nav,
+  cta,
+  others,
+  me,
+  pathname,
+  showFundingChip,
+  menuOpen,
+  onToggleMenu,
+  onCloseMenu,
+  switchOpen,
+  onToggleSwitch,
+  onSwitchNavigate,
+  switchRef,
+}: {
+  site: ProductKey;
+  cfg: ReturnType<typeof product>;
+  nav: { label: string; href: string }[];
+  cta: { label: string; href: string };
+  others: ProductKey[];
+  me: ShellMe | null | undefined;
+  pathname: string;
+  showFundingChip: boolean;
+  menuOpen: boolean;
+  onToggleMenu: () => void;
+  onCloseMenu: () => void;
+  switchOpen: boolean;
+  onToggleSwitch: () => void;
+  onSwitchNavigate: () => void;
+  switchRef: React.RefObject<HTMLDivElement | null>;
+}) {
+  const navLinkClass = (item: { label: string; href: string }) =>
+    cn(
+      "obj-nav",
+      isNavActive(pathname, item.href)
+        ? "obj-nav-active"
+        : "text-[color:var(--header-fg-soft)] hover:text-[color:var(--header-fg)]",
+    );
+  return (
+    <header className="obj-header sticky top-0 z-40 border-b backdrop-blur-xl">
+      <div className="shell-header canvas-wide grid grid-cols-[1fr_auto] items-center gap-3 md:grid-cols-[1fr_auto_1fr] md:gap-4">
+        {/* Left: identity. Mobile shows mark + wordmark only. */}
+        <div className="flex min-w-0 items-center gap-2 md:gap-3">
+          <NetworkSwitcher
+            site={site}
+            switchOpen={switchOpen}
+            onToggle={onToggleSwitch}
+            onNavigate={onSwitchNavigate}
+            switchRef={switchRef}
+            hideOnMobile
+          />
+          <a
+            href={`${linkOrigin(site)}/`}
+            className="flex shrink-0 items-center gap-2 text-[color:var(--header-fg)] hover:text-[color:var(--header-fg)]"
+          >
+            <ProductMark site={site} size={28} />
+            <span
+              className={cn(
+                "font-display-site text-lg tracking-tight",
+                site === "bidthrone" && "text-accent",
+              )}
+            >
+              {cfg.wordmark}
+            </span>
+          </a>
+        </div>
+
+        {/* Center: desktop product nav (absent on mobile, which has one menu). */}
+        <nav aria-label="Product" className="hidden items-center gap-1 md:flex">
+          {nav.map((item) => (
+            <a
+              key={item.href}
+              href={item.href}
+              aria-current={isNavActive(pathname, item.href) ? "page" : undefined}
+              className={navLinkClass(item)}
+            >
+              {item.label}
+            </a>
+          ))}
+        </nav>
+
+        {/* Right: account + CTA (+ the one mobile menu button). */}
+        <div className="flex items-center justify-end gap-1 sm:gap-2">
+          {showFundingChip ? <FundingChip /> : null}
+          <AccountLinks me={me} />
+          <ModeToggle variant="icon" fallbackMode={DEFAULT_THEME_MODE[site] ?? "light"} />
+          <ButtonLink
+            href={cta.href}
+            className="h-9 px-3 sm:h-10 sm:px-3.5"
+            data-testid="primary-cta"
+          >
+            {cta.label}
+          </ButtonLink>
+          <button
+            type="button"
+            aria-expanded={menuOpen}
+            aria-label={menuOpen ? "Close menu" : "Open menu"}
+            onClick={onToggleMenu}
+            className="inline-flex size-11 items-center justify-center rounded-sm text-[color:var(--header-fg-soft)] transition-colors duration-150 hover:text-[color:var(--header-fg)] md:hidden"
+          >
+            {menuOpen ? <X className="size-4" aria-hidden="true" /> : <Menu className="size-4" aria-hidden="true" />}
+          </button>
+        </div>
+      </div>
+
+      {menuOpen ? (
+        <MobileMenu
+          cfg={cfg}
+          site={site}
+          nav={nav}
+          others={others}
+          me={me}
+          pathname={pathname}
+          showFundingChip={showFundingChip}
+          onClose={onCloseMenu}
+        />
+      ) : null}
+    </header>
+  );
+}
+
+/** RC5 §18: the quiet funding status chip (moneyMode === off only). */
+function FundingChip() {
+  return (
+    <span
+      className="obj-funding-chip hidden items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium md:inline-flex"
+      data-testid="funding-status"
+      title="Funding is off in production: nothing on this network takes payment right now."
+    >
+      <span className="size-1.5 rounded-full bg-warn" aria-hidden="true" />
+      Funding not live
+    </span>
+  );
+}
+
+/** Desktop account links (sign in / dashboard / sign out). */
+function AccountLinks({ me }: { me: ShellMe | null | undefined }) {
+  if (me) {
+    return (
+      <a
+        href="/dashboard"
+        className="hidden items-center gap-1.5 rounded-sm px-2 py-1 text-sm font-medium text-[color:var(--header-fg)] hover:bg-[color-mix(in_oklab,var(--header-fg)_10%,transparent)] sm:inline-flex"
+      >
+        <span className="max-w-28 truncate">{me.name}</span>
+        <span className="rounded bg-[color-mix(in_oklab,var(--header-fg)_12%,transparent)] px-1.5 py-0.5 text-xs text-[color:var(--header-fg-soft)]">
+          Dashboard
+        </span>
+      </a>
+    );
+  }
+  return (
+    <a
+      href="/signin"
+      className="hidden rounded-sm px-2 py-1 text-sm font-medium text-[color:var(--header-fg-soft)] transition-colors duration-150 hover:text-[color:var(--header-fg)] sm:block"
+    >
+      Sign in
+    </a>
+  );
+}
+
+/** One mobile menu: product nav, network, account, appearance, blog. */
+function MobileMenu({
+  cfg,
+  site,
   nav,
   others,
   me,
   pathname,
-  menuOpen,
+  showFundingChip,
   onClose,
 }: {
   cfg: ReturnType<typeof product>;
+  site: ProductKey;
   nav: { label: string; href: string }[];
   others: ProductKey[];
   me: ShellMe | null | undefined;
   pathname: string;
-  menuOpen: boolean;
+  showFundingChip: boolean;
   onClose: () => void;
 }) {
-  if (!menuOpen) return null;
   return (
     <div className="border-t border-fg/10 bg-surface px-4 py-3 md:hidden">
       <nav aria-label="Mobile product" className="flex flex-col gap-0.5">
@@ -243,29 +397,46 @@ function MobileNav({
             aria-current={isNavActive(pathname, item.href) ? "page" : undefined}
             onClick={onClose}
             className={cn(
-              "rounded-sm px-2 py-2.5 text-sm",
-              isNavActive(pathname, item.href) &&
-                "font-semibold text-accent underline decoration-2 underline-offset-4",
+              "rounded-sm px-2 py-2.5 text-sm min-h-11",
+              isNavActive(pathname, item.href)
+                ? "font-semibold text-accent"
+                : "text-fg hover:bg-raised/60",
             )}
           >
             {item.label}
           </a>
         ))}
+        {showFundingChip ? (
+          <span
+            className="obj-funding-chip m-1 inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium text-fg"
+            data-testid="funding-status-mobile"
+          >
+            <span className="size-1.5 rounded-full bg-warn" aria-hidden="true" />
+            Funding not live
+          </span>
+        ) : null}
         <div className="my-2 border-t border-fg/10" role="presentation" />
         <p className="px-2 pb-1 text-xs font-semibold uppercase tracking-kicker text-subtle">The Bid Network</p>
-        {others.map((key) => (
+        {PRODUCT_KEYS.map((key) => (
           <a
             key={key}
             href={`${linkOrigin(key)}/`}
             onClick={onClose}
-            className="rounded-sm px-2 py-2 text-sm text-muted"
+            className={cn(
+              "flex min-h-11 items-center gap-2 rounded-sm px-2 py-2 text-sm",
+              key === site ? "font-medium text-fg" : "text-muted",
+            )}
           >
-            {product(key).name} <span className="text-xs text-subtle">· {product(key).oneLine}</span>
+            <ProductMark site={key} size={20} />
+            <span>{product(key).name}</span>
+            {key === site ? (
+              <span className="ml-auto text-xs text-accent">you are here</span>
+            ) : null}
           </a>
         ))}
         {me ? (
           <>
-            <a href="/dashboard" onClick={onClose} className="rounded-sm px-2 py-2 text-sm">
+            <a href="/dashboard" onClick={onClose} className="min-h-11 rounded-sm px-2 py-2 text-sm">
               Dashboard{me.handle ? ` (@${me.handle})` : ""}
             </a>
             <button
@@ -275,23 +446,23 @@ function MobileNav({
                 await signOut();
                 window.location.assign("/");
               }}
-              className="rounded-sm px-2 py-2 text-left text-sm text-muted"
+              className="min-h-11 rounded-sm px-2 py-2 text-left text-sm text-muted"
             >
               Sign out
             </button>
           </>
         ) : (
-          <a href="/signin" onClick={onClose} className="rounded-sm px-2 py-2 text-sm">
+          <a href="/signin" onClick={onClose} className="min-h-11 rounded-sm px-2 py-2 text-sm">
             Sign in
           </a>
         )}
-        <a
-          href="/blog"
-          onClick={onClose}
-          className="rounded-sm px-2 py-2 text-sm text-muted"
-        >
+        <a href="/blog" onClick={onClose} className="min-h-11 rounded-sm px-2 py-2 text-sm text-muted">
           {cfg.name} blog
         </a>
+        <div className="my-2 border-t border-fg/10" role="presentation" />
+        <div className="px-1">
+          <ModeToggle variant="inline" />
+        </div>
       </nav>
     </div>
   );
@@ -300,158 +471,111 @@ function MobileNav({
 /** The network footer: other products, blog, contact, legal. */
 function ShellFooter({ cfg, others }: { cfg: ReturnType<typeof product>; others: ProductKey[] }) {
   return (
-        <footer className="mt-16 border-t border-fg/10 bg-surface">
-          <div className="canvas-wide flex flex-col gap-5 py-8">
-            <p className="text-sm text-muted">
-              {cfg.apex} · {cfg.kicker}
-            </p>
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
-              {others.map((key) => (
-                <a key={key} href={`${linkOrigin(key)}/`} className="text-muted hover:text-fg hover:underline hover:underline-offset-4">
-                  {product(key).name}
-                </a>
-              ))}
-              <a href="/blog" className="text-muted hover:text-fg hover:underline hover:underline-offset-4">
-                {cfg.name} blog
-              </a>
-            </div>
-            <div className="border-t border-fg/10 pt-5">
-              <p className="text-sm text-muted">
-                Contact{" "}
-                <a href={`mailto:${cfg.contactEmail}`} className="hover:underline hover:underline-offset-4">
-                  {cfg.contactEmail}
-                </a>
-              </p>
-              <LegalLinks className="mt-4" />
-            </div>
-          </div>
-        </footer>
+    <footer className="mt-16 border-t border-fg/10 bg-surface">
+      <div className="canvas-wide flex flex-col gap-5 py-8">
+        <p className="text-sm text-muted">
+          {cfg.apex} · {cfg.kicker}
+        </p>
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
+          {others.map((key) => (
+            <a key={key} href={`${linkOrigin(key)}/`} className="text-muted hover:text-fg hover:underline hover:underline-offset-4">
+              {product(key).name}
+            </a>
+          ))}
+          <a href="/blog" className="text-muted hover:text-fg hover:underline hover:underline-offset-4">
+            {cfg.name} blog
+          </a>
+        </div>
+        <div className="border-t border-fg/10 pt-5">
+          <p className="text-sm text-muted">
+            Contact{" "}
+            <a href={`mailto:${cfg.contactEmail}`} className="hover:underline hover:underline-offset-4">
+              {cfg.contactEmail}
+            </a>
+          </p>
+          <LegalLinks className="mt-4" />
+        </div>
+      </div>
+    </footer>
   );
 }
 
-/** Network switcher (RC3, S-8): the four products as one mental model. */
+/**
+ * Network switcher (RC3, S-8; RC5 §16): shared Bid Network mark + label +
+ * compact dropdown of the four sibling products. Desktop only (mobile
+ * carries the group inside the one menu). Cross-domain URLs use
+ * linkOrigin(); the current product is clearly marked.
+ */
 function NetworkSwitcher({
   site,
   switchOpen,
   onToggle,
   onNavigate,
   switchRef,
+  hideOnMobile,
 }: {
   site: ProductKey;
   switchOpen: boolean;
   onToggle: () => void;
   onNavigate: () => void;
   switchRef: React.RefObject<HTMLDivElement | null>;
+  hideOnMobile?: boolean;
 }) {
   return (
-              <div ref={switchRef} className="relative shrink-0">
-                <button
-                  type="button"
-                  aria-expanded={switchOpen}
-                  aria-haspopup="menu"
-                  onClick={onToggle}
-                  className="flex h-9 items-center gap-1 rounded-sm px-1.5 text-xs font-medium text-subtle transition-colors duration-150 hover:text-fg"
-                >
-                  <List className="size-3.5" aria-hidden="true" />
-                  <span className="hidden sm:inline">Bid Network</span>
-                  <ChevronDown
-                    className={cn("size-3.5 transition-transform duration-150", switchOpen && "rotate-180")}
-                    aria-hidden="true"
-                  />
-                </button>
-                {switchOpen ? (
-                  <div
-                    role="menu"
-                    aria-label="Bid Network products"
-                    className="absolute left-0 top-full z-20 mt-1.5 w-72 rounded-md border border-fg/15 bg-surface p-1"
-                  >
-                    {PRODUCT_KEYS.map((key) => (
-                      <a
-                        key={key}
-                        role="menuitem"
-                        href={`${linkOrigin(key)}/`}
-                        onClick={onNavigate}
-                        className={cn(
-                          "flex items-start gap-2 rounded-sm px-2.5 py-2 text-sm transition-colors duration-150 hover:bg-raised/70",
-                          key === site ? "font-medium text-fg" : "text-muted",
-                        )}
-                      >
-                        <Circle
-                          className={cn("mt-1 size-1.5 shrink-0", key === site ? "fill-accent text-accent" : "fill-transparent")}
-                          aria-hidden="true"
-                        />
-                        <span className="min-w-0">
-                          <span className="block">{product(key).name}</span>
-                          <span className="block truncate text-xs text-subtle">{product(key).oneLine}</span>
-                        </span>
-                      </a>
-                    ))}
-                  </div>
-                ) : null}
-              </div>
-  );
-}
-
-/** Account area: auth-aware identity, product CTA, theme + menu toggles. */
-function AccountArea({
-  me,
-  cta,
-  menuOpen,
-  onToggleMenu,
-}: {
-  me: ShellMe | null | undefined;
-  cta: { label: string; href: string };
-  menuOpen: boolean;
-  onToggleMenu: () => void;
-}) {
-  return (
-    <>
-                {me ? (
-                  <>
-                    <a
-                      href="/dashboard"
-                      className="hidden items-center gap-1.5 rounded-sm px-2 py-1 text-sm font-medium hover:bg-raised/60 sm:inline-flex"
-                    >
-                      <span className="max-w-28 truncate">{me.name}</span>
-                      <span className="rounded bg-raised px-1.5 py-0.5 text-xs text-muted">Dashboard</span>
-                    </a>
-                    <button
-                      type="button"
-                      onClick={async () => {
-                        await signOut();
-                        window.location.assign("/");
-                      }}
-                      className="hidden rounded-sm px-2 py-1 text-sm text-muted transition-colors duration-150 hover:text-fg sm:block"
-                    >
-                      Sign out
-                    </button>
-                  </>
-                ) : (
-                  <a
-                    href="/signin"
-                    className="hidden rounded-sm px-2 py-1 text-sm font-medium text-muted transition-colors duration-150 hover:text-fg sm:block"
-                  >
-                    Sign in
-                  </a>
-                )}
-                <a
-                  href={cta.href}
-                  className="inline-flex h-10 items-center rounded-sm bg-accent px-3.5 text-sm font-semibold text-accent-fg transition-colors duration-150 hover:bg-accent/90 active:bg-accent/80"
-                  data-testid="primary-cta"
-                >
-                  {cta.label}
-                </a>
-                <ModeToggle variant="icon" />
-                {/* mobile menu toggle: spine icon control (no text glyph) */}
-                <button
-                  type="button"
-                  aria-expanded={menuOpen}
-                  aria-label={menuOpen ? "Close menu" : "Open menu"}
-                  onClick={onToggleMenu}
-                  className="inline-flex size-10 items-center justify-center rounded-sm text-muted transition-colors duration-150 hover:text-fg md:hidden"
-                >
-                  {menuOpen ? <X className="size-4" aria-hidden="true" /> : <Menu className="size-4" aria-hidden="true" />}
-                </button>
-    </>
+    <div
+      ref={switchRef}
+      className={cn("relative shrink-0", hideOnMobile && "hidden md:block")}
+    >
+      <button
+        type="button"
+        aria-expanded={switchOpen}
+        aria-haspopup="menu"
+        onClick={onToggle}
+        className="flex h-11 items-center gap-1.5 rounded-sm px-1.5 text-xs font-medium text-[color:var(--header-fg-soft)] transition-colors duration-150 hover:text-[color:var(--header-fg)]"
+      >
+        <NetworkMark size={20} />
+        <span>Bid Network</span>
+        <ChevronDown
+          className={cn("size-3.5 transition-transform duration-150", switchOpen && "rotate-180")}
+          aria-hidden="true"
+        />
+      </button>
+      {switchOpen ? (
+        <div
+          role="menu"
+          aria-label="Bid Network products"
+          className="absolute left-0 top-full z-40 mt-1.5 w-72 rounded-md border border-fg/15 bg-surface p-1 text-fg shadow-none"
+        >
+          <p className="px-2.5 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-kicker text-subtle">
+            The Bid Network
+          </p>
+          {PRODUCT_KEYS.map((key) => (
+            <a
+              key={key}
+              role="menuitem"
+              href={`${linkOrigin(key)}/`}
+              onClick={onNavigate}
+              className={cn(
+                "flex items-start gap-2.5 rounded-sm px-2.5 py-2.5 text-sm transition-colors duration-150 hover:bg-raised/70",
+                key === site ? "font-medium text-fg" : "text-muted",
+              )}
+            >
+              <ProductMark site={key} size={22} />
+              <span className="min-w-0 flex-1">
+                <span className="flex items-baseline justify-between gap-2">
+                  <span>{product(key).name}</span>
+                  {key === site ? (
+                    <span className="text-[11px] font-semibold uppercase tracking-wide text-accent">
+                      current
+                    </span>
+                  ) : null}
+                </span>
+                <span className="mt-0.5 block truncate text-xs text-subtle">{product(key).oneLine}</span>
+              </span>
+            </a>
+          ))}
+        </div>
+      ) : null}
+    </div>
   );
 }

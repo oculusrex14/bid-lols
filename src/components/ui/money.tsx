@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { formatMinor } from "@/lib/money";
+import { formatMinor, formatMinorTrimmed } from "@/lib/money";
 import { cn } from "@/lib/cn";
 
 /**
@@ -16,12 +16,16 @@ export function MoneyValue({
   size = "md",
   className,
   title,
+  trimZeroDecimals = false,
 }: {
   minor: number;
   currency?: string;
   size?: "sm" | "md" | "lg" | "xl";
   className?: string;
   title?: string;
+  /** RC5 §29: marketing/display mode. When paise are exactly zero the
+   *  ".00" is omitted (visual only; accounting stays precise). */
+  trimZeroDecimals?: boolean;
 }) {
   return (
     <span
@@ -35,7 +39,7 @@ export function MoneyValue({
       )}
       title={title}
     >
-      {formatMinor(minor, currency)}
+      {trimZeroDecimals ? formatMinorTrimmed(minor, currency) : formatMinor(minor, currency)}
     </span>
   );
 }

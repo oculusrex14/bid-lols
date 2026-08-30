@@ -20,7 +20,7 @@ import { MoneyValue } from "@/components/ui/money";
 const loadList = createServerFn({ method: "GET" }).handler(async () => {
   const sql = await getSql();
   const productKey = await currentProductKey();
-  const { me } = await (await import("@/lib/shell-context")).getShellContext();
+  const { me, funding } = await (await import("@/lib/shell-context")).getShellContext();
   const items = await sql.query<{
     id: string; title: string; slug: string; status: string;
     funded_budget_minor: number | null; currency: string;
@@ -33,7 +33,7 @@ const loadList = createServerFn({ method: "GET" }).handler(async () => {
      order by pw.created_at desc limit 50`,
     [productKey],
   );
-  return { product: productKey, me, items };
+  return { product: productKey, me, funding, items };
 });
 
 export const Route = createFileRoute("/bidception/")({
@@ -46,7 +46,7 @@ function BidceptionPage() {
   const pKey = d.product as ProductKey;
 
   return (
-    <ProductShell site={pKey} me={d.me}>
+    <ProductShell site={pKey} me={d.me} funding={d.funding}>
       <div className="canvas-wide pb-16">
         <PageHeader
           kicker={product(pKey).name}

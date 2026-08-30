@@ -27,7 +27,7 @@ type Row = {
 
 const loadRates = createServerFn({ method: "GET" }).handler(async () => {
   const product = await currentProductKey();
-  const { me } = await (await import("@/lib/shell-context")).getShellContext();
+  const { me, funding } = await (await import("@/lib/shell-context")).getShellContext();
   // Network-wide: the Bidthrone host owns this surface but holds no
   // bounties of its own, so samples span the whole network (same choice as
   // the network-wide leaderboards, RC1 R8.3).
@@ -51,7 +51,7 @@ const loadRates = createServerFn({ method: "GET" }).handler(async () => {
       sufficient: sample.sufficient,
     });
   }
-  return { product, me, rows };
+  return { product, me, funding, rows };
 });
 
 export const Route = createFileRoute("/market-rates")({
@@ -64,7 +64,7 @@ function MarketRatesPage() {
   const sufficient = d.rows.filter((r) => r.sufficient);
 
   return (
-    <ProductShell site={d.product as ProductKey} me={d.me}>
+    <ProductShell site={d.product as ProductKey} me={d.me} funding={d.funding}>
       <div className="canvas-wide pb-16">
         <PageHeader
           kicker="Bidthrone · Market rates"
@@ -96,7 +96,26 @@ function MarketRatesPage() {
                   key: "sample",
                   header: "Sample",
                   className: "tabular",
-                  render: (r: Row) => r.sampleSize,
+                  render: (r: Row) => (
+                    <div className="min-w-28">
+                      <span className="text-xs">{r.sampleSize}/{MARKET_RATE_MIN_SAMPLE}</span>
+                      <div
+                        className="market-rate-progress mt-1"
+                        role="img"
+                        aria-label={`${r.category}: ${r.sampleSize} of ${MARKET_RATE_MIN_SAMPLE} verified outcomes`}
+                      >
+                        <span
+                          style={{
+                            width: `${Math.min(r.sampleSize / MARKET_RATE_MIN_SAMPLE, 1) * 100}%`,
+                          }}
+                        />
+                      </div>
+                      <p className="sr-only">
+                        Sample completeness only: this bar never means trust,
+                        ranking, or price.
+                      </p>
+                    </div>
+                  ),
                 },
                 {
                   key: "range",

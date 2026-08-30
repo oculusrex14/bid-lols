@@ -19,7 +19,8 @@ const loadNew = createServerFn({ method: "GET" }).handler(async () => {
   const { getSession } = await import("@/lib/authz");
   const session = await getSession();
   if (!session) throw redirect({ to: "/signin" });
-  return { product: await currentProductKey(), me: (await (await import("@/lib/shell-context")).getShellContext()).me };
+  const shellContext = await (await import("@/lib/shell-context")).getShellContext();
+    return { product: await currentProductKey(), me: shellContext.me, funding: shellContext.funding };
 });
 
 export const Route = createFileRoute("/graveyard/new")({
@@ -91,7 +92,7 @@ function NewListingPage() {
   }
 
   return (
-    <ProductShell site={d.product} me={d.me}>
+    <ProductShell site={d.product} me={d.me} funding={d.funding}>
       <div className="canvas-wide pb-16">
         <header className="border-b border-fg/10 py-6">
           <p className="text-xs font-semibold uppercase tracking-kicker text-subtle">Graveyard</p>

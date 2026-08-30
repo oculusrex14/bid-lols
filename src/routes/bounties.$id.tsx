@@ -45,7 +45,7 @@ const loadDetail = createServerFn({ method: "GET" })
     // Entity-aware capability redirect (RC1, R4): a bounty belongs to the
     // product that hosts it; the wrong host 301s to its origin.
     const product = await currentProductKey();
-    const me = (await (await import("@/lib/shell-context")).getShellContext()).me;
+    const { me, funding } = await (await import("@/lib/shell-context")).getShellContext();
     const entityUrl = entityRedirectFor(detail.bounty.product, product, `/bounties/${data.id}`);
     if (entityUrl) throw redirect({ to: entityUrl });
     let applications: Awaited<ReturnType<typeof listApplicationsForSponsor>> = [];
@@ -55,6 +55,7 @@ const loadDetail = createServerFn({ method: "GET" })
     return {
       product,
       me,
+      funding,
       detail,
       applications,
       emailVerified: session?.user.emailVerified ?? false,
@@ -74,13 +75,14 @@ function BountyDetailPage() {
 type DetailData = {
   product: ProductKey;
   me: import("@/lib/shell-context").ShellMe;
+  funding: import("@/lib/shell-context").FundingMode;
   detail: NonNullable<Awaited<ReturnType<typeof loadDetail>>>["detail"];
   applications: Array<{ id: string; status: string; message: string; created_at: string; handle: string | null; display_name: string | null }>;
   emailVerified: boolean;
 };
 
 function BountyDetailBody({ data }: { data: DetailData }) {
-  const { detail, product, me } = data;
+  const { detail, product, me, funding } = data;
   const b = detail.bounty;
   const navigate = useNavigate();
   const [message, setMessage] = useState<string | null>(null);
@@ -127,7 +129,7 @@ function BountyDetailBody({ data }: { data: DetailData }) {
   const fundingState = b.funding_payment_id ? "Funded" : status === "DRAFT" ? "Not funded yet" : "Funding pending";
 
   return (
-    <ProductShell site={product} me={me}>
+    <ProductShell site={product} me={me} funding={funding}>
       <div className="canvas-wide pb-16">
         <nav aria-label="Breadcrumb" className="pt-6 text-sm text-subtle">
           <Link to="/" className="hover:underline hover:underline-offset-4">
@@ -167,7 +169,7 @@ function BountyDetailBody({ data }: { data: DetailData }) {
         <div className="mt-8 grid grid-cols-1 gap-10 lg:grid-cols-12">
           {/* Main column (8/12): the work. */}
           <div className="lg:col-span-8">
-            <BountyMain detail={detail} status={status} viewer={viewer} showSubmit={showSubmit} onCloseSubmit={() => setShowSubmit(false)} onDone={(m) => setMessage(m)} />
+            <BountyMain detail={detail} status={status} viewer={viewer} showSubmit={showSubmit} onCloseSubmit={() => setShowSubmit(false)} onDone={(m) => setMessage(m)} isCulture={isCulture} />
           </div>
 
           {/* Sticky panel (4/12): the decision data + the action. */}
@@ -200,6 +202,102 @@ function BountyDetailBody({ data }: { data: DetailData }) {
   );
 }
 
+/** RC5 §21.8: the editorial group label (CREATIVE / RULES / LICENSE). */
+/** RC5 §21.8: the CultureBid brief, grouped CREATIVE / RULES / LICENSE. */
+function CultureBrief({ b }: { b: DetailData["detail"]["bounty"] }) {
+  const creativeFacts = b.creative && (b.creative.formats?.length || b.creative.targetPlatform || b.creative.publicPostingRequired != null);
+  const licenseFacts = b.creative?.usageNotes != null || b.ip_and_confidentiality != null;
+  return (
+    <>
+      <GroupHeader label="Creative" />
+      <p className="mt-3 whitespace-pre-wrap text-[15px] leading-relaxed">{String(b.description)}</p>
+      {creativeFacts ? (
+        <ul className="mt-3 space-y-1.5 text-[15px] leading-relaxed">
+          {b.creative!.formats && b.creative!.formats.length > 0 ? <li>Formats: {b.creative!.formats.join(", ")}</li> : null}
+          {b.creative!.targetPlatform ? <li>Platform / use: {b.creative!.targetPlatform}</li> : null}
+          {b.creative!.publicPostingRequired != null ? <li>Public posting required: {b.creative!.publicPostingRequired ? "yes" : "no"}</li> : null}
+          {b.creative!.performanceMeasured != null ? <li>Performance measured: {b.creative!.performanceMeasured ? "yes (self-reported unless an API integration exists)" : "no"}</li> : null}
+        </ul>
+      ) : null}
+      {b.deliverables ? (
+        <p className="mt-4 whitespace-pre-wrap text-[15px] leading-relaxed">
+          <span className="font-medium">Deliverables: </span>
+          {String(b.deliverables)}
+        </p>
+      ) : null}
+      {b.acceptance_criteria ? (
+        <section className="mt-8">
+          <GroupHeader label="Rules" />
+          <p className="mt-3 whitespace-pre-wrap text-[15px] leading-relaxed">{String(b.acceptance_criteria)}</p>
+        </section>
+      ) : null}
+      {licenseFacts ? (
+        <section className="mt-8">
+          <GroupHeader label="License" />
+          <div className="mt-3 space-y-3 text-[15px] leading-relaxed">
+            {b.creative?.usageNotes ? <p>Usage / licensing: {b.creative.usageNotes}</p> : null}
+            {b.ip_and_confidentiality ? (
+              <p>
+                <span className="font-medium">IP & confidentiality: </span>
+                <span className="whitespace-pre-wrap">{String(b.ip_and_confidentiality)}</span>
+              </p>
+            ) : null}
+          </div>
+        </section>
+      ) : null}
+    </>
+  );
+}
+
+/** The FoundersBid brief: the operational sections, spine styling. */
+function FoundersBrief({ b }: { b: DetailData["detail"]["bounty"] }) {
+  const headCls = "text-sm font-semibold uppercase tracking-kicker text-subtle";
+  return (
+    <>
+      <section aria-labelledby="h-problem">
+        <h2 id="h-problem" className={headCls}>
+          The problem
+        </h2>
+        <p className="mt-3 whitespace-pre-wrap text-[15px] leading-relaxed">{String(b.description)}</p>
+      </section>
+      {b.deliverables ? (
+        <section className="mt-8">
+          <h2 className={headCls}>Deliverables</h2>
+          <p className="mt-3 whitespace-pre-wrap text-[15px] leading-relaxed">{String(b.deliverables)}</p>
+        </section>
+      ) : null}
+      {b.acceptance_criteria ? (
+        <section className="mt-8">
+          <h2 className={headCls}>Acceptance criteria</h2>
+          <p className="mt-3 whitespace-pre-wrap text-[15px] leading-relaxed">{String(b.acceptance_criteria)}</p>
+        </section>
+      ) : null}
+      {b.creative && (b.creative.formats?.length || b.creative.targetPlatform || b.creative.publicPostingRequired != null || b.creative.usageNotes) ? (
+        <section className="mt-8">
+          <h2 className={headCls}>Creative brief</h2>
+          <ul className="mt-3 space-y-1.5 text-[15px] leading-relaxed">
+            {b.creative.formats && b.creative.formats.length > 0 ? <li>Formats: {b.creative.formats.join(", ")}</li> : null}
+            {b.creative.targetPlatform ? <li>Platform / use: {b.creative.targetPlatform}</li> : null}
+            {b.creative.publicPostingRequired != null ? <li>Public posting required: {b.creative.publicPostingRequired ? "yes" : "no"}</li> : null}
+            {b.creative.performanceMeasured != null ? <li>Performance measured: {b.creative.performanceMeasured ? "yes (self-reported unless an API integration exists)" : "no"}</li> : null}
+            {b.creative.usageNotes ? <li>Usage / licensing: {b.creative.usageNotes}</li> : null}
+          </ul>
+        </section>
+      ) : null}
+      {b.ip_and_confidentiality ? (
+        <section className="mt-8">
+          <h2 className={headCls}>IP & confidentiality</h2>
+          <p className="mt-3 whitespace-pre-wrap text-[15px] leading-relaxed">{String(b.ip_and_confidentiality)}</p>
+        </section>
+      ) : null}
+    </>
+  );
+}
+
+function GroupHeader({ label }: { label: string }) {
+  return <h2 className="obj-microlabel text-accent">{label}</h2>;
+}
+
 function PanelRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="flex items-baseline justify-between gap-3">
@@ -217,6 +315,7 @@ function BountyMain({
   showSubmit,
   onCloseSubmit,
   onDone,
+  isCulture,
 }: {
   detail: DetailData["detail"];
   status: string;
@@ -224,46 +323,13 @@ function BountyMain({
   showSubmit: boolean;
   onCloseSubmit: () => void;
   onDone: (m: string) => void;
+  /** RC5 §21.8: CultureBid groups the brief into CREATIVE / RULES / LICENSE. */
+  isCulture: boolean;
 }) {
   const b = detail.bounty;
   return (
     <>
-      <section aria-labelledby="h-problem">
-        <h2 id="h-problem" className="text-sm font-semibold uppercase tracking-kicker text-subtle">
-          The problem
-        </h2>
-        <p className="mt-3 whitespace-pre-wrap text-[15px] leading-relaxed">{String(b.description)}</p>
-      </section>
-      {b.deliverables ? (
-        <section className="mt-8">
-          <h2 className="text-sm font-semibold uppercase tracking-kicker text-subtle">Deliverables</h2>
-          <p className="mt-3 whitespace-pre-wrap text-[15px] leading-relaxed">{String(b.deliverables)}</p>
-        </section>
-      ) : null}
-      {b.acceptance_criteria ? (
-        <section className="mt-8">
-          <h2 className="text-sm font-semibold uppercase tracking-kicker text-subtle">Acceptance criteria</h2>
-          <p className="mt-3 whitespace-pre-wrap text-[15px] leading-relaxed">{String(b.acceptance_criteria)}</p>
-        </section>
-      ) : null}
-      {b.creative && (b.creative.formats?.length || b.creative.targetPlatform || b.creative.publicPostingRequired != null || b.creative.usageNotes) ? (
-        <section className="mt-8">
-          <h2 className="text-sm font-semibold uppercase tracking-kicker text-subtle">Creative brief</h2>
-          <ul className="mt-3 space-y-1.5 text-[15px] leading-relaxed">
-            {b.creative.formats && b.creative.formats.length > 0 ? <li>Formats: {b.creative.formats.join(", ")}</li> : null}
-            {b.creative.targetPlatform ? <li>Platform / use: {b.creative.targetPlatform}</li> : null}
-            {b.creative.publicPostingRequired != null ? <li>Public posting required: {b.creative.publicPostingRequired ? "yes" : "no"}</li> : null}
-            {b.creative.performanceMeasured != null ? <li>Performance measured: {b.creative.performanceMeasured ? "yes (self-reported unless an API integration exists)" : "no"}</li> : null}
-            {b.creative.usageNotes ? <li>Usage / licensing: {b.creative.usageNotes}</li> : null}
-          </ul>
-        </section>
-      ) : null}
-      {b.ip_and_confidentiality ? (
-        <section className="mt-8">
-          <h2 className="text-sm font-semibold uppercase tracking-kicker text-subtle">IP & confidentiality</h2>
-          <p className="mt-3 whitespace-pre-wrap text-[15px] leading-relaxed">{String(b.ip_and_confidentiality)}</p>
-        </section>
-      ) : null}
+      {isCulture ? <CultureBrief b={b} /> : <FoundersBrief b={b} />}
 
       {detail.submissions.length > 0 ? (
         <section className="mt-10">

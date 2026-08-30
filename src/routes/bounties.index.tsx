@@ -12,7 +12,8 @@ import { deadlinePhrase, absoluteDate } from "@/lib/reltime";
 import { MoneyValue } from "@/components/ui/money";
 import { StatusBadge } from "@/components/ui/status";
 import { PageHeader } from "@/components/ui/layout";
-import { FilterBar, FilterChip, SortControl, MarketplaceRow } from "@/components/ui/market";
+import { FilterBar, FilterChip, SortControl } from "@/components/ui/market";
+import { artForCategory } from "@/components/product-objects/category-art";
 import { EmptyState } from "@/components/ui/states";
 import { ButtonLink } from "@/components/ui/button";
 import { JsonLd } from "@/components/seo";
@@ -40,7 +41,7 @@ const loadBounties = createServerFn({ method: "GET" })
   .handler(async ({ data }) => {
     const sql = await getSql();
     const productKey = await currentProductKey();
-    const { me } = await (await import("@/lib/shell-context")).getShellContext();
+    const { me, funding } = await (await import("@/lib/shell-context")).getShellContext();
     const result = await listOpenBounties(sql, productKey, {
       category: data.category,
       sort: data.sort,
@@ -48,7 +49,7 @@ const loadBounties = createServerFn({ method: "GET" })
       rewardMinMinor: data.rewardMin,
       limit: 20,
     });
-    return { ...result, product: productKey, me };
+    return { ...result, product: productKey, me, funding };
   });
 
 export const Route = createFileRoute("/bounties/")({
@@ -99,7 +100,7 @@ function BountiesPage() {
   const articleSlug = isCulture ? "fair-creative-bounty" : "bounty-or-project";
 
   return (
-    <ProductShell site={pKey} me={data.me}>
+    <ProductShell site={pKey} me={data.me} funding={data.funding}>
       <div className="canvas-wide pb-16">
         <PageHeader
           kicker={product(pKey).name}
@@ -222,15 +223,17 @@ function Browse({
       </div>
 
       {isCulture ? (
+        /* RC5 §21: the creative gallery (wide 2-up, mobile 1-up). */
         <div className="mt-6 grid gap-4 sm:grid-cols-2">
           {items.map((b) => (
             <CultureCard key={b.id} bounty={b} />
           ))}
         </div>
       ) : (
-        <div className="mt-4">
+        /* RC5 §20.7: the job board (3-up where comfortable, 2 tablet, 1 mobile). */
+        <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {items.map((b) => (
-            <FounderRow key={b.id} bounty={b} />
+            <FounderCard key={b.id} bounty={b} />
           ))}
         </div>
       )}
@@ -260,65 +263,78 @@ function SponsorLine({ name, handle }: { name: string | null; handle: string | n
   );
 }
 
-function FounderRow({ bounty: b }: { bounty: Awaited<ReturnType<typeof loadBounties>>["items"][number] }) {
+function FounderCard({ bounty: b }: { bounty: Awaited<ReturnType<typeof loadBounties>>["items"][number] }) {
   const deadline = deadlinePhrase(b.submission_deadline);
   return (
-    <MarketplaceRow
+    <a
       href={`/bounties/${b.id}`}
-      money={<MoneyValue minor={b.reward_total_minor} currency={b.currency} size="md" />}
-      moneyLabel="advertised reward"
-      title={b.title}
-      sub={
-        <>
-          {b.category} · {statusLabel(b.reward_structure)} · <SponsorLine name={b.sponsor_name} handle={b.sponsor_handle} />
-        </>
-      }
-      status={<StatusBadge status={b.status} />}
-      trailing={
+      className="group rounded-md border border-line bg-surface p-4 transition-colors duration-150 hover:border-line-strong"
+    >
+      <div className="flex items-start justify-between gap-3">
+        <p className="min-w-0 text-[15px] font-semibold leading-snug group-hover:underline group-hover:underline-offset-4">
+          {b.title}
+        </p>
+        <div className="shrink-0 text-right">
+          <MoneyValue minor={b.reward_total_minor} currency={b.currency} size="md" className="text-accent" trimZeroDecimals />
+          <p className="text-[11px] text-subtle">advertised reward</p>
+        </div>
+      </div>
+      <p className="mt-1.5 text-xs text-subtle">
+        {b.category} · {statusLabel(b.reward_structure)} · <SponsorLine name={b.sponsor_name} handle={b.sponsor_handle} />
+      </p>
+      <div className="mt-3 flex items-center justify-between border-t border-line pt-3 text-xs text-subtle">
         <span title={absoluteDate(b.submission_deadline)}>
-          {b.participants}/{b.participant_cap} participants · {deadline}
+          {b.participants}/{b.participant_cap} taking part · {deadline}
         </span>
-      }
-    />
+        <StatusBadge status={b.status} />
+      </div>
+    </a>
   );
 }
 
 function CultureCard({ bounty: b }: { bounty: Awaited<ReturnType<typeof loadBounties>>["items"][number] }) {
   const formats = b.creative?.formats ?? [];
   const Icon = formats.length > 0 ? (FORMAT_ICONS[formats[0]] ?? Camera) : Camera;
+  // RC5 §21.6: real cards use only real stored fields. usageNotes when
+  // present; never inferred perpetual / exclusive / paid amplification.
+  const licenseLine = b.creative?.usageNotes ?? "See brief for usage terms";
   return (
     <Link
       to="/bounties/$id"
       params={{ id: b.id }}
-      className="group flex flex-col rounded-md border border-fg/15 bg-surface p-4 transition-colors duration-150 hover:border-fg/40"
+      className="group block"
     >
-      <div className="flex items-start justify-between gap-3">
-        <span className="flex size-9 items-center justify-center rounded-sm bg-accent-soft text-accent">
-          <Icon className="size-4.5" aria-hidden="true" />
-        </span>
-        <div className="text-right">
-          <MoneyValue minor={b.reward_total_minor} currency={b.currency} size="lg" className="text-accent" />
-          <p className="text-[11px] text-subtle">advertised reward</p>
-        </div>
-      </div>
-      <h2 className="mt-3 text-[15px] font-semibold leading-snug group-hover:underline group-hover:underline-offset-4">{b.title}</h2>
-      <div className="mt-2 flex flex-wrap items-center gap-1.5">
-        <span className="rounded-full border border-fg/10 bg-raised/60 px-2 py-0.5 text-[11px] font-medium text-muted">
-          {b.category}
-        </span>
-        {formats.slice(0, 2).map((f) => (
-          <span key={f} className="rounded-full border border-fg/10 bg-raised/60 px-2 py-0.5 text-[11px] font-medium text-muted">
-            {f}
-          </span>
-        ))}
-      </div>
-      {b.creative?.targetPlatform ? (
-        <p className="mt-2 text-xs text-muted">For: {b.creative.targetPlatform}</p>
-      ) : null}
-      <div className="mt-3 flex items-center justify-between border-t border-fg/10 pt-3">
+      <figure className="brief-tile">
+        <img src={artForCategory(b.category)} alt="" className="brief-poster-media" loading="lazy" />
+        <div className="brief-tile-overlay" aria-hidden="true" />
+        <figcaption className="brief-tile-content">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="flex size-6 items-center justify-center rounded-sm bg-black/30 text-white">
+                <Icon className="size-3.5" aria-hidden="true" />
+              </span>
+              <span className="text-xs font-semibold uppercase tracking-wide text-white/80">
+                {b.category}
+              </span>
+            </div>
+            <p className="mt-1.5 text-sm font-medium leading-snug">
+              {b.title}
+            </p>
+          </div>
+          <div className="flex items-baseline justify-between gap-2 text-xs">
+            <MoneyValue minor={b.reward_total_minor} currency={b.currency} size="sm" className="text-white" trimZeroDecimals />
+            <span className="text-white/80">
+              {b.participants}/{b.participant_cap} slots · {deadlinePhrase(b.submission_deadline)}
+            </span>
+          </div>
+          <p className="text-[11px] text-white/70">{licenseLine}</p>
+        </figcaption>
+      </figure>
+      <div className="mt-2 flex items-center justify-between px-1">
         <StatusBadge status={b.status} />
-        <span className="text-xs text-subtle" title={absoluteDate(b.submission_deadline)}>
-          {b.participants}/{b.participant_cap} slots · {deadlinePhrase(b.submission_deadline)}
+        <span className="text-xs text-subtle">
+          {formats.slice(0, 2).join(" · ")}
+          {b.creative?.targetPlatform ? ` · for ${b.creative.targetPlatform}` : ""}
         </span>
       </div>
     </Link>

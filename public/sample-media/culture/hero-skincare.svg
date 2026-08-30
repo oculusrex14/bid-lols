@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450" role="img" aria-label="Abstract editorial composition: three vertical panels in soft lilac and violet">
+  <rect width="800" height="450" fill="#f3eef7"/>
+  <rect x="40" y="40" width="200" height="370" rx="18" fill="#ece4f4"/>
+  <circle cx="140" cy="150" r="64" fill="#6d28d9" opacity="0.85"/>
+  <rect x="76" y="250" width="128" height="14" rx="7" fill="#16131c" opacity="0.5"/>
+  <rect x="76" y="284" width="92" height="10" rx="5" fill="#16131c" opacity="0.28"/>
+  <rect x="280" y="40" width="200" height="370" rx="18" fill="#ffffff" stroke="#e0d5ec" stroke-width="2"/>
+  <circle cx="380" cy="170" r="74" fill="#c9b8dc"/>
+  <circle cx="380" cy="170" r="44" fill="#6d28d9"/>
+  <rect x="316" y="290" width="128" height="14" rx="7" fill="#16131c" opacity="0.5"/>
+  <rect x="316" y="324" width="92" height="10" rx="5" fill="#16131c" opacity="0.28"/>
+  <rect x="520" y="40" width="200" height="370" rx="18" fill="#16131c"/>
+  <circle cx="620" cy="160" r="58" fill="#f3eef7" opacity="0.9"/>
+  <rect x="556" y="270" width="128" height="14" rx="7" fill="#f3eef7" opacity="0.55"/>
+  <rect x="556" y="304" width="92" height="10" rx="5" fill="#f3eef7" opacity="0.3"/>
+  <text x="620" y="402" font-family="Georgia, serif" font-size="22" fill="#f3eef7" text-anchor="middle" letter-spacing="6">SKIN · STORY · 15S</text>
+</svg>

@@ -28,8 +28,8 @@ const loadArticle = createServerFn({ method: "GET" })
         statusCode: 301,
       });
     }
-    const { me } = await (await import("@/lib/shell-context")).getShellContext();
-    return { article, product: hostProduct, me };
+    const { me, funding } = await (await import("@/lib/shell-context")).getShellContext();
+    return { article, product: hostProduct, me, funding };
   });
 
 export const Route = createFileRoute("/blog/$slug")({
@@ -43,7 +43,7 @@ function BlogArticlePage() {
   const article = d.article as BlogArticle;
   const origin = seoOrigin(p);
   return (
-    <ProductShell site={p} me={d.me}>
+    <ProductShell site={p} me={d.me} funding={d.funding}>
       <div className="canvas-prose pt-6">
         <nav aria-label="Breadcrumb" className="text-sm text-subtle">
           <a href="/" className="underline-offset-4 hover:underline">

@@ -43,18 +43,35 @@ export const PRODUCT_KEYS = [
  */
 
 /**
- * Browser chrome color (RC3, S-38). The SSR value is the product's LIGHT
- * page background — it must never be the umbrella default on every domain.
- * The ProductShell swaps the meta to the dark value when the user's mode is
- * dark (client-side, after hydration; the boot script keeps the SSR value so
+ * Browser chrome color (RC3, S-38; RC5 §9). Each value must equal the
+ * CSS --bg for that product/mode (contrast-audit.test.mjs asserts it).
+ * The SSR value is the product's DEFAULT-mode page background — see
+ * DEFAULT_THEME_MODE below: Bidthrone is dark-first, the other three
+ * products are light-first. The ProductShell swaps the meta to the other
+ * mode's value after hydration (the boot script keeps the SSR value so
  * there is no flash of the wrong product color).
  * @type {Record<string, { light: string; dark: string }>}
  */
 export const THEME_COLORS = {
-  bidthrone: { light: "#f1f2f4", dark: "#0a0a0a" },
-  foundersbid: { light: "#f4efe4", dark: "#1a1612" },
-  culturebid: { light: "#f0eff4", dark: "#141613" },
-  bidception: { light: "#f3f3f5", dark: "#09090b" },
+  bidthrone: { light: "#f1f2f4", dark: "#0c0d10" },
+  foundersbid: { light: "#f3eadc", dark: "#1a1612" },
+  culturebid: { light: "#f3eef7", dark: "#141613" },
+  bidception: { light: "#f2f5f6", dark: "#09090b" },
+};
+
+/**
+ * RC5 §9: the default appearance per product BEFORE any stored preference.
+ * Bidthrone's marketed identity is the dark archival ledger, so a new
+ * visitor lands dark (SSR + boot script agree: no flash, no hydration
+ * mismatch). Stored preference always wins. The other products stay
+ * light-first.
+ * @type {Record<string, "dark" | "light">}
+ */
+export const DEFAULT_THEME_MODE = {
+  bidthrone: "dark",
+  foundersbid: "light",
+  culturebid: "light",
+  bidception: "light",
 };
 
 /**
@@ -99,11 +116,17 @@ export function ogImageAltFor(productKey) {
 }
 
 /**
+ * The SSR theme-color for a product: the page background of its DEFAULT
+ * mode (RC5 §9) — Bidthrone therefore ships the dark chrome, the other
+ * three products the light one. A stored user preference is applied
+ * client-side by the boot script / shell sync, never at SSR.
  * @param {string} key
- * @returns {string} light theme-color for the product
+ * @returns {string}
  */
 export function themeColorFor(key) {
-  return (THEME_COLORS[key] ?? THEME_COLORS[DEFAULT_PRODUCT]).light;
+  const colors = THEME_COLORS[key] ?? THEME_COLORS[DEFAULT_PRODUCT];
+  const mode = DEFAULT_THEME_MODE[key] ?? "light";
+  return mode === "dark" ? colors.dark : colors.light;
 }
 
 /** @type {Record<string, Product>} */

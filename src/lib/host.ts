@@ -11,6 +11,7 @@ import {
   THEME_COLORS,
   truncateWords,
   evergreenPaths,
+  DEFAULT_THEME_MODE,
 } from "../../scripts/host-seo-shared.mjs";
 
 /**
@@ -35,10 +36,13 @@ export {
   seoOrigin,
   truncateWords,
   evergreenPaths,
-  /** RC3, S-38: product-aware browser chrome color (light value for SSR;
-   *  the shell swaps in the dark value after hydration). */
+  /** RC3, S-38 / RC5 §9: product-aware browser chrome color for the
+   *  product DEFAULT mode (Bidthrone ships dark; the shell swaps the value
+   *  after hydration when the stored preference differs). */
   themeColorFor,
   THEME_COLORS,
+  /** RC5 §9: default appearance per product (Bidthrone dark-first). */
+  DEFAULT_THEME_MODE,
 };
 
 /** @param {ProductKey} key */

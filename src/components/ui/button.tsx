@@ -1,4 +1,4 @@
-import type { ButtonHTMLAttributes, ReactNode } from "react";
+import type { AnchorHTMLAttributes, ButtonHTMLAttributes, ReactNode } from "react";
 import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/cn";
 
@@ -80,13 +80,14 @@ export function ButtonLink({
   size = "md",
   className,
   children,
+  ...rest
 }: {
   href: string;
   variant?: "primary" | "secondary" | "ghost";
   size?: "sm" | "md" | "lg";
   className?: string;
   children?: ReactNode;
-}) {
+} & Omit<AnchorHTMLAttributes<HTMLAnchorElement>, "href">) {
   return (
     <a
       href={href}
@@ -100,6 +101,7 @@ export function ButtonLink({
         variant === "ghost" && "text-muted hover:text-fg active:bg-raised",
         className,
       )}
+      {...rest}
     >
       {children}
     </a>
